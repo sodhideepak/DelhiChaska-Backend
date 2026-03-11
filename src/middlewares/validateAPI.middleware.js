@@ -1,6 +1,6 @@
 const validateApiKey = (req, res, next) => {
 
-    const apiKey = req.headers['x-api-key']
+    const apiKey = req.headers['api_key']
 
     if (!apiKey) {
         return res.status(401).json({
@@ -16,5 +16,4 @@ const validateApiKey = (req, res, next) => {
 
     next()
 }
-
-module.exports = validateApiKey
+export {validateApiKey}

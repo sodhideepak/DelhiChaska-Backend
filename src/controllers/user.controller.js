@@ -406,6 +406,11 @@ const loginuser = asynchandler(async (req,res)=>{
 
     const {email,password}= req.body
 
+    // const api=req.headers.api_key;
+    const api=req.headers.apikey;
+    console.log(api);
+    
+
     if (!email ) {
         throw new ApiError(400,"username or email is required")     
     }

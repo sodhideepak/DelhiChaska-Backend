@@ -24,9 +24,13 @@ import {
      } from "../controllers/user.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
+import { validateApiKey } from "../middlewares/validateapi.middleware.js";
 
 
 const router =Router()
+
+router.use(validateApiKey)
+
 
 router.route("/register").post( registeruser)
 
