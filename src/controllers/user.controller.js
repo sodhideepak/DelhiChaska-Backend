@@ -1,12 +1,15 @@
-// import { asynchandler } from "../utils/asynchandler.js";
+import { asynchandler } from "../utils/asynchandler.js";
 import { ApiError } from "../utils/ApiError.js";
-import { user } from "../models/user.models.js";
-import { otp } from "../models/otp.models.js";
+import { user } from "../models/user.model.js";
+import { otp } from "../models/otp.model.js";
+import { TempUser } from "../models/temp_login.model.js";
 import { uploadoncloudinary,deleteFromCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken"
 import * as nodemailer from "nodemailer"
 import Randomstring from "randomstring";
+import bcrypt from "bcrypt";
+
 
 
 const sendresetpasswordmail=asynchandler(async(fullname,email,token)=>{
@@ -135,7 +138,6 @@ const send_register_otp=asynchandler(async(email,otp,expiresAt)=>{
 
 
 
-
 const generateAccessAndRefreshTokens=async(userid)=>{
     try {
         const User = await user.findById(userid)
@@ -155,6 +157,7 @@ const generateAccessAndRefreshTokens=async(userid)=>{
         throw new ApiError(500,"something went wrong while generating access and refresh token")
     }
 }
+
 
 
 const calculate_age = function calculateAge(dob) {
@@ -186,6 +189,126 @@ const calculate_age = function calculateAge(dob) {
 
     return `${years} years ${months} months ${days} days`;
 }
+
+
+const startRegistration = asynchandler(async (req, res) => {
+
+    const { full_name, email, phone_number, gender, DOB, password } = req.body;
+
+    if ([full_name, email, phone_number, gender, DOB, password]
+        .some(field => !field || field.toString().trim() === "")) {
+
+        throw new ApiError(400, "All fields are required");
+    }
+
+    const existingUser = await user.findOne({
+        $or: [{ email }, { phone_number }]
+    });
+
+    if (existingUser) {
+        throw new ApiError(409, "User already exists");
+    }
+
+    // generate OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    const expiresAt = "10 minutes";
+
+    // hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    await TempUser.create({
+        full_name,
+        email,
+        phone_number,
+        gender,
+        DOB,
+        password: hashedPassword,
+        otp,
+        otp_expires: Date.now() + 10 * 60 * 1000
+    });
+
+    // send OTP mail
+    await send_register_otp(email, otp, expiresAt);
+
+    return res.status(200).json(
+        new ApiResponse(200, {}, "OTP sent to email")
+    );
+
+});
+
+
+
+
+const verifyEmail_registeruser = asynchandler(async (req, res) => {
+
+    const { email, otp } = req.body;
+
+    const tempUser = await TempUser.findOne({ email });
+
+    if (!tempUser) {
+        throw new ApiError(400, "Registration session expired");
+    }
+
+    if (tempUser.otp !== otp) {
+        throw new ApiError(400, "Invalid OTP");
+    }
+
+    if (tempUser.otp_expires < Date.now()) {
+        throw new ApiError(400, "OTP expired");
+    }
+console.log(tempUser);
+
+    // create real user
+    const newUser = new user({
+        full_name: tempUser.full_name,
+        email: tempUser.email,
+        phone_number: tempUser.phone_number,
+        gender: tempUser.gender,
+        DOB: tempUser.DOB,
+        is_email_verified: true,
+        avatar: ""
+    });
+
+    newUser.password = tempUser.password;
+
+    // skip hashing again
+    newUser.$__.activePaths.clear("modify");
+
+    await newUser.save();
+
+    // delete temp user
+    await TempUser.deleteOne({ email });
+
+    // ===== LOGIN LOGIC START =====
+    const { accesstoken, refreshtoken } = await generateAccessAndRefreshTokens(newUser._id);
+
+    const loggedinuser = await user
+        .findById(newUser._id)
+        .select("-password -refreshToken -token")
+        .lean();
+
+    const options = {
+        httpOnly: true,
+        secure: true
+    };
+
+    return res
+        .status(201)
+        .cookie("accesstoken", accesstoken, options)
+        .cookie("refreshtoken", refreshtoken, options)
+        .json(
+            new ApiResponse(
+                201,
+                {
+                    user: loggedinuser,
+                    accesstoken,
+                    refreshtoken
+                },
+                "User registered and logged in successfully"
+            )
+        );
+});
 
 
 
@@ -236,6 +359,11 @@ const registeruser = asynchandler(async (req,res)=>{
 
 })
 
+
+
+// Register → Verify Email → Login
+//                          ↓
+//                      Add Address
 
 
 
@@ -305,15 +433,6 @@ const loginuser = asynchandler(async (req,res)=>{
 
     const loggedinuser =await user.findById( User._id).select("-password -refreshToken -token").lean();
    
-
-    const year = User.DOB.getUTCFullYear();
-    const month = (User.DOB.getUTCMonth() + 1).toString().padStart(2, '0');
-    const day = User.DOB.getUTCDate().toString().padStart(2, '0');
-    const formattedDate = `${year}-${month}-${day}`;
-    
-    loggedinuser.DOB=formattedDate
-    loggedinuser.age=calculate_age(User.DOB)
-    // console.log(age)
     const options={
         httpOnly:true,
         secure:true,
@@ -525,15 +644,6 @@ const getCurrentuser =asynchandler(async(req,res)=>{
 
     const user_data= await user.findById(req.user._id).select("-password -refreshToken -token ").lean();
 
-    const year = req.user.DOB.getUTCFullYear();
-    const month = (req.user.DOB.getUTCMonth() + 1).toString().padStart(2, '0');
-    const day = req.user.DOB.getUTCDate().toString().padStart(2, '0');
-    const formattedDate = `${year}-${month}-${day}`;
-    
-    user_data.DOB=formattedDate
-    user_data.age=calculate_age(req.user.DOB)
-
-
     return res
     .status(200)
     .json(new ApiResponse(200,user_data,"user fetched sucessfully"))
@@ -599,7 +709,7 @@ const updateAccountDetails =asynchandler(async(req,res)=>{
 
 
 
-const verifyemail = asynchandler(async(req,res)=>{
+const re_verifyemail = asynchandler(async(req,res)=>{
 
 
 
@@ -995,11 +1105,12 @@ const resetpassword = asynchandler(async(req,res)=>{
 
 export {
         registeruser,
+        startRegistration,
         send_otp,
         loginuser,
         logout,
         delete_account,
-        verifyemail,
+        verifyEmail_registeruser,
         refreshAccessToken,
         changeCurrentPassword,
         getCurrentuser,

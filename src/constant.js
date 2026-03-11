@@ -1,4 +1,4 @@
 
 
 //here we set the name of the databse  
-export const DB_NAME = "Database"
+export const DB_NAME = "Testing"

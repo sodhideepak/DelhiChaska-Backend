@@ -1,11 +1,12 @@
 import { Router } from "express";
 import {
     registeruser,
+    startRegistration,
     send_otp,
     loginuser,
     logout,
     delete_account,
-    verifyemail,
+    // verifyemail,
     refreshAccessToken,
     changeCurrentPassword,
     getCurrentuser,
@@ -18,7 +19,8 @@ import {
     forgotpassword,
     resetpassword,
     contactformenquiry,
-    bookingformenquiry
+    bookingformenquiry,
+    verifyEmail_registeruser
      } from "../controllers/user.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
@@ -28,9 +30,14 @@ const router =Router()
 
 router.route("/register").post( registeruser)
 
+router.route("/startRegistration").post( startRegistration)
+
+
+router.route("/verifyEmail_registeruser").post( verifyEmail_registeruser)
+
 router.route("/sendotp").post(send_otp)
 
-router.route("/verifyemail").post(verifyemail)
+// router.route("/verifyemail").post(verifyemail)
 
 router.route("/login").post(loginuser)
 
@@ -78,5 +85,14 @@ router.route("/bookingenquiry").post(bookingformenquiry)
 
 
 
-
 export default router 
+
+
+
+
+// POST /register
+// POST /verify-otp
+// POST /login
+// POST /address/add
+// PATCH /address/update
+// DELETE /address/:id
