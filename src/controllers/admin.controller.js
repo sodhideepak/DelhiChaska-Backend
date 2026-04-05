@@ -3,13 +3,58 @@ import { ApiError } from "../utils/ApiError.js";
 import { user } from "../models/user.model.js";
 import { otp } from "../models/otp.model.js";
 import { TempUser } from "../models/temp_login.model.js";
-import { Address } from "../models/address.model.js";
+import { Employee } from "../models/employee.model.js";
+import { TempEmployee } from "../models/temp_employee.model.js";
 import { uploadoncloudinary,deleteFromCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken"
 import * as nodemailer from "nodemailer"
 import Randomstring from "randomstring";
 import bcrypt from "bcrypt";
+
+
+
+
+const SUPER_ADMIN_EMAIL = process.env.SUPER_ADMIN_EMAIL || "deepaksodhi0023@gmail.com";
+const HARD_CODED_SUPER_ADMIN_ROLE = "super_admin";
+
+// Utility function to calculate age
+const calculate_age = function calculateAge(dob) {
+    const dobDate = new Date(dob);
+    const var_today = new Date();
+    const indiaTimeOffset = 5.5 * 60 * 60 * 1000; // 5.5 hours in milliseconds
+    const utcTime = var_today.getTime() + (var_today.getTimezoneOffset() * 60000); // Convert to UTC
+    const today = new Date(utcTime + indiaTimeOffset);
+
+    let years = today.getFullYear() - dobDate.getFullYear();
+    let months = today.getMonth() - dobDate.getMonth();
+    let days = today.getDate() - dobDate.getDate();
+
+    if (days < 0) {
+        months--;
+        days += new Date(today.getFullYear(), today.getMonth(), 0).getDate();
+    }
+
+    if (months < 0) {
+        years--;
+        months += 12;
+    }
+
+    return `${years} years ${months} months ${days} days`;
+}
+
+const ensureSuperAdmin = (req) => {
+    const isSuperAdmin = req.user?.email?.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
+
+    if (!isSuperAdmin) {
+        throw new ApiError(403, "only super admin can perform this action");
+    }
+
+    return {
+        role: HARD_CODED_SUPER_ADMIN_ROLE,
+        email: req.user.email
+    };
+};
 
 
 
@@ -77,67 +122,6 @@ const sendresetpasswordmail=asynchandler(async(fullname,email,token)=>{
 
 
 
-const send_register_otp=asynchandler(async(email,otp,expiresAt)=>{
-
-    try {
-        const transporter =nodemailer.createTransport({
-            host:"smtp.gmail.com",
-            port:465,
-            secure:true,
-            tls:{
-                rejectUnauthorized:false
-            },
-            // service:"gmail",
-            auth:{
-                user:process.env.emailusername,
-                pass:process.env.emailpassword
-            }
-        })
-// console.log("hello")
-        const mailoptions={
-            from:process.env.emailusername,
-            to:email,
-            subject: "OTP to Register on Heetox",
-    html: `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
-        <div style="text-align: center;">
-            <h2 style="color: #333;">Heetox</h2>
-            <h3 style="color: #444;">OTP Verification</h3>
-        </div>
-        <div style="padding: 20px; text-align: center;">
-            <p style="font-size: 16px; color: #555;">
-                Your OTP to register successfully is
-                <span style="font-size: 24px; font-weight: bold; color: #000;">${otp}</span>
-            </p>
-            <p style="font-size: 14px; color: #999;">
-                This OTP will expire in
-                <span style="font-size: 16px; font-weight: bold; color: #000;">${expiresAt}</span>.
-            </p>
-        </div>
-        
-        <div style="margin-top: 30px; text-align: center; color: #aaa; font-size: 12px;">
-            <p>If you did not request this OTP, please ignore this email.</p>
-            <p>&copy; 2024 Heetox. All rights reserved.</p>
-        </div>
-    </div>
-    `
-        }
-
-        transporter.sendMail(mailoptions,function(error,info){
-            if (error) {
-                console.log(error)
-            } else {
-                console.log("mail has been sent :=",info.response);                
-            }
-        })
-
-        
-    } catch (error) {
-        throw new ApiError(400,error.message)
-    }
-})
-
-
 
 const generateAccessAndRefreshTokens=async(userid)=>{
     try {
@@ -158,159 +142,6 @@ const generateAccessAndRefreshTokens=async(userid)=>{
         throw new ApiError(500,"something went wrong while generating access and refresh token")
     }
 }
-
-
-
-const calculate_age = function calculateAge(dob) {
-    const dobDate = new Date(dob);
-    // const today = new Date();
-    // const today = new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" });
-    const var_today = new Date();
-    const indiaTimeOffset = 5.5 * 60 * 60 * 1000; // 5.5 hours in milliseconds
-    const utcTime = var_today.getTime() + (var_today.getTimezoneOffset() * 60000); // Convert to UTC
-    const today = new Date(utcTime + indiaTimeOffset);
-    
-    // console.log(today);
-    // console.log(indiaTime);
-    
- 
-    let years = today.getFullYear() - dobDate.getFullYear();
-    let months = today.getMonth() - dobDate.getMonth();
-    let days = today.getDate() - dobDate.getDate();
-
-    if (days < 0) {
-        months--;
-        days += new Date(today.getFullYear(), today.getMonth(), 0).getDate();
-    }
-
-    if (months < 0) {
-        years--;
-        months += 12;
-    }
-
-    return `${years} years ${months} months ${days} days`;
-}
-
-
-const startRegistration = asynchandler(async (req, res) => {
-
-    const { full_name, email, phone_number, gender, DOB, password } = req.body;
-
-    if ([full_name, email, phone_number, gender, DOB, password]
-        .some(field => !field || field.toString().trim() === "")) {
-
-        throw new ApiError(400, "All fields are required");
-    }
-
-    const existingUser = await user.findOne({
-        $or: [{ email }, { phone_number }]
-    });
-
-    if (existingUser) {
-        throw new ApiError(409, "User already exists");
-    }
-
-    // generate OTP
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-
-    const expiresAt = "10 minutes";
-
-    // hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    await TempUser.create({
-        full_name,
-        email,
-        phone_number,
-        gender,
-        DOB,
-        password: hashedPassword,
-        otp,
-        otp_expires: Date.now() + 10 * 60 * 1000
-    });
-
-    // send OTP mail
-    await send_register_otp(email, otp, expiresAt);
-
-    return res.status(200).json(
-        new ApiResponse(200, {}, "OTP sent to email")
-    );
-
-});
-
-
-
-
-const verifyEmail_registeruser = asynchandler(async (req, res) => {
-
-    const { email, otp } = req.body;
-
-    const tempUser = await TempUser.findOne({ email });
-
-    if (!tempUser) {
-        throw new ApiError(400, "Registration session expired");
-    }
-
-    if (tempUser.otp !== otp) {
-        throw new ApiError(400, "Invalid OTP");
-    }
-
-    if (tempUser.otp_expires < Date.now()) {
-        throw new ApiError(400, "OTP expired");
-    }
-console.log(tempUser);
-
-    // create real user
-    const newUser = new user({
-        full_name: tempUser.full_name,
-        email: tempUser.email,
-        phone_number: tempUser.phone_number,
-        gender: tempUser.gender,
-        DOB: tempUser.DOB,
-        is_email_verified: true,
-        avatar: ""
-    });
-
-    newUser.password = tempUser.password;
-
-    // skip hashing again
-    newUser.$__.activePaths.clear("modify");
-
-    await newUser.save();
-
-    // delete temp user
-    await TempUser.deleteOne({ email });
-
-    // ===== LOGIN LOGIC START =====
-    const { accesstoken, refreshtoken } = await generateAccessAndRefreshTokens(newUser._id);
-
-    const loggedinuser = await user
-        .findById(newUser._id)
-        .select("-password -refreshToken -token")
-        .lean();
-
-    const options = {
-        httpOnly: true,
-        secure: true
-    };
-
-    return res
-        .status(201)
-        .cookie("accesstoken", accesstoken, options)
-        .cookie("refreshtoken", refreshtoken, options)
-        .json(
-            new ApiResponse(
-                201,
-                {
-                    user: loggedinuser,
-                    accesstoken,
-                    refreshtoken
-                },
-                "User registered and logged in successfully"
-            )
-        );
-});
-
 
 
 
@@ -360,11 +191,6 @@ const registeruser = asynchandler(async (req,res)=>{
 
 })
 
-
-
-// Register → Verify Email → Login
-//                          ↓
-//                      Add Address
 
 
 
@@ -437,46 +263,7 @@ const loginuser = asynchandler(async (req,res)=>{
 
     const {accesstoken,refreshtoken} = await generateAccessAndRefreshTokens(User._id)
 
-    const [loggedinuser] = await user.aggregate([
-        {
-            $match: {
-                _id: User._id
-            }
-        },
-        {
-            $lookup: {
-                from: "addresses",
-                let: {
-                    addressIds: "$addresses",
-                    userId: "$_id"
-                },
-                pipeline: [
-                    {
-                        $match: {
-                            $expr: {
-                                $and: [
-                                    { $in: ["$_id", { $ifNull: ["$$addressIds", []] }] },
-                                    { $eq: ["$user", "$$userId"] }
-                                ]
-                            }
-                        }
-                    }
-                ],
-                as: "addresses"
-            }
-        },
-        {
-            $project: {
-                password: 0,
-                refreshToken: 0,
-                token: 0
-            }
-        }
-    ]);
-
-    if (!loggedinuser) {
-        throw new ApiError(500,"something went wrong while fetching logged in user")
-    }
+    const loggedinuser =await user.findById( User._id).select("-password -refreshToken -token").lean();
    
     const options={
         httpOnly:true,
@@ -503,8 +290,6 @@ const loginuser = asynchandler(async (req,res)=>{
 
 
 const logout =asynchandler(async(req,res)=>{
-    console.log(req.user._id);
-    
     await user.findByIdAndUpdate(
         req.user._id,{
             $unset: {
@@ -600,10 +385,11 @@ const delete_account =asynchandler(async(req,res)=>{
 
 
 const refreshAccessToken = asynchandler(async(req,res)=>{
-    const refresh_token= req.headers.cookie?.match(/refreshtoken=([^;]+)/)?.[1]
+    // console.log("req.body : ",req.body);
 
     // const incomingrefreshtoken = req.cookies.refreshToken || req.body.refreshToken
-    const incomingrefreshtoken = refresh_token || req.body.refreshToken 
+    const incomingrefreshtoken = req.body.refreshToken || req.cookies.refreshToken
+    
     if(!incomingrefreshtoken){
         throw new ApiError(401,"unauthorized request")
     }
@@ -629,7 +415,7 @@ const refreshAccessToken = asynchandler(async(req,res)=>{
         if(incomingrefreshtoken !== User?.refreshToken){
             throw new ApiError(401,"refresh token is expired or used")
         }
-    
+     
         const options ={
             httpOnly:true,
             secure:true
@@ -684,96 +470,375 @@ const changeCurrentPassword = asynchandler(async(req,res)=>{
 
 
 
-const addAddress = asynchandler(async(req,res)=>{
+// Email notification function for new employee registration
+const sendEmployeeRegistrationNotification = async(employeeName, employeeEmail, role) => {
+    const transporter = nodemailer.createTransport({
+        host: "smtp.gmail.com",
+        port: 465,
+        secure: true,
+        tls: {
+            rejectUnauthorized: false
+        },
+        auth: {
+            user: process.env.emailusername,
+            pass: process.env.emailpassword
+        }
+    });
+
+    const mailOptions = {
+        from: process.env.emailusername,
+        to: SUPER_ADMIN_EMAIL,
+        subject: "New Employee Registration - DelhiChaska Backend",
+        html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
+                <div style="text-align: center;">
+                    <h2 style="color: #ff6b35; font-size: 40px;">DelhiChaska</h2>
+                    <h3 style="color: #444; font-size: 25px;">New Employee Registration</h3>
+                </div>
+                <div style="padding: 10px; font-size: 16px; color: #333;">
+                    <p><strong>Name:</strong> ${employeeName}</p>
+                    <p><strong>Email:</strong> ${employeeEmail}</p>
+                    <p><strong>Role:</strong> ${role}</p>
+                    <p><strong>Status:</strong> Pending Verification</p>
+                </div>
+                <div style="text-align: center; margin-top: 20px;">
+                    <p style="font-size: 18px; color: #666;">
+                        A new employee has submitted their registration and is waiting for your approval.
+                    </p>
+                </div>
+                <div style="margin-top: 30px; text-align: center; color: #aaa; font-size: 12px;">
+                    <p>Please log in to the admin panel to review and approve this registration.</p>
+                    <p>&copy; 2024 DelhiChaska. All rights reserved.</p>
+                </div>
+            </div>
+        `
+    };
+
+    return new Promise((resolve, reject) => {
+        transporter.sendMail(mailOptions, function(error, info) {
+            if (error) {
+                console.log("Error sending admin notification:", error);
+                reject(new ApiError(500, "Failed to send admin notification email"));
+            } else {
+                console.log("Admin notification sent:", info.response);
+                resolve(info);
+            }
+        });
+    });
+};
+
+// Email notification function for employee about registration submission
+const sendEmployeeSubmissionConfirmation = async(employeeName, employeeEmail) => {
+    const transporter = nodemailer.createTransport({
+        host: "smtp.gmail.com",
+        port: 465,
+        secure: true,
+        tls: {
+            rejectUnauthorized: false
+        },
+        auth: {
+            user: process.env.emailusername,
+            pass: process.env.emailpassword
+        }
+    });
+
+    const mailOptions = {
+        from: process.env.emailusername,
+        to: employeeEmail,
+        subject: "Registration Submitted - Under Review",
+        html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
+                <div style="text-align: center;">
+                    <h2 style="color: #ff6b35; font-size: 40px;">DelhiChaska</h2>
+                    <h3 style="color: #444; font-size: 25px;">Registration Under Review</h3>
+                </div>
+                <div style="padding: 10px; text-align: center;">
+                    <p style="font-size: 18px; color: #333;">
+                        Hi ${employeeName},<br><br>
+                        Thank you for submitting your employee registration application.
+                    </p>
+                    <div style="background-color: #fff3cd; border: 1px solid #ffeaa7; border-radius: 5px; padding: 15px; margin: 20px 0;">
+                        <p style="font-size: 16px; color: #856404; margin: 0;">
+                            <strong>Your application is currently under review by our super admin.</strong><br>
+                            We'll notify you once your registration has been approved.
+                        </p>
+                    </div>
+                    <p style="font-size: 16px; color: #666;">
+                        This process typically takes 24-48 hours. We appreciate your patience!
+                    </p>
+                </div>
+                <div style="margin-top: 30px; text-align: center; color: #aaa; font-size: 12px;">
+                    <p>If you have any questions, please contact our support team.</p>
+                    <p>&copy; 2024 DelhiChaska. All rights reserved.</p>
+                </div>
+            </div>
+        `
+    };
+
+    return new Promise((resolve, reject) => {
+        transporter.sendMail(mailOptions, function(error, info) {
+            if (error) {
+                console.log("Error sending employee confirmation:", error);
+                reject(new ApiError(500, "Failed to send employee confirmation email"));
+            } else {
+                console.log("Employee confirmation sent:", info.response);
+                resolve(info);
+            }
+        });
+    });
+};
+
+// Email notification function for employee approval
+const sendEmployeeApprovalNotification = async(employeeName, employeeEmail, role) => {
+    const transporter = nodemailer.createTransport({
+        host: "smtp.gmail.com",
+        port: 465,
+        secure: true,
+        tls: {
+            rejectUnauthorized: false
+        },
+        auth: {
+            user: process.env.emailusername,
+            pass: process.env.emailpassword
+        }
+    });
+
+    const mailOptions = {
+        from: process.env.emailusername,
+        to: employeeEmail,
+        subject: "Registration Approved - Welcome to DelhiChaska!",
+        html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
+                <div style="text-align: center;">
+                    <h2 style="color: #ff6b35; font-size: 40px;">DelhiChaska</h2>
+                    <h3 style="color: #28a745; font-size: 25px;">🎉 Registration Approved!</h3>
+                </div>
+                <div style="padding: 10px; text-align: center;">
+                    <p style="font-size: 18px; color: #333;">
+                        Congratulations ${employeeName}!<br><br>
+                        Your employee registration has been approved by our super admin.
+                    </p>
+                    <div style="background-color: #d4edda; border: 1px solid #c3e6cb; border-radius: 5px; padding: 15px; margin: 20px 0;">
+                        <p style="font-size: 16px; color: #155724; margin: 0;">
+                            <strong>Welcome to the DelhiChaska team!</strong><br>
+                            Role: ${role}<br>
+                            Status: Verified
+                        </p>
+                    </div>
+                    <p style="font-size: 16px; color: #666;">
+                        You can now access the employee portal with your registered credentials.
+                    </p>
+                </div>
+                <div style="margin-top: 30px; text-align: center; color: #aaa; font-size: 12px;">
+                    <p>If you need any help getting started, please contact your supervisor.</p>
+                    <p>&copy; 2024 DelhiChaska. All rights reserved.</p>
+                </div>
+            </div>
+        `
+    };
+
+    return new Promise((resolve, reject) => {
+        transporter.sendMail(mailOptions, function(error, info) {
+            if (error) {
+                console.log("Error sending approval notification:", error);
+                reject(new ApiError(500, "Failed to send approval notification email"));
+            } else {
+                console.log("Approval notification sent:", info.response);
+                resolve(info);
+            }
+        });
+    });
+};
+
+const startEmployeeRegistration = asynchandler(async(req,res)=>{
     const {
-        addressLine1,
-        addressLine2,
-        city,
-        state,
-        zipCode,
-        country,
-        location
+        name,
+        email,
+        phone,
+        password,
+        role,
+        profile_image
     } = req.body
 
-    if ([addressLine1, city, state, zipCode].some((field) => !field || field.toString().trim() === "")) {
-        throw new ApiError(400,"addressLine1, city, state and zipCode are required")
+    if ([name, email, phone, password, role].some((field) => !field || field.toString().trim() === "")) {
+        throw new ApiError(400, "name, email, phone, password and role are required");
     }
 
-    const createdAddress = await Address.create({
-        user: req.user._id,
-        addressLine1,
-        addressLine2,
-        city,
-        state,
-        zipCode,
-        country,
-        location
-    })
+    const existingEmployee = await Employee.findOne({
+        $or: [{ email }, { phone }]
+    });
 
-    await user.findByIdAndUpdate(
-        req.user._id,
-        {
-            $addToSet: {
-                addresses: createdAddress._id
-            }
-        }
-    )
+    if (existingEmployee) {
+        throw new ApiError(409, "employee already exists");
+    }
+
+    const existingTempEmployee = await TempEmployee.findOne({
+        $or: [{ email }, { phone }]
+    });
+
+    if (existingTempEmployee) {
+        throw new ApiError(409, "employee registration is already pending for verification");
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const tempEmployee = await TempEmployee.create({
+        name,
+        email,
+        phone,
+        password: hashedPassword,
+        role,
+        status: "not_verified",
+        profile_image: profile_image || ""
+    });
+
+    // Send notification emails (non-blocking)
+    let emailStatus = "emails sent successfully";
+
+    // Send admin notification
+    sendEmployeeRegistrationNotification(name, email, role).catch(error => {
+        console.log("Failed to send admin notification:", error.message);
+        emailStatus = "registration successful, but admin notification failed";
+    });
+
+    // Send employee confirmation
+    sendEmployeeSubmissionConfirmation(name, email).catch(error => {
+        console.log("Failed to send employee confirmation:", error.message);
+        emailStatus = "registration successful, but employee confirmation failed";
+    });
 
     return res
     .status(201)
-    .json(new ApiResponse(201,createdAddress,"address added successfully"))
+    .json(new ApiResponse(201, {
+        id: tempEmployee._id,
+        name: tempEmployee.name,
+        email: tempEmployee.email,
+        role: tempEmployee.role,
+        status: tempEmployee.status,
+        createdAt: tempEmployee.createdAt
+    }, `employee registration submitted successfully! ${emailStatus}`))
 })
 
 
 
-const editAddress = asynchandler(async(req,res)=>{
-    const { addressId } = req.params
-    const {
-        addressLine1,
-        addressLine2,
-        city,
-        state,
-        zipCode,
-        country,
-        location
-    } = req.body
 
-    const updateFields = {}
 
-    if (addressLine1 !== undefined) updateFields.addressLine1 = addressLine1
-    if (addressLine2 !== undefined) updateFields.addressLine2 = addressLine2
-    if (city !== undefined) updateFields.city = city
-    if (state !== undefined) updateFields.state = state
-    if (zipCode !== undefined) updateFields.zipCode = zipCode
-    if (country !== undefined) updateFields.country = country
-    if (location !== undefined) updateFields.location = location
 
-    if (Object.keys(updateFields).length === 0) {
-        throw new ApiError(400,"at least one address field is required")
+// Get all employees by verification status
+const getAllEmployeesByStatus = asynchandler(async(req,res)=>{
+    ensureSuperAdmin(req);
+
+    const { status } = req.query; // Can be 'verified', 'not_verified', or empty for all
+
+    let filter = {};
+    if (status && ['verified', 'not_verified', 'rejected'].includes(status)) {
+        filter.status = status;
     }
 
-    const updatedAddress = await Address.findOneAndUpdate(
-        {
-            _id: addressId,
-            user: req.user._id
-        },
-        {
-            $set: updateFields
-        },
-        {
-            new: true,
-            runValidators: true
-        }
-    )
+    // Get verified employees
+    const employees = await Employee.find(filter)
+        .select("-password")
+        .sort({ createdAt: -1 })
+        .lean();
 
-    if (!updatedAddress) {
-        throw new ApiError(404,"address not found")
+    // Get pending employees from temp collection if status is not_verified or no filter
+    let tempEmployees = [];
+    if (!status || status === 'not_verified') {
+        tempEmployees = await TempEmployee.find({ status: 'not_verified' })
+            .select("-password")
+            .sort({ createdAt: -1 })
+            .lean();
     }
+
+    // Combine and format response
+    const response = {
+        verified_employees: status === 'not_verified' ? [] : employees,
+        pending_employees: tempEmployees,
+        total_verified: status === 'not_verified' ? 0 : employees.length,
+        total_pending: tempEmployees.length,
+        filter_applied: status || 'all'
+    };
 
     return res
     .status(200)
-    .json(new ApiResponse(200,updatedAddress,"address updated successfully"))
+    .json(new ApiResponse(200, response, `employees fetched successfully${status ? ` (filtered by: ${status})` : ''}`))
 })
+
+const getSuperAdminProfile = asynchandler(async(req,res)=>{
+    const superAdmin = ensureSuperAdmin(req);
+
+    const pendingEmployees = await TempEmployee.find({ status: "not_verified" })
+    .select("-password")
+    .sort({ createdAt: -1 })
+    .lean();
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(
+            200,
+            {
+                super_admin: superAdmin,
+                pendingEmployees
+            },
+            "super admin profile fetched successfully"
+        )
+    )
+})
+
+
+
+
+
+
+const verifyEmployeeRegistration = asynchandler(async(req,res)=>{
+    ensureSuperAdmin(req);
+
+    const { tempEmployeeId } = req.params;
+    const tempEmployee = await TempEmployee.findById(tempEmployeeId);
+
+    if (!tempEmployee) {
+        throw new ApiError(404, "employee registration request not found");
+    }
+
+    const existingEmployee = await Employee.findOne({
+        $or: [{ email: tempEmployee.email }, { phone: tempEmployee.phone }]
+    });
+
+    if (existingEmployee) {
+        throw new ApiError(409, "employee already exists");
+    }
+
+    const employee = new Employee({
+        name: tempEmployee.name,
+        email: tempEmployee.email,
+        phone: tempEmployee.phone,
+        password: tempEmployee.password,
+        role: tempEmployee.role,
+        status: "verified",
+        profile_image: tempEmployee.profile_image
+    });
+
+    employee.$__.activePaths.clear("modify");
+
+    await employee.save();
+    await TempEmployee.findByIdAndDelete(tempEmployeeId);
+
+    // Send approval notification email to employee (non-blocking)
+    let emailStatus = "approval notification sent successfully";
+
+    sendEmployeeApprovalNotification(tempEmployee.name, tempEmployee.email, tempEmployee.role).catch(error => {
+        console.log("Failed to send approval email:", error.message);
+        emailStatus = "employee verified, but approval notification failed";
+    });
+
+    return res
+    .status(201)
+    .json(new ApiResponse(201,employee, `employee verified and registered successfully! ${emailStatus}`))
+})
+
+
+
 
 
 
@@ -781,10 +846,7 @@ const getCurrentuser =asynchandler(async(req,res)=>{
 
    
 
-    const user_data= await user.findById(req.user._id)
-    .select("-password -refreshToken -token ")
-    .populate("addresses")
-    .lean();
+    const user_data= await user.findById(req.user._id).select("-password -refreshToken -token ").lean();
 
     return res
     .status(200)
@@ -906,6 +968,8 @@ const re_verifyemail = asynchandler(async(req,res)=>{
 
 
 
+
+
 const updateUserAvatar =asynchandler(async(req,res)=>{
     
     const avatarlocalpath=req.file?.path
@@ -953,6 +1017,8 @@ const updateUserAvatar =asynchandler(async(req,res)=>{
     .json(new ApiResponse(200,response,"coverimage updated sucessfully"))
 
 })
+
+
 
 
 
@@ -1182,7 +1248,7 @@ const sendContactFormMail = async(name, email, subject, message) => {
 
         const mailOptions = {
             from: process.env.emailusername,
-            to: process.env.emailusername, // Send to admin email
+            to: SUPER_ADMIN_EMAIL, // Send to super admin
             subject: `New Contact Form Message: ${subject}`,
             html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
@@ -1302,16 +1368,16 @@ const resetpassword = asynchandler(async(req,res)=>{
 
 export {
         registeruser,
-        startRegistration,
+        startEmployeeRegistration,
+        getSuperAdminProfile,
+        getAllEmployeesByStatus,
+        verifyEmployeeRegistration,
         send_otp,
         loginuser,
         logout,
         delete_account,
-        verifyEmail_registeruser,
         refreshAccessToken,
         changeCurrentPassword,
-        addAddress,
-        editAddress,
         getCurrentuser,
         updateAccountDetails,
         updateUserAvatar,

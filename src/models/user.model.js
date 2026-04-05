@@ -52,6 +52,13 @@ const userschema = new mongoose.Schema({
         type: String
     },
 
+    addresses: [
+        {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "address"
+        }
+    ],
+
     token: {
         type: String,
         default: ""

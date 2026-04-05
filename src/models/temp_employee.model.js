@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const employeeSchema = new mongoose.Schema(
+const tempEmployeeSchema = new mongoose.Schema(
   {
     name: {
       type: String,
@@ -11,7 +11,6 @@ const employeeSchema = new mongoose.Schema(
     email: {
       type: String,
       required: true,
-      unique: true,
       lowercase: true,
       trim: true
     },
@@ -19,7 +18,7 @@ const employeeSchema = new mongoose.Schema(
     phone: {
       type: String,
       required: true,
-      unique: true
+      trim: true
     },
 
     password: {
@@ -40,14 +39,13 @@ const employeeSchema = new mongoose.Schema(
     },
 
     profile_image: {
-      type: String
+      type: String,
+      default: ""
     }
-
-    
   },
   {
     timestamps: true
   }
 );
 
-export const Employee = mongoose.model("employee", employeeSchema);
+export const TempEmployee = mongoose.model("tempEmployee", tempEmployeeSchema);

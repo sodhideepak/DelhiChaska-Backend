@@ -1,7 +1,10 @@
 import { Router } from "express";
 import {
     registeruser,
-    startRegistration,
+    startEmployeeRegistration,
+    getSuperAdminProfile,
+    getAllEmployeesByStatus,
+    verifyEmployeeRegistration,
     send_otp,
     loginuser,
     logout,
@@ -9,8 +12,6 @@ import {
     // verifyemail,
     refreshAccessToken,
     changeCurrentPassword,
-    addAddress,
-    editAddress,
     getCurrentuser,
     updateAccountDetails,
     updateUserAvatar,
@@ -21,9 +22,8 @@ import {
     forgotpassword,
     resetpassword,
     contactformenquiry,
-    bookingformenquiry,
-    verifyEmail_registeruser
-     } from "../controllers/user.controller.js";
+    bookingformenquiry
+     } from "../controllers/admin.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 import { validateApiKey } from "../middlewares/validateapi.middleware.js";
@@ -36,10 +36,13 @@ router.use(validateApiKey)
 
 router.route("/register").post( registeruser)
 
-router.route("/startRegistration").post( startRegistration)
+router.route("/startRegistration").post(startEmployeeRegistration)
+router.route("/employee/startRegistration").post(startEmployeeRegistration)
+router.route("/superadmin/profile").get(verifyJWT,getSuperAdminProfile)
+router.route("/employees/all").get(verifyJWT,getAllEmployeesByStatus)
+router.route("/employee/verify/:tempEmployeeId").post(verifyJWT,verifyEmployeeRegistration)
 
 
-router.route("/verifyEmail_registeruser").post( verifyEmail_registeruser)
 
 router.route("/sendotp").post(send_otp)
 
@@ -54,9 +57,6 @@ router.route("/delete_account" ).delete(delete_account)
 router.route("/refresh-token" ).post(refreshAccessToken)
 
 router.route("/change-password" ).post(verifyJWT,changeCurrentPassword)
-
-router.route("/address/add").post(verifyJWT,addAddress)
-router.route("/address/:addressId").patch(verifyJWT,editAddress)
 
 router.route("/current-user" ).get(verifyJWT,getCurrentuser)
 
@@ -97,11 +97,3 @@ router.route("/bookingenquiry").post(bookingformenquiry)
 export default router 
 
 
-
-
-// POST /register
-// POST /verify-otp
-// POST /login
-// POST /address/add
-// PATCH /address/update
-// DELETE /address/:id
