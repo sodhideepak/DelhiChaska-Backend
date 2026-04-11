@@ -1,7 +1,7 @@
 import { Cart } from "../models/cart.model.js";
 import { Combo } from "../models/combo.model.js";
 import { Product } from "../models/product.model.js";
-import { asynchandler } from "../utils/asyncHandler.js";
+import { asynchandler } from "../utils/asynchandler.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { ApiError } from "../utils/ApiError.js";
 
