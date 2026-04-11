@@ -1,6 +1,7 @@
-import { asynchandler } from "../utils/asynchandler.js";
+import { asynchandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import { Product } from "../models/product.model.js";
+import { Combo } from "../models/combo.model.js";
 import { uploadoncloudinary, deleteFromCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 
@@ -323,6 +324,111 @@ const getProductCategories = asynchandler(async (req, res) => {
     );
 });
 
+
+
+
+
+
+
+
+
+
+
+const createCombo = asynchandler(async (req, res) => {
+    ensureSuperAdmin(req);
+
+    let {
+        name,
+        description,
+        price,
+        size,
+        rules,
+        options,
+        isAvailable,
+        image
+    } = req.body;
+
+    // ==========================
+    // 🔐 BASIC VALIDATION
+    // ==========================
+    if (
+        [name, description, price].some(
+            (field) => !field || field.toString().trim() === ""
+        )
+    ) {
+        throw new ApiError(400, "name, description and price are required");
+    }
+
+    if (!rules || !Array.isArray(rules) || rules.length === 0) {
+        throw new ApiError(400, "rules must be a non-empty array");
+    }
+
+    // ==========================
+    // 🔐 RULE VALIDATION
+    // ==========================
+    rules = rules.map((rule, index) => {
+        if (!rule.category || !Array.isArray(rule.category)) {
+            throw new ApiError(400, `rule ${index + 1}: category must be array`);
+        }
+
+        if (!rule.quantity || rule.quantity < 1) {
+            throw new ApiError(400, `rule ${index + 1}: invalid quantity`);
+        }
+
+        return {
+            category: rule.category.map((c) => c.trim()),
+            quantity: Number(rule.quantity),
+            isSelectionRequired:
+                rule.isSelectionRequired !== undefined
+                    ? rule.isSelectionRequired
+                    : true,
+            label: rule.label?.trim() || ""
+        };
+    });
+
+    // ==========================
+    // 🖼️ IMAGE DEFAULT
+    // ==========================
+    image = image?.trim() || "";
+
+    // ==========================
+    // 🔁 CHECK DUPLICATE
+    // ==========================
+    const existingCombo = await Combo.findOne({
+        name: name.trim()
+    });
+
+    if (existingCombo) {
+        throw new ApiError(409, "combo with this name already exists");
+    }
+
+    // ==========================
+    // 🧠 CREATE COMBO
+    // ==========================
+    const combo = await Combo.create({
+        name: name.trim(),
+        description: description.trim(),
+        price: parseFloat(price),
+        size: size?.trim(),
+        image,
+        rules,
+        options,
+        isAvailable: isAvailable !== undefined ? isAvailable : true
+    });
+
+    const createdCombo = await Combo.findById(combo._id).lean();
+
+    if (!createdCombo) {
+        throw new ApiError(500, "something went wrong while creating combo");
+    }
+
+    return res.status(201).json(
+        new ApiResponse(201, createdCombo, "combo created successfully")
+    );
+});
+
+
+
 export {
     createProduct,
     getAllProducts,
@@ -331,5 +437,6 @@ export {
     deleteProduct,
     toggleProductAvailability,
     getProductsByCategory,
-    getProductCategories
+    getProductCategories,
+    createCombo
 };

@@ -1,4 +1,4 @@
-import { asynchandler } from "../utils/asynchandler.js";
+import { asynchandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import { user } from "../models/user.model.js";
 import { otp } from "../models/otp.model.js";
@@ -79,6 +79,8 @@ const sendresetpasswordmail=asynchandler(async(fullname,email,token)=>{
 
 const send_register_otp=asynchandler(async(email,otp,expiresAt)=>{
 
+    console.log("sending mail.....");
+    
     try {
         const transporter =nodemailer.createTransport({
             host:"smtp.gmail.com",
@@ -241,6 +243,80 @@ const startRegistration = asynchandler(async (req, res) => {
 
 
 
+// const verifyEmail_registeruser = asynchandler(async (req, res) => {
+
+//     const { email, otp } = req.body;
+
+//     const tempUser = await TempUser.findOne({ email });
+
+//     if (!tempUser) {
+//         throw new ApiError(400, "Registration session expired");
+//     }
+
+//     if (tempUser.otp !== otp) {
+//         throw new ApiError(400, "Invalid OTP");
+//     }
+
+//     if (tempUser.otp_expires < Date.now()) {
+//         throw new ApiError(400, "OTP expired");
+//     }
+// console.log(tempUser);
+
+//     // create real user
+//     const newUser = new user({
+//         full_name: tempUser.full_name,
+//         email: tempUser.email,
+//         phone_number: tempUser.phone_number,
+//         gender: tempUser.gender,
+//         DOB: tempUser.DOB,
+//         is_email_verified: true,
+//         avatar: ""
+//     });
+
+//     newUser.password = tempUser.password;
+
+//     // skip hashing again
+//     newUser.$__.activePaths.clear("modify");
+
+//     await newUser.save();
+
+//     // delete temp user
+//     await TempUser.deleteOne({ email });
+
+//     // ===== LOGIN LOGIC START =====
+//     const { accesstoken, refreshtoken } = await generateAccessAndRefreshTokens(newUser._id);
+
+//     const loggedinuser = await user
+//         .findById(newUser._id)
+//         .select("-password -refreshToken -token")
+//         .lean();
+
+//     const options = {
+//         httpOnly: true,
+//         secure: true
+//     };
+
+//     return res
+//         .status(201)
+//         .cookie("accesstoken", accesstoken, options)
+//         .cookie("refreshtoken", refreshtoken, options)
+//         .json(
+//             new ApiResponse(
+//                 201,
+//                 {
+//                     user: loggedinuser,
+//                     accesstoken,
+//                     refreshtoken
+//                 },
+//                 "User registered and logged in successfully"
+//             )
+//         );
+// });
+
+
+
+
+
 const verifyEmail_registeruser = asynchandler(async (req, res) => {
 
     const { email, otp } = req.body;
@@ -251,14 +327,19 @@ const verifyEmail_registeruser = asynchandler(async (req, res) => {
         throw new ApiError(400, "Registration session expired");
     }
 
+    // ❌ WRONG OTP → DELETE ALL RECORDS WITH THIS EMAIL
     if (tempUser.otp !== otp) {
-        throw new ApiError(400, "Invalid OTP");
+        await TempUser.deleteMany({ email });
+        throw new ApiError(400, "Invalid OTP. Registration data cleared, please register again.");
     }
 
+    // ❌ OTP EXPIRED → ALSO DELETE (recommended)
     if (tempUser.otp_expires < Date.now()) {
-        throw new ApiError(400, "OTP expired");
+        await TempUser.deleteMany({ email });
+        throw new ApiError(400, "OTP expired. Registration data cleared, please register again.");
     }
-console.log(tempUser);
+
+    console.log(tempUser);
 
     // create real user
     const newUser = new user({
@@ -279,7 +360,7 @@ console.log(tempUser);
     await newUser.save();
 
     // delete temp user
-    await TempUser.deleteOne({ email });
+    await TempUser.deleteMany({ email });
 
     // ===== LOGIN LOGIC START =====
     const { accesstoken, refreshtoken } = await generateAccessAndRefreshTokens(newUser._id);
@@ -310,8 +391,6 @@ console.log(tempUser);
             )
         );
 });
-
-
 
 
 const registeruser = asynchandler(async (req,res)=>{
@@ -1300,6 +1379,40 @@ const resetpassword = asynchandler(async(req,res)=>{
 
 
 
+
+
+
+
+const deleteUser = asynchandler(async (req, res) => {
+
+    console.log("testing");
+    
+    const { userId } = req.params;
+
+    if (!userId) {
+        throw new ApiError(400, "User ID is required");
+    }
+
+    const existedUser = await user.findById(userId);
+
+    if (!existedUser) {
+        throw new ApiError(404, "User not found");
+    }
+
+    await user.findByIdAndDelete(userId);
+
+    return res.status(200).json(
+        new ApiResponse(200, {}, "User deleted successfully")
+    );
+
+});
+
+
+
+
+
+
+
 export {
         registeruser,
         startRegistration,
@@ -1319,6 +1432,7 @@ export {
         forgotpassword,
         resetpassword,
         contactformenquiry,
-        bookingformenquiry
+        bookingformenquiry,
+        deleteUser
 
     }

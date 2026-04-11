@@ -22,7 +22,8 @@ import {
     resetpassword,
     contactformenquiry,
     bookingformenquiry,
-    verifyEmail_registeruser
+    verifyEmail_registeruser,
+    deleteUser
      } from "../controllers/user.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
@@ -75,6 +76,11 @@ router.route("/removeavatar" ).patch(verifyJWT,removeUserAvatar)
 router.route("/forgotpassword").post(forgotpassword)
 
 router.route("/resetpassword").post(resetpassword)
+
+
+
+
+router.route("/deleteuser/:userId").delete(deleteUser)
 
 
 

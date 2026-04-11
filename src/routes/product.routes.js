@@ -7,7 +7,8 @@ import {
     deleteProduct,
     toggleProductAvailability,
     getProductsByCategory,
-    getProductCategories
+    getProductCategories,
+    createCombo
 } from "../controllers/product.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
@@ -25,6 +26,7 @@ router.route("/:productId").get(getProductById)
 
 // Super admin only routes (authentication required)
 router.route("/create").post(verifyJWT, upload.single("image"), createProduct)
+router.route("/createcombo").post(verifyJWT, createCombo)
 router.route("/update/:productId").patch(verifyJWT, upload.single("image"), updateProduct)
 router.route("/delete/:productId").delete(verifyJWT, deleteProduct)
 router.route("/toggle/:productId").patch(verifyJWT, toggleProductAvailability)
