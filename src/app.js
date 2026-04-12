@@ -34,7 +34,7 @@ app.use(
     allowedHeaders: [
       "Content-Type",
       "Authorization",
-      "x-api-key"   // 🔥 ADD THIS
+      "api_key"   
     ]
   })
 );
