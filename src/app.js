@@ -30,7 +30,12 @@ app.use(
         callback(new Error("CORS blocked"));
       }
     },
-    credentials: true
+    credentials: true,
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "x-api-key"   // 🔥 ADD THIS
+    ]
   })
 );
          
