@@ -31,6 +31,12 @@ const productSchema = new mongoose.Schema(
       trim: true
     },
 
+    product_type: {
+      type: String,
+      required: true,
+      trim: true
+    },
+
     isAvailable: {
       type: Boolean,
       default: true

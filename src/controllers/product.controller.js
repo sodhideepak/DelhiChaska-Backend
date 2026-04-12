@@ -25,10 +25,10 @@ const ensureSuperAdmin = (req) => {
 const createProduct = asynchandler(async (req, res) => {
     ensureSuperAdmin(req);
 
-    const { name, description, price, category, isAvailable } = req.body;
+    const { name, description, price, category, product_type, isAvailable } = req.body;
 
-    if ([name, description, price, category].some((field) => !field || field.toString().trim() === "")) {
-        throw new ApiError(400, "name, description, price and category are required");
+    if ([name, description, price, category, product_type].some((field) => !field || field.toString().trim() === "")) {
+        throw new ApiError(400, "name, description, price, category and product_type are required");
     }
 
     const imagelocalpath = req.file?.path;
@@ -60,6 +60,7 @@ const createProduct = asynchandler(async (req, res) => {
         description: description.trim(),
         price: parseFloat(price),
         category: category.trim(),
+        product_type: product_type.trim(),
         image: image.url,
         isAvailable: isAvailable !== undefined ? isAvailable : true
     });
@@ -145,7 +146,7 @@ const updateProduct = asynchandler(async (req, res) => {
     ensureSuperAdmin(req);
 
     const { productId } = req.params;
-    const { name, description, price, category, isAvailable } = req.body;
+    const { name, description, price, category, product_type, isAvailable } = req.body;
 
     if (!productId) {
         throw new ApiError(400, "product ID is required");
@@ -195,6 +196,7 @@ const updateProduct = asynchandler(async (req, res) => {
         ...(description && { description: description.trim() }),
         ...(price && { price: parseFloat(price) }),
         ...(category && { category: category.trim() }),
+        ...(product_type && { product_type: product_type.trim() }),
         ...(isAvailable !== undefined && { isAvailable }),
         ...(imageUrl !== product.image && { image: imageUrl })
     };

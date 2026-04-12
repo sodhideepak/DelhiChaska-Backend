@@ -8,9 +8,30 @@ dotenv.config({
 })
 
 const app = express()
-app.use(cors({
-    origin: process.env.CORS_ORIGN
-}))
+// app.use(cors({
+//     origin: process.env.CORS_ORIGN
+// }))
+
+
+
+
+const allowedOrigins = [
+  "http://localhost:8000",
+  "https://yourfrontend.com"
+];
+
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("CORS blocked"));
+      }
+    },
+    credentials: true
+  })
+);
          
 app.use(express.json({limit:"16kb"}))
 app.use(express.urlencoded({extended:true,limit:"16kb"}))
