@@ -705,23 +705,21 @@ const loginuser = asynchandler(async (req, res) => {
 
 
 
-     const options = {
+    const options = {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-    domain: process.env.NODE_ENV === "production" ? ".yourdomain.com" : undefined,
-    path: "/",
+    secure: "false",
+    sameSite: "lax",
     maxAge: 7 * 24 * 60 * 60 * 1000
 };
 
     return res
         .status(200)
-        .cookie("accesstoken", accesstoken, options)
+        .cookie("accesstoken", accesstoken, options) 
         .cookie("refreshtoken", refreshtoken, options)
         .json(
             new ApiResponse(
                 200,
-                {
+                { 
                     user: loggedinuser,
                     accesstoken,
                     refreshtoken
