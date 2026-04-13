@@ -95,9 +95,9 @@ router.route("/bookingenquiry").post(bookingformenquiry)
 
 
 // zip prefix routes
-router.route("/zip-prefix").post(verifyJWT, addZipPrefix);
-router.route("/zip-prefixes").get(verifyJWT, getZipPrefixes);
-router.route("/zip-prefix/:id").delete(verifyJWT, deleteZipPrefix);
+router.route("/addzipprefix").post(verifyJWT, addZipPrefix);
+router.route("/zipprefixes").get(verifyJWT, getZipPrefixes);
+router.route("/zipprefix/:id").delete(verifyJWT, deleteZipPrefix);
 router.route("/zip/:zip/country/:country").get(verifyJWT, getCityByZip);
 
 

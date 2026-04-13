@@ -1,3 +1,5 @@
+import mongoose from "mongoose";
+
 const zipCodeSchema = new mongoose.Schema({
     country: {
         type: String,
@@ -17,8 +19,8 @@ const zipCodeSchema = new mongoose.Schema({
     },
     zip_prefix: {
         type: String,
-        required: true,
-        match: /^[0-9]{3}$/
+        required: true
+        // match: /^[0-9]{3}$/
     }
 }, { timestamps: true });
 

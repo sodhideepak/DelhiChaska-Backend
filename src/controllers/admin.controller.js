@@ -5,6 +5,7 @@ import { otp } from "../models/otp.model.js";
 import { TempUser } from "../models/temp_login.model.js";
 import { Employee } from "../models/employee.model.js";
 import { TempEmployee } from "../models/temp_employee.model.js";
+import { ZipCode } from "../models/zipcode.model.js";
 import { uploadoncloudinary,deleteFromCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken"
@@ -1378,9 +1379,9 @@ const addZipPrefix = asynchandler(async (req, res) => {
         throw new ApiError(400, "All fields are required");
     }
 
-    if (!/^[0-9]{3}$/.test(zip_prefix)) {
-        throw new ApiError(400, "Zip prefix must be exactly 3 digits");
-    }
+    // if (!/^[0-9]{3}$/.test(zip_prefix)) {
+    //     throw new ApiError(400, "Zip prefix must be exactly 3 digits");
+    // }
 
     const existing = await ZipCode.findOne({
         country: country.toUpperCase(),
