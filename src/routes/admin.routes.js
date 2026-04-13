@@ -22,7 +22,11 @@ import {
     forgotpassword,
     resetpassword,
     contactformenquiry,
-    bookingformenquiry
+    bookingformenquiry,
+    addZipPrefix,
+    getZipPrefixes,
+    deleteZipPrefix,
+    getCityByZip
      } from "../controllers/admin.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
@@ -87,6 +91,14 @@ router.route("/contactenquiry").post(contactformenquiry)
 
 router.route("/bookingenquiry").post(bookingformenquiry)
 
+
+
+
+// zip prefix routes
+router.route("/zip-prefix").post(verifyJWT, addZipPrefix);
+router.route("/zip-prefixes").get(verifyJWT, getZipPrefixes);
+router.route("/zip-prefix/:id").delete(verifyJWT, deleteZipPrefix);
+router.route("/zip/:zip/country/:country").get(verifyJWT, getCityByZip);
 
 
 

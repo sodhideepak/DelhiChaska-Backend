@@ -341,8 +341,11 @@ const verifyEmail_registeruser = asynchandler(async (req, res) => {
 
     console.log(tempUser);
 
+    const username = await generateCustomUsername(user, tempUser);
+
     // create real user
     const newUser = new user({
+        username,
         full_name: tempUser.full_name,
         email: tempUser.email,
         phone_number: tempUser.phone_number,
@@ -372,7 +375,9 @@ const verifyEmail_registeruser = asynchandler(async (req, res) => {
 
     const options = {
         httpOnly: true,
-        secure: true
+        secure: true,
+        sameSite: "none",
+        path: "/",
     };
 
     return res
@@ -391,6 +396,39 @@ const verifyEmail_registeruser = asynchandler(async (req, res) => {
             )
         );
 });
+
+const generateCustomUsername = async (userModel, tempUser) => {
+
+    // 1. Take first 4 chars from name
+    const namePart = tempUser.full_name
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, "")
+        .slice(0, 4);
+
+    // fallback if name < 4 chars
+    const safeName = namePart.padEnd(4, "x");
+
+    // 2. Last 4 digits of phone
+    const phonePart = tempUser.phone_number.slice(-4);
+
+    let username;
+    let exists = true;
+
+    while (exists) {
+        // 3. 2 random characters (letter + digit)
+        const randomChar = String.fromCharCode(97 + Math.floor(Math.random() * 26)); // a-z
+        const randomNum = Math.floor(Math.random() * 10); // 0-9
+
+        const randomPart = `${randomChar}${randomNum}`;
+
+        username = `${safeName}${phonePart}${randomPart}`;
+
+        const userExists = await userModel.findOne({ username });
+        if (!userExists) exists = false;
+    }
+
+    return username;
+};
 
 
 const registeruser = asynchandler(async (req,res)=>{
@@ -414,6 +452,7 @@ const registeruser = asynchandler(async (req,res)=>{
 
     }
      
+    
    
     const User=await user.create({
         fullname,
@@ -481,41 +520,139 @@ const send_otp = asynchandler(async(req,res)=>{
 
 
 
-const loginuser = asynchandler(async (req,res)=>{
+// const loginuser = asynchandler(async (req,res)=>{
 
 
-    const {email,password}= req.body
+//     const {email,password}= req.body
 
-    // const api=req.headers.api_key;
-    const api=req.headers.apikey;
-    console.log(api);
+//     // const api=req.headers.api_key;
+//     const api=req.headers.apikey;
+//     console.log(api);
     
 
-    if (!email ) {
-        throw new ApiError(400,"username or email is required")     
+//     if (!email ) {
+//         throw new ApiError(400,"username or email is required")     
+//     }
+
+//     const User = await user.findOne({
+//         $or:[ {email}]
+//     })
+
+//     if (!User) {
+//         throw new ApiError(400, "user does not exist")
+        
+//     }
+    
+
+    
+//     const ispasswordvalid= await User.isPasswordcorrect(password)
+    
+//     if (!ispasswordvalid) {
+
+//         throw new ApiError(400,"invlid user credientials")
+        
+//     } 
+
+//     const {accesstoken,refreshtoken} = await generateAccessAndRefreshTokens(User._id)
+
+//     const [loggedinuser] = await user.aggregate([
+//         {
+//             $match: {
+//                 _id: User._id
+//             }
+//         },
+//         {
+//             $lookup: {
+//                 from: "addresses",
+//                 let: {
+//                     addressIds: "$addresses",
+//                     userId: "$_id"
+//                 },
+//                 pipeline: [
+//                     {
+//                         $match: {
+//                             $expr: {
+//                                 $and: [
+//                                     { $in: ["$_id", { $ifNull: ["$$addressIds", []] }] },
+//                                     { $eq: ["$user", "$$userId"] }
+//                                 ]
+//                             }
+//                         }
+//                     }
+//                 ],
+//                 as: "addresses"
+//             }
+//         },
+//         {
+//             $project: {
+//                 password: 0,
+//                 refreshToken: 0,
+//                 token: 0
+//             }
+//         }
+//     ]);
+
+//     if (!loggedinuser) {
+//         throw new ApiError(500,"something went wrong while fetching logged in user")
+//     }
+   
+//     const options={
+//         httpOnly:true,
+//         secure:false,
+//     }
+
+//     return res
+//     .status(200)
+//     .cookie("accesstoken",accesstoken,options)
+//     .cookie("refreshtoken",refreshtoken,options)
+//     .json(
+//         new ApiResponse(
+//             200,
+//             {
+//                 user:loggedinuser,accesstoken,refreshtoken
+//             },
+//             "user logged in sucessfully")
+//     )
+
+// })
+
+
+
+const loginuser = asynchandler(async (req, res) => {
+
+    const { identifier, password } = req.body;
+
+    const api = req.headers.apikey;
+    console.log(api);
+
+    // ❌ validation
+    if (!identifier || !password) {
+        throw new ApiError(400, "Username or email and password are required");
     }
 
+    // ✅ find user by email OR username
     const User = await user.findOne({
-        $or:[ {email}]
-    })
+        $or: [
+            { email: identifier },
+            { username: identifier }
+        ]
+    });
 
     if (!User) {
-        throw new ApiError(400, "user does not exist")
-        
+        throw new ApiError(400, "User does not exist");
     }
-    
 
-    
-    const ispasswordvalid= await User.isPasswordcorrect(password)
-    
+    // ✅ check password
+    const ispasswordvalid = await User.isPasswordcorrect(password);
+
     if (!ispasswordvalid) {
+        throw new ApiError(400, "Invalid credentials");
+    }
 
-        throw new ApiError(400,"invlid user credientials")
-        
-    } 
+    // ✅ generate tokens
+    const { accesstoken, refreshtoken } = await generateAccessAndRefreshTokens(User._id);
 
-    const {accesstoken,refreshtoken} = await generateAccessAndRefreshTokens(User._id)
-
+    // ✅ fetch user with addresses
     const [loggedinuser] = await user.aggregate([
         {
             $match: {
@@ -554,29 +691,30 @@ const loginuser = asynchandler(async (req,res)=>{
     ]);
 
     if (!loggedinuser) {
-        throw new ApiError(500,"something went wrong while fetching logged in user")
+        throw new ApiError(500, "Something went wrong while fetching logged in user");
     }
-   
-    const options={
-        httpOnly:true,
-        secure:false,
-    }
+
+    const options = {
+        httpOnly: true,
+        secure: false,
+    };
 
     return res
-    .status(200)
-    .cookie("accesstoken",accesstoken,options)
-    .cookie("refreshtoken",refreshtoken,options)
-    .json(
-        new ApiResponse(
-            200,
-            {
-                user:loggedinuser,accesstoken,refreshtoken
-            },
-            "user logged in sucessfully")
-    )
-
-})
-
+        .status(200)
+        .cookie("accesstoken", accesstoken, options)
+        .cookie("refreshtoken", refreshtoken, options)
+        .json(
+            new ApiResponse(
+                200,
+                {
+                    user: loggedinuser,
+                    accesstoken,
+                    refreshtoken
+                },
+                "User logged in successfully"
+            )
+        );
+});
 
 
 
@@ -963,12 +1101,6 @@ const re_verifyemail = asynchandler(async(req,res)=>{
             new:true
         }
     ).select("-password -refreshToken -token").lean()
-
-
-    const year = userdata.DOB.getUTCFullYear();
-    const month = (userdata.DOB.getUTCMonth() + 1).toString().padStart(2, '0');
-    const day = userdata.DOB.getUTCDate().toString().padStart(2, '0');
-    const formattedDate = `${year}-${month}-${day}`;
 
 
     userdata.DOB=formattedDate

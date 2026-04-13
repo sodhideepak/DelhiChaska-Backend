@@ -5,6 +5,12 @@ import Jwt from "jsonwebtoken";
 
 // User Schema
 const userschema = new mongoose.Schema({
+    username: {
+        type: String,
+        required: true,
+        unique: true,
+        index: true
+    },
     full_name: {
         type: String,
         required: true,

@@ -1366,6 +1366,115 @@ const resetpassword = asynchandler(async(req,res)=>{
 
 
 
+
+
+
+
+const addZipPrefix = asynchandler(async (req, res) => {
+
+    const { country, city, state, zip_prefix } = req.body;
+
+    if (!country || !city || !state || !zip_prefix) {
+        throw new ApiError(400, "All fields are required");
+    }
+
+    if (!/^[0-9]{3}$/.test(zip_prefix)) {
+        throw new ApiError(400, "Zip prefix must be exactly 3 digits");
+    }
+
+    const existing = await ZipCode.findOne({
+        country: country.toUpperCase(),
+        zip_prefix
+    });
+
+    if (existing) {
+        throw new ApiError(400, "Zip prefix already exists for this country");
+    }
+
+    const newZip = await ZipCode.create({
+        country: country.toUpperCase(),
+        city,
+        state,
+        zip_prefix
+    });
+
+    return res.status(201).json(
+        new ApiResponse(201, newZip, "Zip prefix added successfully")
+    );
+});
+
+
+
+
+
+const getZipPrefixes = asynchandler(async (req, res) => {
+
+    const { country } = req.query;
+
+    let filter = {};
+    if (country) {
+        filter.country = country.toUpperCase();
+    }
+
+    const data = await ZipCode.find(filter).sort({ createdAt: -1 });
+
+    return res.status(200).json(
+        new ApiResponse(200, data, "Zip prefixes fetched successfully")
+    );
+});
+
+
+
+
+const deleteZipPrefix = asynchandler(async (req, res) => {
+
+    const { id } = req.params;
+
+    if (!id) {
+        throw new ApiError(400, "ID is required");
+    }
+
+    const deleted = await ZipCode.findByIdAndDelete(id);
+
+    if (!deleted) {
+        throw new ApiError(404, "Zip prefix not found");
+    }
+
+    return res.status(200).json(
+        new ApiResponse(200, {}, "Zip prefix deleted successfully")
+    );
+});
+
+
+
+
+
+
+const getCityByZip = asynchandler(async (req, res) => {
+
+    const { zip, country } = req.params;
+
+    if (!zip || zip.length < 3 || !country) {
+        throw new ApiError(400, "Zip and country are required");
+    }
+
+    const prefix = zip.substring(0, 3);
+
+    const result = await ZipCode.findOne({
+        country: country.toUpperCase(),
+        zip_prefix: prefix
+    });
+
+    if (!result) {
+        throw new ApiError(404, "City not found for this ZIP");
+    }
+
+    return res.status(200).json(
+        new ApiResponse(200, result, "City fetched successfully")
+    );
+});
+
+
 export {
         registeruser,
         startEmployeeRegistration,
@@ -1385,6 +1494,10 @@ export {
         forgotpassword,
         resetpassword,
         contactformenquiry,
-        bookingformenquiry
+        bookingformenquiry,
+        addZipPrefix,
+        getZipPrefixes,
+        deleteZipPrefix,
+        getCityByZip
 
     }
