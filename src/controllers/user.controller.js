@@ -4,7 +4,7 @@ import { user } from "../models/user.model.js";
 import { otp } from "../models/otp.model.js";
 import { TempUser } from "../models/temp_login.model.js";
 import { Address } from "../models/address.model.js";
-import { uploadoncloudinary,deleteFromCloudinary } from "../utils/cloudinary.js";
+import { uploadoncloudinary, deleteFromCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken"
 import * as nodemailer from "nodemailer"
@@ -13,27 +13,27 @@ import bcrypt from "bcrypt";
 
 
 
-const sendresetpasswordmail=asynchandler(async(fullname,email,token)=>{
+const sendresetpasswordmail = asynchandler(async (fullname, email, token) => {
 
     try {
-        const transporter =nodemailer.createTransport({
-            host:"smtp.gmail.com",
-            port:465,
-            secure:true,
-            tls:{
-                rejectUnauthorized:false
+        const transporter = nodemailer.createTransport({
+            host: "smtp.gmail.com",
+            port: 465,
+            secure: true,
+            tls: {
+                rejectUnauthorized: false
             },
             // service:"gmail",
-            auth:{
-                user:process.env.emailusername,
-                pass:process.env.emailpassword
+            auth: {
+                user: process.env.emailusername,
+                pass: process.env.emailpassword
             }
         })
 
-        const mailoptions={
-            from:process.env.emailusername,
-            to:email,
-            subject:"for reset passowrd",
+        const mailoptions = {
+            from: process.env.emailusername,
+            to: email,
+            subject: "for reset passowrd",
             // html:'<p> hii '+fullname+', please copy the link and <a href="https://forgotpassword.heetox.com/?token='+token+'" > reset your password </a></p>'
 
             html: `
@@ -57,50 +57,50 @@ const sendresetpasswordmail=asynchandler(async(fullname,email,token)=>{
         </div>
     </div>
     `
-    
+
 
         }
 
-        transporter.sendMail(mailoptions,function(error,info){
+        transporter.sendMail(mailoptions, function (error, info) {
             if (error) {
                 console.log(error)
             } else {
-                console.log("mail has been sent :=",info.response);                
+                console.log("mail has been sent :=", info.response);
             }
         })
 
-        
+
     } catch (error) {
-        throw new ApiError(400,error.message)
+        throw new ApiError(400, error.message)
     }
 })
 
 
 
-const send_register_otp=asynchandler(async(email,otp,expiresAt)=>{
+const send_register_otp = asynchandler(async (email, otp, expiresAt) => {
 
     console.log("sending mail.....");
-    
+
     try {
-        const transporter =nodemailer.createTransport({
-            host:"smtp.gmail.com",
-            port:465,
-            secure:true,
-            tls:{
-                rejectUnauthorized:false
+        const transporter = nodemailer.createTransport({
+            host: "smtp.gmail.com",
+            port: 465,
+            secure: true,
+            tls: {
+                rejectUnauthorized: false
             },
             // service:"gmail",
-            auth:{
-                user:process.env.emailusername,
-                pass:process.env.emailpassword
+            auth: {
+                user: process.env.emailusername,
+                pass: process.env.emailpassword
             }
         })
-// console.log("hello")
-        const mailoptions={
-            from:process.env.emailusername,
-            to:email,
+        // console.log("hello")
+        const mailoptions = {
+            from: process.env.emailusername,
+            to: email,
             subject: "OTP to Register on Heetox",
-    html: `
+            html: `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
         <div style="text-align: center;">
             <h2 style="color: #333;">Heetox</h2>
@@ -125,39 +125,39 @@ const send_register_otp=asynchandler(async(email,otp,expiresAt)=>{
     `
         }
 
-        transporter.sendMail(mailoptions,function(error,info){
+        transporter.sendMail(mailoptions, function (error, info) {
             if (error) {
                 console.log(error)
             } else {
-                console.log("mail has been sent :=",info.response);                
+                console.log("mail has been sent :=", info.response);
             }
         })
 
-        
+
     } catch (error) {
-        throw new ApiError(400,error.message)
+        throw new ApiError(400, error.message)
     }
 })
 
 
 
-const generateAccessAndRefreshTokens=async(userid)=>{
+const generateAccessAndRefreshTokens = async (userid) => {
     try {
         const User = await user.findById(userid)
         // console.log(User);
         const accesstoken = User.generateAccessToken()
         const refreshtoken = User.generateRefreshToken()
         // console.log(refreshtoken);
-        User.refreshToken=refreshtoken
+        User.refreshToken = refreshtoken
         // console.log("1 :",User.refreshtoken);
         // console.log("2 :",refreshtoken);
         await User.save({ validateBeforeSave: false })
 
 
-        return{accesstoken,refreshtoken}
-    
+        return { accesstoken, refreshtoken }
+
     } catch (error) {
-        throw new ApiError(500,"something went wrong while generating access and refresh token")
+        throw new ApiError(500, "something went wrong while generating access and refresh token")
     }
 }
 
@@ -171,11 +171,11 @@ const calculate_age = function calculateAge(dob) {
     const indiaTimeOffset = 5.5 * 60 * 60 * 1000; // 5.5 hours in milliseconds
     const utcTime = var_today.getTime() + (var_today.getTimezoneOffset() * 60000); // Convert to UTC
     const today = new Date(utcTime + indiaTimeOffset);
-    
+
     // console.log(today);
     // console.log(indiaTime);
-    
- 
+
+
     let years = today.getFullYear() - dobDate.getFullYear();
     let months = today.getMonth() - dobDate.getMonth();
     let days = today.getDate() - dobDate.getDate();
@@ -432,49 +432,49 @@ const generateCustomUsername = async (userModel, tempUser) => {
 };
 
 
-const registeruser = asynchandler(async (req,res)=>{
-    
-    
-    const {fullname,email,phone_number,gender,DOB,password}= req.body
-    
+const registeruser = asynchandler(async (req, res) => {
 
-    if([fullname,email,phone_number,gender,password,DOB].some((field)=> field?.trim()==="")) {
-        throw new ApiError(400,"all fields are required")
+
+    const { fullname, email, phone_number, gender, DOB, password } = req.body
+
+
+    if ([fullname, email, phone_number, gender, password, DOB].some((field) => field?.trim() === "")) {
+        throw new ApiError(400, "all fields are required")
     }
     const existeduser = await user.findOne(
         {
-            $or:[{phone_number},{email}]
+            $or: [{ phone_number }, { email }]
         }
     )
 
     if (existeduser) {
         console.log("hello")
-        throw new ApiError(409,"user already registered",[])
+        throw new ApiError(409, "user already registered", [])
 
     }
-     
-    
-   
-    const User=await user.create({
+
+
+
+    const User = await user.create({
         fullname,
         email,
         DOB,
         gender,
         password,
         phone_number,
-        is_email_verified:0,
-        avatar:""
+        is_email_verified: 0,
+        avatar: ""
 
     })
 
-    const createduser =await user.findById( User._id).select("-password -refreshToken -token");    
+    const createduser = await user.findById(User._id).select("-password -refreshToken -token");
 
     if (!createduser) {
-        throw new ApiError(500,"something went wrong while registering the user");
+        throw new ApiError(500, "something went wrong while registering the user");
     }
 
     return res.status(201).json(
-        new ApiResponse(200,createduser,"user registered sucessfully")
+        new ApiResponse(200, createduser, "user registered sucessfully")
     )
 
 })
@@ -489,29 +489,29 @@ const registeruser = asynchandler(async (req,res)=>{
 
 
 
-const send_otp = asynchandler(async(req,res)=>{
+const send_otp = asynchandler(async (req, res) => {
 
 
 
     const email = req.body.email
 
     if (email) {
-        const ramdomotp=Math.floor(100000 + Math.random() * 900000).toString();
+        const ramdomotp = Math.floor(100000 + Math.random() * 900000).toString();
         const expiresAt = new Date(Date.now() + 10 * 60000);
         await otp.create({
             email,
-            Otp:ramdomotp,
-            expiresAt:expiresAt
+            Otp: ramdomotp,
+            expiresAt: expiresAt
 
         })
 
-        send_register_otp(email,ramdomotp,expiresAt)
+        send_register_otp(email, ramdomotp, expiresAt)
 
-       return res
-       .status(200)
-       .json(new ApiResponse(200,"mail has been sent sucessfully"))
+        return res
+            .status(200)
+            .json(new ApiResponse(200, "mail has been sent sucessfully"))
     } else {
-        throw new ApiError(200,"user email is not fetched")
+        throw new ApiError(200, "user email is not fetched")
     }
 
 
@@ -529,7 +529,7 @@ const send_otp = asynchandler(async(req,res)=>{
 //     // const api=req.headers.api_key;
 //     const api=req.headers.apikey;
 //     console.log(api);
-    
+
 
 //     if (!email ) {
 //         throw new ApiError(400,"username or email is required")     
@@ -541,17 +541,17 @@ const send_otp = asynchandler(async(req,res)=>{
 
 //     if (!User) {
 //         throw new ApiError(400, "user does not exist")
-        
-//     }
-    
 
-    
+//     }
+
+
+
 //     const ispasswordvalid= await User.isPasswordcorrect(password)
-    
+
 //     if (!ispasswordvalid) {
 
 //         throw new ApiError(400,"invlid user credientials")
-        
+
 //     } 
 
 //     const {accesstoken,refreshtoken} = await generateAccessAndRefreshTokens(User._id)
@@ -596,7 +596,7 @@ const send_otp = asynchandler(async(req,res)=>{
 //     if (!loggedinuser) {
 //         throw new ApiError(500,"something went wrong while fetching logged in user")
 //     }
-   
+
 //     const options={
 //         httpOnly:true,
 //         secure:false,
@@ -698,7 +698,7 @@ const loginuser = asynchandler(async (req, res) => {
     const options = {
         httpOnly: true,
         secure: false,
-        sameSite: "none",
+        sameSite: "lax",
         path: "/",
         maxAge: 7 * 24 * 60 * 60 * 1000
     };
@@ -723,39 +723,39 @@ const loginuser = asynchandler(async (req, res) => {
 
 
 
-const logout =asynchandler(async(req,res)=>{
+const logout = asynchandler(async (req, res) => {
     console.log(req.user._id);
-    
+
     await user.findByIdAndUpdate(
-        req.user._id,{
-            $unset: {
-                refreshToken: 1 // this removes the field from document
-            },
-           
+        req.user._id, {
+        $unset: {
+            refreshToken: 1 // this removes the field from document
         },
+
+    },
         {
-            new:true
+            new: true
         }
     )
-    
 
-    
 
-    const options={
-        httpOnly:true,
-        secure:true,
+
+
+    const options = {
+        httpOnly: true,
+        secure: true,
     }
 
     return res
-    .status(200)
-    .clearCookie("accesstoken",options)
-    .clearCookie("refreshtoken",options)
-    .json(
-        new ApiResponse(
-            200,
-            {},
-            "user logged out sucessfully")
-    )
+        .status(200)
+        .clearCookie("accesstoken", options)
+        .clearCookie("refreshtoken", options)
+        .json(
+            new ApiResponse(
+                200,
+                {},
+                "user logged out sucessfully")
+        )
 
 
 })
@@ -764,54 +764,54 @@ const logout =asynchandler(async(req,res)=>{
 
 
 
-const delete_account =asynchandler(async(req,res)=>{
+const delete_account = asynchandler(async (req, res) => {
 
 
 
-    const {email,password}= req.body
+    const { email, password } = req.body
 
-    if (!email ) {
-        throw new ApiError(400,"username or email is required")     
+    if (!email) {
+        throw new ApiError(400, "username or email is required")
     }
 
     const User = await user.findOne({
-        $or:[ {email}]
+        $or: [{ email }]
     })
 
     if (!User) {
         throw new ApiError(400, "user does not exist")
-        
-    }
-    
 
-    
-    const ispasswordvalid= await User.isPasswordcorrect(password)
-    
+    }
+
+
+
+    const ispasswordvalid = await User.isPasswordcorrect(password)
+
     if (!ispasswordvalid) {
 
-        throw new ApiError(400,"invlid user credientials")
-        
-    } 
+        throw new ApiError(400, "invlid user credientials")
+
+    }
     await user.findByIdAndDelete(
         User._id
     )
-    
 
-    const options={
-        httpOnly:true,
-        secure:true,
+
+    const options = {
+        httpOnly: true,
+        secure: true,
     }
 
     return res
-    .status(200)
-    .clearCookie("accesstoken",options)
-    .clearCookie("refreshtoken",options)
-    .json(
-        new ApiResponse(
-            200,
-            {},
-            "User Account deleted Sucessfully")
-    )
+        .status(200)
+        .clearCookie("accesstoken", options)
+        .clearCookie("refreshtoken", options)
+        .json(
+            new ApiResponse(
+                200,
+                {},
+                "User Account deleted Sucessfully")
+        )
 
 
 })
@@ -820,62 +820,62 @@ const delete_account =asynchandler(async(req,res)=>{
 
 
 
-const refreshAccessToken = asynchandler(async(req,res)=>{
-    const refresh_token= req.headers.cookie?.match(/refreshtoken=([^;]+)/)?.[1]
+const refreshAccessToken = asynchandler(async (req, res) => {
+    const refresh_token = req.headers.cookie?.match(/refreshtoken=([^;]+)/)?.[1]
 
     // const incomingrefreshtoken = req.cookies.refreshToken || req.body.refreshToken
-    const incomingrefreshtoken = refresh_token || req.body.refreshToken 
-    if(!incomingrefreshtoken){
-        throw new ApiError(401,"unauthorized request")
+    const incomingrefreshtoken = refresh_token || req.body.refreshToken
+    if (!incomingrefreshtoken) {
+        throw new ApiError(401, "unauthorized request")
     }
-    
+
     try {
         const decodedtoken = jwt.verify(
             incomingrefreshtoken,
             process.env.Refresh_Token_Secret
         )
-    
+
         // console.log("decodedtoken : ",decodedtoken);
         // console.log("decodedtoken id : ",decodedtoken?._id);
         const User = await user.findById(decodedtoken?._id)
-        
-        // console.log(User);
-        if(!user){
-            throw new ApiError(401,"invalid refresh token")
-        }
-        
-        // console.log("incomminrefreshtoken : ",incomingrefreshtoken);
-        console.log("User?.refreshToken : ",User?.refreshToken);
 
-        if(incomingrefreshtoken !== User?.refreshToken){
-            throw new ApiError(401,"refresh token is expired or used")
+        // console.log(User);
+        if (!user) {
+            throw new ApiError(401, "invalid refresh token")
         }
-    
-        const options ={
-            httpOnly:true,
-            secure:true
+
+        // console.log("incomminrefreshtoken : ",incomingrefreshtoken);
+        console.log("User?.refreshToken : ", User?.refreshToken);
+
+        if (incomingrefreshtoken !== User?.refreshToken) {
+            throw new ApiError(401, "refresh token is expired or used")
         }
-    
-        const {accesstoken,refreshtoken}=await generateAccessAndRefreshTokens(decodedtoken?._id)
+
+        const options = {
+            httpOnly: true,
+            secure: true
+        }
+
+        const { accesstoken, refreshtoken } = await generateAccessAndRefreshTokens(decodedtoken?._id)
 
         // console.log("newrefreshtoken : ",refreshtoken);
         // console.log("accesstoken : ",accesstoken);
-    
+
         return res.status(200)
-        .cookie("accesstoken",accesstoken,options)
-        .cookie("refreshtoken",refreshtoken,options)
-        .json(
-            new ApiResponse(
-                200,
-                {
-                    accesstoken, refreshtoken:refreshtoken
-                },
-                "access token refreshed sucessfully"
+            .cookie("accesstoken", accesstoken, options)
+            .cookie("refreshtoken", refreshtoken, options)
+            .json(
+                new ApiResponse(
+                    200,
+                    {
+                        accesstoken, refreshtoken: refreshtoken
+                    },
+                    "access token refreshed sucessfully"
+                )
             )
-        )
-    
+
     } catch (error) {
-        throw new ApiError(401,error?.message || "invalid refresh token")
+        throw new ApiError(401, error?.message || "invalid refresh token")
     }
 })
 
@@ -883,29 +883,29 @@ const refreshAccessToken = asynchandler(async(req,res)=>{
 
 
 
-const changeCurrentPassword = asynchandler(async(req,res)=>{
-    const {oldpassword,newpassword}=req.body
+const changeCurrentPassword = asynchandler(async (req, res) => {
+    const { oldpassword, newpassword } = req.body
 
     const User = await user.findById(req.user?._id)
     const isPasswordcorrect = await User.isPasswordcorrect(oldpassword)
 
     if (!isPasswordcorrect) {
-        throw new ApiError(400,"invalid password")
-        
+        throw new ApiError(400, "invalid password")
+
     }
 
-    User.password=newpassword
-    await User.save({validateBeforeSave:false})
+    User.password = newpassword
+    await User.save({ validateBeforeSave: false })
 
     return res
-    .status(200)
-    .json(new ApiResponse(200,"password changed sucessfully"))
+        .status(200)
+        .json(new ApiResponse(200, "password changed sucessfully"))
 })
 
 
 
 
-const addAddress = asynchandler(async(req,res)=>{
+const addAddress = asynchandler(async (req, res) => {
     const {
         addressLine1,
         addressLine2,
@@ -917,7 +917,7 @@ const addAddress = asynchandler(async(req,res)=>{
     } = req.body
 
     if ([addressLine1, city, state, zipCode].some((field) => !field || field.toString().trim() === "")) {
-        throw new ApiError(400,"addressLine1, city, state and zipCode are required")
+        throw new ApiError(400, "addressLine1, city, state and zipCode are required")
     }
 
     const createdAddress = await Address.create({
@@ -941,13 +941,13 @@ const addAddress = asynchandler(async(req,res)=>{
     )
 
     return res
-    .status(201)
-    .json(new ApiResponse(201,createdAddress,"address added successfully"))
+        .status(201)
+        .json(new ApiResponse(201, createdAddress, "address added successfully"))
 })
 
 
 
-const editAddress = asynchandler(async(req,res)=>{
+const editAddress = asynchandler(async (req, res) => {
     const { addressId } = req.params
     const {
         addressLine1,
@@ -970,7 +970,7 @@ const editAddress = asynchandler(async(req,res)=>{
     if (location !== undefined) updateFields.location = location
 
     if (Object.keys(updateFields).length === 0) {
-        throw new ApiError(400,"at least one address field is required")
+        throw new ApiError(400, "at least one address field is required")
     }
 
     const updatedAddress = await Address.findOneAndUpdate(
@@ -988,28 +988,28 @@ const editAddress = asynchandler(async(req,res)=>{
     )
 
     if (!updatedAddress) {
-        throw new ApiError(404,"address not found")
+        throw new ApiError(404, "address not found")
     }
 
     return res
-    .status(200)
-    .json(new ApiResponse(200,updatedAddress,"address updated successfully"))
+        .status(200)
+        .json(new ApiResponse(200, updatedAddress, "address updated successfully"))
 })
 
 
 
-const getCurrentuser =asynchandler(async(req,res)=>{
+const getCurrentuser = asynchandler(async (req, res) => {
 
-   
 
-    const user_data= await user.findById(req.user._id)
-    .select("-password -refreshToken -token ")
-    .populate("addresses")
-    .lean();
+
+    const user_data = await user.findById(req.user._id)
+        .select("-password -refreshToken -token ")
+        .populate("addresses")
+        .lean();
 
     return res
-    .status(200)
-    .json(new ApiResponse(200,user_data,"user fetched sucessfully"))
+        .status(200)
+        .json(new ApiResponse(200, user_data, "user fetched sucessfully"))
     // .json(new ApiResponse(200,req.user,"user fetched sucessfully"))
 
 })
@@ -1019,51 +1019,51 @@ const getCurrentuser =asynchandler(async(req,res)=>{
 
 
 
-const updateAccountDetails =asynchandler(async(req,res)=>{
+const updateAccountDetails = asynchandler(async (req, res) => {
 
-    const {fullname,email,gender,phone_number,DOB}=req.body
+    const { fullname, email, gender, phone_number, DOB } = req.body
     const user_data = await user.findById(req.user._id)
 
-    if(!fullname || !email){
-        throw new ApiError(400,"all fields are required")
+    if (!fullname || !email) {
+        throw new ApiError(400, "all fields are required")
     }
     let is_email_verified;
-    if(user_data.email==email&user_data.is_email_verified==true){
-        is_email_verified=1
-    }else{
-        is_email_verified=0
+    if (user_data.email == email & user_data.is_email_verified == true) {
+        is_email_verified = 1
+    } else {
+        is_email_verified = 0
     }
 
-    const userdata =await user.findByIdAndUpdate(
-        user_data._id,{
-            $set: {
-                fullname,
-                email,
-                phone_number,
-                DOB,
-                gender,
-                is_email_verified
-            },
-           
-        }, 
+    const userdata = await user.findByIdAndUpdate(
+        user_data._id, {
+        $set: {
+            fullname,
+            email,
+            phone_number,
+            DOB,
+            gender,
+            is_email_verified
+        },
+
+    },
         {
-            new:true
+            new: true
         }
     ).select("-password -refreshToken -token").lean()
 
- 
+
     const year = userdata.DOB.getUTCFullYear();
     const month = (userdata.DOB.getUTCMonth() + 1).toString().padStart(2, '0');
     const day = userdata.DOB.getUTCDate().toString().padStart(2, '0');
     const formattedDate = `${year}-${month}-${day}`;
-    
-    userdata.DOB=formattedDate
-    userdata.age=calculate_age(userdata.DOB)
 
-  
+    userdata.DOB = formattedDate
+    userdata.age = calculate_age(userdata.DOB)
+
+
     return res
-    .status(200)
-    .json(new ApiResponse(200,userdata,"user account details updated sucessfully"))
+        .status(200)
+        .json(new ApiResponse(200, userdata, "user account details updated sucessfully"))
 
 })
 
@@ -1072,86 +1072,86 @@ const updateAccountDetails =asynchandler(async(req,res)=>{
 
 
 
-const re_verifyemail = asynchandler(async(req,res)=>{
+const re_verifyemail = asynchandler(async (req, res) => {
 
 
 
-    const {email,Otp}=req.body
-    const User =await user.findOne({email:email})
+    const { email, Otp } = req.body
+    const User = await user.findOne({ email: email })
 
     const verifyotp = await otp.findOne(
         { email: email, Otp: Otp }
     );
-    
-    if(verifyotp){
+
+    if (verifyotp) {
         await otp.deleteOne({ _id: verifyotp._id })
     }
-    else{
-        throw new ApiError(409,"invalid otp")
+    else {
+        throw new ApiError(409, "invalid otp")
     }
 
 
-    const userdata=await user.findByIdAndUpdate(
-        User._id,{
-            $set: {
-                email:email,
-                is_email_verified:1
+    const userdata = await user.findByIdAndUpdate(
+        User._id, {
+        $set: {
+            email: email,
+            is_email_verified: 1
 
-             
-            },
-           
+
         },
+
+    },
         {
-            new:true
+            new: true
         }
     ).select("-password -refreshToken -token").lean()
 
 
-    userdata.DOB=formattedDate
-    userdata.age=calculate_age(userdata.DOB)
+    userdata.DOB = formattedDate
+    userdata.age = calculate_age(userdata.DOB)
 
-   
-       return res
-       .status(200)
-       .json(new ApiResponse(200,userdata,"mail has been updated sucessfully"))
-    
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200, userdata, "mail has been updated sucessfully"))
+
 
 
 })
 
 
 
-const updateUserAvatar =asynchandler(async(req,res)=>{
-    
-    const avatarlocalpath=req.file?.path
+const updateUserAvatar = asynchandler(async (req, res) => {
 
-    const user_data =  await user.findById(req.user._id);
+    const avatarlocalpath = req.file?.path
+
+    const user_data = await user.findById(req.user._id);
 
     if (!avatarlocalpath) {
-        throw new ApiError(400,"avatar file is mssing")
+        throw new ApiError(400, "avatar file is mssing")
 
     }
 
-    if(user_data.avatar){
+    if (user_data.avatar) {
         console.log("deleting avatar")
         await deleteFromCloudinary(user_data.avatar)
     }
 
-    const avatar=await uploadoncloudinary(avatarlocalpath)
+    const avatar = await uploadoncloudinary(avatarlocalpath)
 
     if (!avatar.url) {
-        throw new ApiError(400,"error while uploading an avatar")
+        throw new ApiError(400, "error while uploading an avatar")
     }
     avatar.url = avatar.url.replace(/^http:/, 'https:');
-    const response= await user.findByIdAndUpdate(
-        req.user._id,{
-            $set: {
-                avatar:avatar.url
-            },
-           
+    const response = await user.findByIdAndUpdate(
+        req.user._id, {
+        $set: {
+            avatar: avatar.url
         },
+
+    },
         {
-            new:true
+            new: true
         }
     ).select("-password -refreshToken -token").lean()
 
@@ -1161,35 +1161,35 @@ const updateUserAvatar =asynchandler(async(req,res)=>{
     const formattedDate = `${year}-${month}-${day}`;
 
 
-    response.DOB=formattedDate
-    response.age=calculate_age(response.DOB)
+    response.DOB = formattedDate
+    response.age = calculate_age(response.DOB)
     return res
-    .status(200)
-    .json(new ApiResponse(200,response,"coverimage updated sucessfully"))
+        .status(200)
+        .json(new ApiResponse(200, response, "coverimage updated sucessfully"))
 
 })
 
 
 
-const removeUserAvatar =asynchandler(async(req,res)=>{
+const removeUserAvatar = asynchandler(async (req, res) => {
 
 
     const user_data = await user.findById(req.user._id);
-    if(user_data.avatar){
+    if (user_data.avatar) {
         console.log("deleting avatar")
         await deleteFromCloudinary(user_data.avatar)
     }
-    
 
-    const response= await user.findByIdAndUpdate(
-        user_data._id,{
-            $set: {
-                avatar:""
-            },
-           
+
+    const response = await user.findByIdAndUpdate(
+        user_data._id, {
+        $set: {
+            avatar: ""
         },
+
+    },
         {
-            new:true
+            new: true
         }
     ).select("-password -refreshToken -token").lean()
 
@@ -1199,12 +1199,12 @@ const removeUserAvatar =asynchandler(async(req,res)=>{
     const formattedDate = `${year}-${month}-${day}`;
 
 
-    response.DOB=formattedDate
-    response.age=calculate_age(response.DOB)
+    response.DOB = formattedDate
+    response.age = calculate_age(response.DOB)
 
     return res
-    .status(200)
-    .json(new ApiResponse(200,response,"UserAvatar removed sucessfully"))
+        .status(200)
+        .json(new ApiResponse(200, response, "UserAvatar removed sucessfully"))
 
 })
 
@@ -1216,27 +1216,27 @@ const removeUserAvatar =asynchandler(async(req,res)=>{
 
 
 
-const forgotpassword = asynchandler(async(req,res)=>{
+const forgotpassword = asynchandler(async (req, res) => {
 
-// before production just change the link address to render addresss of which the email is send to user
-// change the address of mail in mail optins in the send password reset mail
+    // before production just change the link address to render addresss of which the email is send to user
+    // change the address of mail in mail optins in the send password reset mail
 
-        const email = req.body.email
-        const userdata =await user.findOne({email:email})
+    const email = req.body.email
+    const userdata = await user.findOne({ email: email })
 
-        if (userdata) {
-            const ramdomotp=Randomstring.generate()
-            await user.updateOne({email:email},{$set:{token:ramdomotp}})
+    if (userdata) {
+        const ramdomotp = Randomstring.generate()
+        await user.updateOne({ email: email }, { $set: { token: ramdomotp } })
 
-           sendresetpasswordmail(userdata.fullname,userdata.email,ramdomotp)
+        sendresetpasswordmail(userdata.fullname, userdata.email, ramdomotp)
 
-           return res
-           .status(200)
-           .json(new ApiResponse(200,"mail has been sent sucessfully"))
-        } else {
-            throw new ApiError(404,"user email does not exist")
-        }
-    
+        return res
+            .status(200)
+            .json(new ApiResponse(200, "mail has been sent sucessfully"))
+    } else {
+        throw new ApiError(404, "user email does not exist")
+    }
+
 
 })
 
@@ -1255,20 +1255,20 @@ const forgotpassword = asynchandler(async(req,res)=>{
 
 
 
-const sendenquirymail=asynchandler(async(fullname,email,token)=>{
+const sendenquirymail = asynchandler(async (fullname, email, token) => {
 
     try {
-        const transporter =nodemailer.createTransport({
-            host:"smtp.gmail.com",
-            port:465,
-            secure:true,
-            tls:{
-                rejectUnauthorized:false
+        const transporter = nodemailer.createTransport({
+            host: "smtp.gmail.com",
+            port: 465,
+            secure: true,
+            tls: {
+                rejectUnauthorized: false
             },
             // service:"gmail",
-            auth:{
-                user:process.env.emailusername,
-                pass:process.env.emailpassword
+            auth: {
+                user: process.env.emailusername,
+                pass: process.env.emailpassword
             }
         })
 
@@ -1299,17 +1299,17 @@ const sendenquirymail=asynchandler(async(fullname,email,token)=>{
             `
         };
 
-        transporter.sendMail(mailoptions,function(error,info){
+        transporter.sendMail(mailoptions, function (error, info) {
             if (error) {
                 console.log(error)
             } else {
-                console.log("mail has been sent :=",info.response);                
+                console.log("mail has been sent :=", info.response);
             }
         })
 
-        
+
     } catch (error) {
-        throw new ApiError(400,error.message)
+        throw new ApiError(400, error.message)
     }
 })
 
@@ -1318,20 +1318,20 @@ const sendenquirymail=asynchandler(async(fullname,email,token)=>{
 
 
 
-const sendbookingsessionmail=asynchandler(async(fullname,email,token)=>{
+const sendbookingsessionmail = asynchandler(async (fullname, email, token) => {
 
     try {
-        const transporter =nodemailer.createTransport({
-            host:"smtp.gmail.com",
-            port:465,
-            secure:true,
-            tls:{
-                rejectUnauthorized:false
+        const transporter = nodemailer.createTransport({
+            host: "smtp.gmail.com",
+            port: 465,
+            secure: true,
+            tls: {
+                rejectUnauthorized: false
             },
             // service:"gmail",
-            auth:{
-                user:process.env.emailusername,
-                pass:process.env.emailpassword
+            auth: {
+                user: process.env.emailusername,
+                pass: process.env.emailpassword
             }
         })
 
@@ -1358,19 +1358,19 @@ const sendbookingsessionmail=asynchandler(async(fullname,email,token)=>{
             </div>
             `
         };
-        
 
-        transporter.sendMail(mailoptions,function(error,info){
+
+        transporter.sendMail(mailoptions, function (error, info) {
             if (error) {
                 console.log(error)
             } else {
-                console.log("mail has been sent :=",info.response);                
+                console.log("mail has been sent :=", info.response);
             }
         })
 
-        
+
     } catch (error) {
-        throw new ApiError(400,error.message)
+        throw new ApiError(400, error.message)
     }
 })
 
@@ -1380,7 +1380,7 @@ const sendbookingsessionmail=asynchandler(async(fullname,email,token)=>{
 
 
 
-const sendContactFormMail = async(name, email, subject, message) => {
+const sendContactFormMail = async (name, email, subject, message) => {
     try {
         const transporter = nodemailer.createTransport({
             host: "smtp.gmail.com",
@@ -1420,7 +1420,7 @@ const sendContactFormMail = async(name, email, subject, message) => {
         };
 
         return new Promise((resolve, reject) => {
-            transporter.sendMail(mailOptions, function(error, info) {
+            transporter.sendMail(mailOptions, function (error, info) {
                 if (error) {
                     console.log("Error sending contact form mail:", error);
                     reject(new ApiError(500, "Failed to send contact form email"));
@@ -1435,79 +1435,79 @@ const sendContactFormMail = async(name, email, subject, message) => {
     }
 };
 
-const contactformenquiry = asynchandler(async(req,res)=>{
+const contactformenquiry = asynchandler(async (req, res) => {
 
     // before production just change the link address to render addresss of which the email is send to user
     // change the address of mail in mail optins in the send password reset mail
-    
-            const { name, email, subject, message } = req.body;
-            try {
-                await sendContactFormMail(name, email, subject, message); // Send email to admin
-            
-                return res
-                    .status(200)
-                    .json(new ApiResponse(200, "Your message has been sent successfully."));
-            } catch (error) {
-                console.error("Error sending contact form mail:", error);
-                throw new ApiError(500, "Failed to send message. Please try again later.");
-            }
-        
-    
-    })
+
+    const { name, email, subject, message } = req.body;
+    try {
+        await sendContactFormMail(name, email, subject, message); // Send email to admin
+
+        return res
+            .status(200)
+            .json(new ApiResponse(200, "Your message has been sent successfully."));
+    } catch (error) {
+        console.error("Error sending contact form mail:", error);
+        throw new ApiError(500, "Failed to send message. Please try again later.");
+    }
+
+
+})
 
 
 
-const bookingformenquiry = asynchandler(async(req,res)=>{
-
-        // before production just change the link address to render addresss of which the email is send to user
-        // change the address of mail in mail optins in the send password reset mail
-        
-                const email = req.body.email
-                const userdata =await user.findOne({email:email})
-        
-                if (userdata) {
-                    const ramdomotp=Randomstring.generate()
-                    await user.updateOne({email:email},{$set:{token:ramdomotp}})
-        
-                   sendresetpasswordmail(userdata.fullname,userdata.email,ramdomotp)
-        
-                   return res
-                   .status(200)
-                   .json(new ApiResponse(200,"mail has been sent sucessfully"))
-                } else {
-                    throw new ApiError(404,"user email does not exist")
-                }
-            
-        
-        })
-    
-
-
-
-
-
-const resetpassword = asynchandler(async(req,res)=>{
+const bookingformenquiry = asynchandler(async (req, res) => {
 
     // before production just change the link address to render addresss of which the email is send to user
     // change the address of mail in mail optins in the send password reset mail
-    const token =req.query.token
 
-    const User = await user.findOne({token:token})
+    const email = req.body.email
+    const userdata = await user.findOne({ email: email })
+
+    if (userdata) {
+        const ramdomotp = Randomstring.generate()
+        await user.updateOne({ email: email }, { $set: { token: ramdomotp } })
+
+        sendresetpasswordmail(userdata.fullname, userdata.email, ramdomotp)
+
+        return res
+            .status(200)
+            .json(new ApiResponse(200, "mail has been sent sucessfully"))
+    } else {
+        throw new ApiError(404, "user email does not exist")
+    }
+
+
+})
+
+
+
+
+
+
+const resetpassword = asynchandler(async (req, res) => {
+
+    // before production just change the link address to render addresss of which the email is send to user
+    // change the address of mail in mail optins in the send password reset mail
+    const token = req.query.token
+
+    const User = await user.findOne({ token: token })
 
     if (User) {
-        const newpassword =req.body.password
-        User.password=newpassword
-        await User.save({validateBeforeSave:false})
-        await user.findByIdAndUpdate({_id:User._id},{$set:{token:''}},{new:true})
-    
+        const newpassword = req.body.password
+        User.password = newpassword
+        await User.save({ validateBeforeSave: false })
+        await user.findByIdAndUpdate({ _id: User._id }, { $set: { token: '' } }, { new: true })
+
     } else {
-        throw new ApiError(400,"link has been expired")
+        throw new ApiError(400, "link has been expired")
     }
-    
-   
+
+
     return res
-    .status(200)
-    .json(new ApiResponse(200,{},"password changed sucessfully"))
+        .status(200)
+        .json(new ApiResponse(200, {}, "password changed sucessfully"))
 })
 
 
@@ -1522,7 +1522,7 @@ const resetpassword = asynchandler(async(req,res)=>{
 const deleteUser = asynchandler(async (req, res) => {
 
     console.log("testing");
-    
+
     const { userId } = req.params;
 
     if (!userId) {
@@ -1550,25 +1550,25 @@ const deleteUser = asynchandler(async (req, res) => {
 
 
 export {
-        registeruser,
-        startRegistration,
-        send_otp,
-        loginuser,
-        logout,
-        delete_account,
-        verifyEmail_registeruser,
-        refreshAccessToken,
-        changeCurrentPassword,
-        addAddress,
-        editAddress,
-        getCurrentuser,
-        updateAccountDetails,
-        updateUserAvatar,
-        removeUserAvatar,
-        forgotpassword,
-        resetpassword,
-        contactformenquiry,
-        bookingformenquiry,
-        deleteUser
+    registeruser,
+    startRegistration,
+    send_otp,
+    loginuser,
+    logout,
+    delete_account,
+    verifyEmail_registeruser,
+    refreshAccessToken,
+    changeCurrentPassword,
+    addAddress,
+    editAddress,
+    getCurrentuser,
+    updateAccountDetails,
+    updateUserAvatar,
+    removeUserAvatar,
+    forgotpassword,
+    resetpassword,
+    contactformenquiry,
+    bookingformenquiry,
+    deleteUser
 
-    }
+}
