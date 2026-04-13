@@ -695,13 +695,24 @@ const loginuser = asynchandler(async (req, res) => {
         throw new ApiError(500, "Something went wrong while fetching logged in user");
     }
 
-    const options = {
-        httpOnly: true,
-        secure: false,
-        sameSite: "lax",
-        path: "/",
-        maxAge: 7 * 24 * 60 * 60 * 1000
-    };
+    // const options = {
+    //     httpOnly: true,
+    //     secure: false,
+    //     sameSite: "lax",
+    //     path: "/",
+    //     maxAge: 7 * 24 * 60 * 60 * 1000
+    // };
+
+
+
+     const options = {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    domain: process.env.NODE_ENV === "production" ? ".yourdomain.com" : undefined,
+    path: "/",
+    maxAge: 7 * 24 * 60 * 60 * 1000
+};
 
     return res
         .status(200)
