@@ -3,6 +3,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { user } from "../models/user.model.js";
 import { otp } from "../models/otp.model.js";
 import { TempUser } from "../models/temp_login.model.js";
+import { ZipCode } from "../models/zipcode.model.js";
 import { Address } from "../models/address.model.js";
 import { uploadoncloudinary, deleteFromCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
@@ -914,6 +915,49 @@ const changeCurrentPassword = asynchandler(async (req, res) => {
 
 
 
+// const addAddress = asynchandler(async (req, res) => {
+//     const {
+//         addressLine1,
+//         addressLine2,
+//         city,
+//         state,
+//         zipCode,
+//         country,
+//         location
+//     } = req.body
+
+//     if ([addressLine1, city, state, zipCode].some((field) => !field || field.toString().trim() === "")) {
+//         throw new ApiError(400, "addressLine1, city, state and zipCode are required")
+//     }
+
+//     const createdAddress = await Address.create({
+//         user: req.user._id,
+//         addressLine1,
+//         addressLine2,
+//         city,
+//         state,
+//         zipCode,
+//         country,
+//         location
+//     })
+
+//     await user.findByIdAndUpdate(
+//         req.user._id,
+//         {
+//             $addToSet: {
+//                 addresses: createdAddress._id
+//             }
+//         }
+//     )
+
+//     return res
+//         .status(201)
+//         .json(new ApiResponse(201, createdAddress, "address added successfully"))
+// })
+
+
+
+
 const addAddress = asynchandler(async (req, res) => {
     const {
         addressLine1,
@@ -923,12 +967,37 @@ const addAddress = asynchandler(async (req, res) => {
         zipCode,
         country,
         location
-    } = req.body
+    } = req.body;
 
-    if ([addressLine1, city, state, zipCode].some((field) => !field || field.toString().trim() === "")) {
-        throw new ApiError(400, "addressLine1, city, state and zipCode are required")
+    // ✅ basic validation
+    if ([addressLine1, city, state, zipCode, country].some(
+        (field) => !field || field.toString().trim() === ""
+    )) {
+        throw new ApiError(400, "addressLine1, city, state, zipCode and country are required");
     }
 
+    // ✅ extract first 3 digits
+    const zipPrefix = zipCode.toString().substring(0, 3);
+
+    if (zipPrefix.length !== 3) {
+        throw new ApiError(400, "Invalid ZIP code");
+    }
+
+    // ✅ check in DB
+    const allowedZip = await ZipCode.findOne({
+        country: country.toUpperCase(),
+        zip_prefix: zipPrefix
+    });
+
+    if (!allowedZip) {
+        throw new ApiError(400, "Service not available in this area (ZIP not supported)");
+    }
+
+    // ✅ OPTIONAL: auto-correct city/state (recommended)
+    // city = allowedZip.city
+    // state = allowedZip.state
+
+    // ✅ create address
     const createdAddress = await Address.create({
         user: req.user._id,
         addressLine1,
@@ -936,10 +1005,11 @@ const addAddress = asynchandler(async (req, res) => {
         city,
         state,
         zipCode,
-        country,
+        country: country.toUpperCase(),
         location
-    })
+    });
 
+    // ✅ link to user
     await user.findByIdAndUpdate(
         req.user._id,
         {
@@ -947,12 +1017,12 @@ const addAddress = asynchandler(async (req, res) => {
                 addresses: createdAddress._id
             }
         }
-    )
+    );
 
-    return res
-        .status(201)
-        .json(new ApiResponse(201, createdAddress, "address added successfully"))
-})
+    return res.status(201).json(
+        new ApiResponse(201, createdAddress, "Address added successfully")
+    );
+});
 
 
 

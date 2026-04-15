@@ -1,164 +1,779 @@
 import { Cart } from "../models/cart.model.js";
-import { Combo } from "../models/combo.model.js";
+import { Order } from "../models/order.model.js";
 import { Product } from "../models/product.model.js";
+import { Combo } from "../models/combo.model.js";
 import { asynchandler } from "../utils/asynchandler.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { ApiError } from "../utils/ApiError.js";
 
-const addToCart = asynchandler(async (req, res) => {
+import mongoose from "mongoose";
+
+
+// ============================================================
+// 🛒 PLACE ORDER
+// Converts current cart into a confirmed order
+// Supports: combo + add-ons + standalone individual products
+// ============================================================
+const placeOrder = asynchandler(async (req, res) => {
     const userId = req.user._id;
 
-    const {
-        comboId,
-        mode,
-        selectedItems = [],
-        addOns = []
-    } = req.body;
+    const { notes = "" } = req.body;
 
-    if (!comboId) {
-        throw new ApiError(400, "comboId is required");
+    // ==========================
+    // 🔍 FETCH CART
+    // ==========================
+    const cart = await Cart.findOne({ userId });
+
+    if (!cart) {
+        throw new ApiError(404, "cart not found. please add items first");
+    }
+
+    const hasCombo = cart.combo?.comboId;
+    const hasIndividual = cart.individualItems?.length > 0;
+
+    if (!hasCombo && !hasIndividual) {
+        throw new ApiError(400, "cart is empty");
     }
 
     // ==========================
-    // 🔍 FETCH COMBO
+    // 📊 BUILD PRODUCT SUMMARY
+    // Merge combo items + individual items into flat qty map
     // ==========================
-    const combo = await Combo.findById(comboId);
-    if (!combo) {
-        throw new ApiError(404, "combo not found");
-    }
+    const summaryMap = {};
 
-    // ==========================
-    // 🔍 FETCH PRODUCTS
-    // ==========================
-    const productIds = [
-        ...selectedItems.map(i => i.productId),
-        ...addOns.map(i => i.productId)
-    ];
+    const addToSummary = (item) => {
+        const key = `${item.productId}_${item.portion || "standard"}`;
 
-    const products = await Product.find({
-        _id: { $in: productIds }
-    });
-
-    const productMap = {};
-    products.forEach(p => {
-        productMap[p._id.toString()] = p;
-    });
-
-    // ==========================
-    // 🔐 VALIDATE COMBO RULES
-    // ==========================
-    const grouped = {};
-
-    selectedItems.forEach(item => {
-        const product = productMap[item.productId];
-
-        if (!product) throw new ApiError(400, "invalid product");
-
-        grouped[product.category] =
-            (grouped[product.category] || 0) + item.quantity;
-    });
-
-    combo.rules.forEach(rule => {
-        let total = 0;
-
-        rule.category.forEach(cat => {
-            total += grouped[cat] || 0;
-        });
-
-        if (total !== rule.quantity) {
-            throw new ApiError(
-                400,
-                `Invalid selection for ${rule.category.join(", ")}`
-            );
+        if (summaryMap[key]) {
+            summaryMap[key].totalQuantity += item.quantity;
+        } else {
+            summaryMap[key] = {
+                productId: item.productId,
+                name: item.name,
+                category: item.category,
+                portion: item.portion || "standard",
+                totalQuantity: item.quantity
+            };
         }
-    });
+    };
+
+    // Add combo items to summary
+    if (hasCombo) {
+        cart.combo.items.forEach(addToSummary);
+        cart.addOns.forEach(addToSummary);
+    }
+
+    // Add standalone individual items to summary
+    if (hasIndividual) {
+        cart.individualItems.forEach(addToSummary);
+    }
+
+    const productSummary = Object.values(summaryMap);
 
     // ==========================
-    // 🥦 VEG MODE
+    // 💰 CALCULATE TOTALS
     // ==========================
-    if (mode === "veg") {
-        selectedItems.forEach(item => {
-            const product = productMap[item.productId];
+    const comboTotal    = cart.combo?.price || 0;
+    const addOnTotal    = cart.addOns.reduce((sum, i) => sum + i.price * i.quantity, 0);
+    const individualTotal = cart.individualItems.reduce(
+        (sum, i) => sum + i.unitPrice * i.quantity, 0
+    );
+    const totalAmount = comboTotal + addOnTotal + individualTotal;
 
-            if (product.type === "nonveg") {
-                throw new ApiError(400, "non-veg not allowed");
+    // ==========================
+    // 📦 CREATE ORDER
+    // ==========================
+    const order = await Order.create({
+        userId,
+
+        combo: hasCombo
+            ? {
+                comboId: cart.combo.comboId,
+                name: cart.combo.name,
+                items: cart.combo.items,
+                price: cart.combo.price
             }
-        });
-    }
+            : undefined,
 
-    // ==========================
-    // ➕ VALIDATE ADD-ONS
-    // ==========================
-    addOns.forEach(item => {
-        const product = productMap[item.productId];
+        addOns: cart.addOns,
 
-        if (!product || !product.isAddOnAvailable) {
-            throw new ApiError(400, "invalid add-on");
-        }
+        individualItems: cart.individualItems,
+
+        comboTotal,
+        addOnTotal,
+        individualTotal,
+        totalAmount,
+
+        productSummary,
+
+        status: "pending",
+        notes
     });
 
     // ==========================
-    // 💰 PRICING
+    // 🗑️ CLEAR CART AFTER ORDER
     // ==========================
-    let comboPrice = combo.price;
-
-    let addOnTotal = addOns.reduce((sum, item) => {
-        const product = productMap[item.productId];
-        return sum + product.price * item.quantity;
-    }, 0);
-
-    const totalAmount = comboPrice + addOnTotal;
-
-    // ==========================
-    // 📦 BUILD STRUCTURED DATA
-    // ==========================
-    const comboItems = selectedItems.map(item => {
-        const product = productMap[item.productId];
-
-        return {
-            productId: product._id,
-            name: product.name,
-            category: product.category,
-            quantity: item.quantity,
-            price: product.price
-        };
-    });
-
-    const addOnItems = addOns.map(item => {
-        const product = productMap[item.productId];
-
-        return {
-            productId: product._id,
-            name: product.name,
-            quantity: item.quantity,
-            price: product.price
-        };
-    });
-
-    // ==========================
-    // 🛒 UPSERT CART
-    // ==========================
-    const cart = await Cart.findOneAndUpdate(
+    await Cart.findOneAndUpdate(
         { userId },
         {
-            combo: {
-                comboId: combo._id,
-                name: combo.name,
-                items: comboItems,
-                price: comboPrice
-            },
-            addOns: addOnItems,
-            totalAmount
-        },
-        { new: true, upsert: true }
+            combo: {},
+            addOns: [],
+            individualItems: [],
+            comboTotal: 0,
+            addOnTotal: 0,
+            individualTotal: 0,
+            totalAmount: 0
+        }
     );
 
-    return res.status(200).json(
-        new ApiResponse(200, cart, "cart updated successfully")
+    return res.status(201).json(
+        new ApiResponse(201, order, "order placed successfully")
     );
 });
 
 
+// ============================================================
+// 📋 GET USER ORDERS
+// Returns all orders for logged-in user
+// ============================================================
+const getUserOrders = asynchandler(async (req, res) => {
+    const userId = req.user._id;
+
+    const orders = await Order.find({ userId }).sort({ createdAt: -1 });
+
+    if (!orders.length) {
+        throw new ApiError(404, "no orders found");
+    }
+
+    return res.status(200).json(
+        new ApiResponse(200, orders, "orders fetched successfully")
+    );
+});
+
+
+// ============================================================
+// 🔍 GET SINGLE ORDER DETAIL
+// ============================================================
+const getOrderById = asynchandler(async (req, res) => {
+    const userId = req.user._id;
+    const { orderId } = req.params;
+
+    const order = await Order.findOne({ _id: orderId, userId });
+
+    if (!order) {
+        throw new ApiError(404, "order not found");
+    }
+
+    return res.status(200).json(
+        new ApiResponse(200, order, "order fetched successfully")
+    );
+});
+
+
+// ============================================================
+// 📊 GET USER PRODUCT SUMMARY
+// Final merged qty of each product tied to this userId
+// Covers ALL confirmed orders — useful for admin/kitchen view
+// ============================================================
+const getUserProductSummary = asynchandler(async (req, res) => {
+    const userId = req.user._id;
+
+    // ==========================
+    // 🔍 FETCH ALL ORDERS
+    // ==========================
+    const orders = await Order.find({
+        userId,
+        status: { $in: ["confirmed", "preparing", "delivered"] }
+    });
+
+    if (!orders.length) {
+        throw new ApiError(404, "no confirmed orders found for this user");
+    }
+
+    // ==========================
+    // 📊 AGGREGATE PRODUCT SUMMARY
+    // Merge productSummary from ALL orders into one flat map
+    // ==========================
+    const globalSummaryMap = {};
+
+    orders.forEach(order => {
+        order.productSummary.forEach(item => {
+            const key = `${item.productId}_${item.portion}`;
+
+            if (globalSummaryMap[key]) {
+                globalSummaryMap[key].totalQuantity += item.totalQuantity;
+            } else {
+                globalSummaryMap[key] = {
+                    productId: item.productId,
+                    name: item.name,
+                    category: item.category,
+                    portion: item.portion,
+                    totalQuantity: item.totalQuantity
+                };
+            }
+        });
+    });
+
+    const summary = Object.values(globalSummaryMap);
+
+    return res.status(200).json(
+        new ApiResponse(200,
+            {
+                userId,
+                totalOrders: orders.length,
+                summary
+            },
+            "user product summary fetched successfully"
+        )
+    );
+});
+
+
+// ============================================================
+// ❌ CANCEL ORDER
+// Only allowed if status is "pending"
+// ============================================================
+const cancelOrder = asynchandler(async (req, res) => {
+    const userId = req.user._id;
+    const { orderId } = req.params;
+
+    // ==========================
+    // 🔍 FIND ORDER
+    // ==========================
+    const order = await Order.findOne({ _id: orderId, userId });
+
+    if (!order) {
+        throw new ApiError(404, "order not found");
+    }
+
+    // ==========================
+    // 🔐 VALIDATE STATUS
+    // ==========================
+    if (order.status !== "pending") {
+        throw new ApiError(
+            400,
+            `cannot cancel order with status: ${order.status}`
+        );
+    }
+
+    order.status = "cancelled";
+    await order.save();
+
+    return res.status(200).json(
+        new ApiResponse(200, order, "order cancelled successfully")
+    );
+});
+
+
+// ============================================================
+// 🔧 UPDATE ORDER STATUS  [ADMIN ONLY]
+// ============================================================
+const updateOrderStatus = asynchandler(async (req, res) => {
+    const { orderId } = req.params;
+    const { status } = req.body;
+
+    const validStatuses = ["pending", "confirmed", "preparing", "delivered", "cancelled"];
+
+    // ==========================
+    // 🔐 VALIDATE STATUS
+    // ==========================
+    if (!validStatuses.includes(status)) {
+        throw new ApiError(
+            400,
+            `invalid status. allowed: ${validStatuses.join(", ")}`
+        );
+    }
+
+    // ==========================
+    // 🔍 FIND & UPDATE ORDER
+    // ==========================
+    const order = await Order.findByIdAndUpdate(
+        orderId,
+        { status },
+        { new: true }
+    );
+
+    if (!order) {
+        throw new ApiError(404, "order not found");
+    }
+
+    return res.status(200).json(
+        new ApiResponse(200, order, "order status updated successfully")
+    );
+});
+
+
+// ============================================================
+// 📋 GET ALL ORDERS  [ADMIN ONLY]
+// With optional status filter
+// ============================================================
+const getAllOrders = asynchandler(async (req, res) => {
+    const { status } = req.query;
+
+    const filter = {};
+    if (status) filter.status = status;
+
+    const orders = await Order.find(filter)
+        .populate("userId", "name email phone")
+        .sort({ createdAt: -1 });
+
+    return res.status(200).json(
+        new ApiResponse(200, orders, "all orders fetched successfully")
+    );
+});
+
+
+
+
+
+
+
+const addToCart = asynchandler(async (req, res) => {
+  const userId = req.user._id;
+
+  const { items } = req.body;
+
+  if (!items || !Array.isArray(items) || items.length === 0) {
+    throw new ApiError(400, "Items are required");
+  }
+
+  let cart = await Cart.findOne({ user: userId });
+
+  if (!cart) {
+    cart = await Cart.create({ user: userId, items: [] });
+  }
+
+  // =========================
+  // 🔁 LOOP THROUGH ITEMS
+  // =========================
+  for (const item of items) {
+
+    const { type, productId, comboId, quantity = 1, selections = [] } = item;
+
+    // =========================
+    // 🛒 PRODUCT
+    // =========================
+    if (type === "product") {
+
+      if (!mongoose.Types.ObjectId.isValid(productId)) {
+        throw new ApiError(400, "Invalid product ID");
+      }
+
+      const product = await Product.findById(productId);
+
+      if (!product || !product.isAvailable) {
+        throw new ApiError(404, "Product not available");
+      }
+
+      cart.items.push({
+        type: "product",
+        productId,
+        quantity
+      });
+    }
+
+    // =========================
+    // 🍽️ COMBO
+    // =========================
+    else if (type === "combo") {
+
+      if (!mongoose.Types.ObjectId.isValid(comboId)) {
+        throw new ApiError(400, "Invalid combo ID");
+      }
+
+      const combo = await Combo.findById(comboId);
+
+      if (!combo || !combo.isActive) {
+        throw new ApiError(404, "Combo not available");
+      }
+
+      // 🔥 RULE VALIDATION
+      combo.rules.forEach(rule => {
+
+        if (rule.isFixed) return;
+
+        const userSelection = selections.find(
+          s => s.ruleId.toString() === rule._id.toString()
+        );
+
+        if (!userSelection && !rule.isOptional) {
+          throw new ApiError(400, `Selection required for ${rule.title}`);
+        }
+
+        if (userSelection) {
+          if (userSelection.products.length !== rule.quantity) {
+            throw new ApiError(
+              400,
+              `Invalid selection for ${rule.title}`
+            );
+          }
+
+          // 🔥 EXTRA: validate product category match
+          userSelection.products.forEach(p => {
+            // (optional deeper validation)
+            // ensure product belongs to allowed categories
+          });
+        }
+      });
+
+      cart.items.push({
+        type: "combo",
+        comboId,
+        quantity,
+        selections
+      });
+    }
+
+    else {
+      throw new ApiError(400, "Invalid item type");
+    }
+  }
+
+  await cart.save();
+
+  return res.status(200).json(
+    new ApiResponse(200, cart, "Items added to cart successfully")
+  );
+});
+
+
+
+
+
+
+
+// const viewCart = asynchandler(async (req, res) => {
+//   const userId = req.user._id;
+
+//   const cart = await Cart.findOne({ user: userId })
+//     .populate({
+//       path: "items.productId",
+//       select: "name category food_class variants"
+//     })
+//     .populate({
+//       path: "items.comboId",
+//       select: "name price size rules"
+//     })
+//     .lean();
+
+//   if (!cart || cart.items.length === 0) {
+//     return res.status(200).json(
+//       new ApiResponse(200, { items: [], totalAmount: 0 }, "Cart is empty")
+//     );
+//   }
+
+//   let totalAmount = 0;
+
+//   const formattedItems = cart.items.map(item => {
+
+//     // =========================
+//     // 🛒 PRODUCT ITEM
+//     // =========================
+//     if (item.type === "product") {
+//       const product = item.productId;
+
+//       if (!product) return null;
+
+//       // take default / first variant price
+//       const price = product.variants?.[0]?.price || 0;
+
+//       totalAmount += price * item.quantity;
+
+//       return {
+//         type: "product",
+//         productId: product._id,
+//         name: product.name,
+//         category: product.category,
+//         price,
+//         quantity: item.quantity,
+//         total: price * item.quantity
+//       };
+//     }
+
+//     // =========================
+//     // 🍽️ COMBO ITEM
+//     // =========================
+//     else if (item.type === "combo") {
+//       const combo = item.comboId;
+
+//       if (!combo) return null;
+
+//       let comboTotal = combo.price * item.quantity;
+//       totalAmount += comboTotal;
+
+//       return {
+//         type: "combo",
+//         comboId: combo._id,
+//         name: combo.name,
+//         basePrice: combo.price,
+//         quantity: item.quantity,
+//         total: comboTotal,
+//         selections: item.selections
+//       };
+//     }
+
+//     return null;
+//   }).filter(Boolean);
+
+//   return res.status(200).json(
+//     new ApiResponse(
+//       200,
+//       {
+//         items: formattedItems,
+//         totalAmount
+//       },
+//       "Cart fetched successfully"
+//     )
+//   );
+// });
+
+
+
+const viewCart = asynchandler(async (req, res) => {
+  const userId = req.user?._id;
+
+  if (!userId) {
+    throw new ApiError(401, "Unauthorized");
+  }
+
+  const cart = await Cart.findOne({ user: userId })
+    .populate("items.productId", "name category variants isAvailable")
+    .populate("items.comboId", "name price size isActive rules")
+    .lean();
+
+  // =========================
+  // 🛒 EMPTY CART
+  // =========================
+  if (!cart || !cart.items || cart.items.length === 0) {
+    return res.status(200).json(
+      new ApiResponse(
+        200,
+        { items: [], totalAmount: 0, summary: {} },
+        "Cart is empty"
+      )
+    );
+  }
+
+  let totalAmount = 0;
+  const formattedItems = [];
+
+  // 🔥 AGGREGATE SUMMARY
+  const summary = {
+    roti: 0,
+    dal: 0,
+    veg: 0,
+    paneer: 0,
+    chicken: 0
+  };
+
+  // =========================
+  // 🔁 LOOP ITEMS
+  // =========================
+  for (const item of cart.items) {
+
+    // =========================
+    // 🛒 PRODUCT ITEM
+    // =========================
+    if (item.type === "product") {
+      const product = item.productId;
+
+      if (!product || !product.isAvailable) continue;
+
+      const selectedVariant =
+        product.variants?.find(v => v.size === item.variant) ||
+        product.variants?.[0];
+
+      const price = selectedVariant?.price || 0;
+      const itemTotal = price * item.quantity;
+
+      totalAmount += itemTotal;
+
+      // 🔥 SUMMARY UPDATE
+      summary[product.category] =
+        (summary[product.category] || 0) + item.quantity;
+
+      formattedItems.push({
+        itemId: item._id, 
+        type: "product",
+        productId: product._id,
+        name: product.name,
+        size: selectedVariant?.size || "default",
+        price,
+        quantity: item.quantity,
+        total: itemTotal
+      });
+    }
+
+    // =========================
+    // 🍽️ COMBO ITEM
+    // =========================
+    else if (item.type === "combo") {
+      const combo = item.comboId;
+
+      if (!combo || !combo.isActive) continue;
+
+      const comboTotal = combo.price * item.quantity;
+      totalAmount += comboTotal;
+
+      // =========================
+      // 🔥 FIXED ITEMS (ROTIS)
+      // =========================
+      const fixedItems = (combo.rules || [])
+        .filter(rule => rule.isFixed)
+        .map(rule => {
+          const category = rule.category?.[0];
+
+          // 🔥 SUMMARY UPDATE (fixed items)
+          summary[category] =
+            (summary[category] || 0) + (rule.quantity * item.quantity);
+
+          return {
+            title: rule.title,
+            quantity: rule.quantity
+          };
+        });
+
+      // =========================
+      // 🔥 USER SELECTIONS
+      // =========================
+      const formattedSelections = [];
+
+      for (const sel of item.selections || []) {
+
+        const productIds = sel.products.map(p => p.productId);
+
+        const products = await Product.find({
+          _id: { $in: productIds }
+        }).select("name category");
+
+        const productMap = {};
+        products.forEach(p => {
+          productMap[p._id.toString()] = p;
+        });
+
+        const detailedProducts = sel.products.map(p => {
+          const prod = productMap[p.productId.toString()];
+          if (!prod) return null;
+
+          // 🔥 SUMMARY UPDATE (selected items)
+          summary[prod.category] =
+            (summary[prod.category] || 0) +
+            (p.quantity * item.quantity);
+
+          return {
+            productId: prod._id,
+            name: prod.name,
+            quantity: p.quantity
+          };
+        }).filter(Boolean);
+
+        formattedSelections.push({
+          ruleId: sel.ruleId,
+          products: detailedProducts
+        });
+      }
+
+      formattedItems.push({
+        itemId: item._id, 
+        type: "combo",
+        comboId: combo._id,
+        name: combo.name,
+        quantity: item.quantity,
+        basePrice: combo.price,
+        total: comboTotal,
+        fixedItems,
+        selections: formattedSelections
+      });
+    }
+  }
+
+  // =========================
+  // 🔥 CLEAN SUMMARY (REMOVE ZERO VALUES)
+  // =========================
+  const cleanSummary = Object.fromEntries(
+    Object.entries(summary).filter(([_, v]) => v > 0)
+  );
+
+  // =========================
+  // ✅ FINAL RESPONSE
+  // =========================
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        items: formattedItems,
+        totalAmount,
+        summary: cleanSummary
+      },
+      "Cart fetched successfully"
+    )
+  );
+});
+
+
+
+
+const removeFromCart = asynchandler(async (req, res) => {
+  const userId = req.user?._id;
+
+  if (!userId) {
+    throw new ApiError(401, "Unauthorized");
+  }
+
+  const { itemId, removeAll = false } = req.body;
+
+  if (!itemId) {
+    throw new ApiError(400, "itemId is required");
+  }
+
+  const cart = await Cart.findOne({ user: userId });
+
+  if (!cart || !cart.items || cart.items.length === 0) {
+    throw new ApiError(404, "Cart is empty");
+  }
+
+  // =========================
+  // 🔍 FIND ITEM
+  // =========================
+  const itemIndex = cart.items.findIndex(
+    item => item._id.toString() === itemId
+  );
+
+  if (itemIndex === -1) {
+    throw new ApiError(404, "Item not found in cart");
+  }
+
+  const item = cart.items[itemIndex];
+
+  // =========================
+  // ❌ REMOVE LOGIC
+  // =========================
+
+  if (removeAll || item.quantity === 1) {
+    // 👉 Remove entire item
+    cart.items.splice(itemIndex, 1);
+  } else {
+    // 👉 Decrease quantity
+    cart.items[itemIndex].quantity -= 1;
+  }
+
+  await cart.save();
+
+  return res.status(200).json(
+    new ApiResponse(200, cart, "Item removed from cart")
+  );
+});
+
+
 export {
-    addToCart
-}
+    placeOrder,
+    getUserOrders,
+    getOrderById,
+    getUserProductSummary,
+    cancelOrder,
+    updateOrderStatus,
+    getAllOrders,
+    addToCart,
+    viewCart,
+    removeFromCart
+};

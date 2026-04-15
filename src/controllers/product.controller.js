@@ -4,6 +4,8 @@ import { Product } from "../models/product.model.js";
 import { Combo } from "../models/combo.model.js";
 import { uploadoncloudinary, deleteFromCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
+import mongoose from "mongoose";
+
 
 const SUPER_ADMIN_EMAIL = process.env.SUPER_ADMIN_EMAIL || "deepaksodhi0023@gmail.com";
 const HARD_CODED_SUPER_ADMIN_ROLE = "super_admin";
@@ -22,59 +24,201 @@ const ensureSuperAdmin = (req) => {
 };
 
 // Create a new product
+// const createProduct = asynchandler(async (req, res) => {
+//     ensureSuperAdmin(req);
+
+//     const { name, description, price, category, product_type, isAvailable } = req.body;
+
+//     if ([name, description, price, category, product_type].some((field) => !field || field.toString().trim() === "")) {
+//         throw new ApiError(400, "name, description, price, category and product_type are required");
+//     }
+
+//     const imagelocalpath = req.file?.path;
+
+//     if (!imagelocalpath) { 
+//         throw new ApiError(400, "product image is required");
+//     }
+
+//     // Check if product with same name already exists
+//     const existingProduct = await Product.findOne({ name: name.trim() });
+
+//     if (existingProduct) {
+//         throw new ApiError(409, "product with this name already exists");
+//     }
+
+//     // Upload image to cloudinary
+//     const image = await uploadoncloudinary(imagelocalpath);
+
+//     if (!image.url) {
+//         throw new ApiError(400, "error while uploading product image");
+//     }
+
+//     // Ensure image URL uses HTTPS
+//     image.url = image.url.replace(/^http:/, 'https:');
+
+//     // Create product
+//     const product = await Product.create({
+//         name: name.trim(),
+//         description: description.trim(),
+//         price: parseFloat(price),
+//         category: category.trim(),
+//         product_type: product_type.trim(),
+//         image: image.url,
+//         isAvailable: isAvailable !== undefined ? isAvailable : true
+//     });
+
+//     const createdProduct = await Product.findById(product._id).lean();
+
+//     if (!createdProduct) {
+//         throw new ApiError(500, "something went wrong while creating the product");
+//     }
+
+//     return res.status(201).json(
+//         new ApiResponse(201, createdProduct, "product created successfully")
+//     );
+// });
+
+
+
+
+
+
 const createProduct = asynchandler(async (req, res) => {
     ensureSuperAdmin(req);
 
-    const { name, description, price, category, product_type, isAvailable } = req.body;
+    let {
+        name,
+        description,
+        category,
+        product_type,
+        food_class, // 🔥 NEW FIELD
+        variants,
+        isAvailable
+    } = req.body;
 
-    if ([name, description, price, category, product_type].some((field) => !field || field.toString().trim() === "")) {
-        throw new ApiError(400, "name, description, price, category and product_type are required");
+    if (
+        [name, description, category, product_type, food_class].some(
+            (field) => !field || field.toString().trim() === ""
+        )
+    ) {
+        throw new ApiError(
+            400,
+            "name, description, category, product_type and food_class are required"
+        );
     }
 
     const imagelocalpath = req.file?.path;
 
-    if (!imagelocalpath) {
-        throw new ApiError(400, "product image is required");
-    }
+    // if (!imagelocalpath) {
+    //     throw new ApiError(400, "product image is required");
+    // }
 
-    // Check if product with same name already exists
-    const existingProduct = await Product.findOne({ name: name.trim() });
+    const existingProduct = await Product.findOne({
+        name: name.trim()
+    });
 
     if (existingProduct) {
         throw new ApiError(409, "product with this name already exists");
     }
 
-    // Upload image to cloudinary
-    const image = await uploadoncloudinary(imagelocalpath);
+    const PRODUCT_TYPE_CONFIG = {
+        dal: ["16oz", "32oz"],
+        sabji: ["16oz", "32oz"],
+        rice: ["half", "full"],
+        indochinese: ["half", "full"],
+        roti: []
+    };
 
-    if (!image.url) {
-        throw new ApiError(400, "error while uploading product image");
+    const allowedSizes = PRODUCT_TYPE_CONFIG[product_type.toLowerCase()];
+
+    if (!allowedSizes) {
+        throw new ApiError(400, "invalid product_type");
     }
 
-    // Ensure image URL uses HTTPS
-    image.url = image.url.replace(/^http:/, 'https:');
 
-    // Create product
+    // const ALLOWED_FOOD_CLASS = ["veg_curry", "paneer", "chicken", "mutton", "veg_other"];
+    const ALLOWED_FOOD_CLASS = ["veg_curry", "paneer", "chicken"];
+
+    if (!ALLOWED_FOOD_CLASS.includes(food_class.toLowerCase())) {
+        throw new ApiError(
+            400,
+            `invalid food_class. Allowed: ${ALLOWED_FOOD_CLASS.join(", ")}`
+        );
+    }
+
+    if (!variants || !Array.isArray(variants) || variants.length === 0) {
+        throw new ApiError(400, "variants are required");
+    }
+
+    let formattedVariants;
+
+    if (allowedSizes.length === 0) {
+        // No size (like roti)
+        if (variants.length !== 1) {
+            throw new ApiError(400, "only one price allowed for this product");
+        }
+
+        formattedVariants = [
+            {
+                size: "default",
+                price: parseFloat(variants[0].price)
+            }
+        ];
+    } else {
+        formattedVariants = variants.map((v, index) => {
+            if (!v.size || !allowedSizes.includes(v.size.toLowerCase())) {
+                throw new ApiError(
+                    400,
+                    `invalid size at index ${index + 1}. Allowed: ${allowedSizes.join(", ")}`
+                );
+            }
+
+            if (!v.price || v.price <= 0) {
+                throw new ApiError(400, `invalid price at index ${index + 1}`);
+            }
+
+            return {
+                size: v.size.toLowerCase(),
+                price: parseFloat(v.price)
+            };
+        });
+    }
+
+    // ==========================
+    // ☁️ UPLOAD IMAGE
+    // ==========================
+    const image = await uploadoncloudinary(imagelocalpath);
+
+    // if (!image.url) {
+    //     throw new ApiError(400, "error while uploading product image");
+    // }
+
+    // image.url = image.url.replace(/^http:/, "https:");
+
+    // ==========================
+    // 🧠 CREATE PRODUCT
+    // ==========================
     const product = await Product.create({
         name: name.trim(),
         description: description.trim(),
-        price: parseFloat(price),
-        category: category.trim(),
-        product_type: product_type.trim(),
-        image: image.url,
+        category: category.trim().toLowerCase(),
+        product_type: product_type.trim().toLowerCase(),
+        food_class: food_class.trim().toLowerCase(),
+        image: " ",
+        variants: formattedVariants,
         isAvailable: isAvailable !== undefined ? isAvailable : true
     });
 
     const createdProduct = await Product.findById(product._id).lean();
 
-    if (!createdProduct) {
-        throw new ApiError(500, "something went wrong while creating the product");
-    }
-
     return res.status(201).json(
         new ApiResponse(201, createdProduct, "product created successfully")
     );
 });
+
+
+
+
 
 // Get all products
 const getAllProducts = asynchandler(async (req, res) => {
@@ -122,6 +266,14 @@ const getAllProducts = asynchandler(async (req, res) => {
     );
 });
 
+
+
+
+
+
+
+
+
 // Get single product by ID
 const getProductById = asynchandler(async (req, res) => {
     const { productId } = req.params;
@@ -140,6 +292,15 @@ const getProductById = asynchandler(async (req, res) => {
         new ApiResponse(200, product, "product fetched successfully")
     );
 });
+
+
+
+
+
+
+
+
+
 
 // Update product
 const updateProduct = asynchandler(async (req, res) => {
@@ -212,6 +373,15 @@ const updateProduct = asynchandler(async (req, res) => {
     );
 });
 
+
+
+
+
+
+
+
+
+
 // Delete product
 const deleteProduct = asynchandler(async (req, res) => {
     ensureSuperAdmin(req);
@@ -240,6 +410,16 @@ const deleteProduct = asynchandler(async (req, res) => {
     );
 });
 
+
+
+
+
+
+
+
+
+
+
 // Toggle product availability
 const toggleProductAvailability = asynchandler(async (req, res) => {
     ensureSuperAdmin(req);
@@ -266,6 +446,14 @@ const toggleProductAvailability = asynchandler(async (req, res) => {
         new ApiResponse(200, updatedProduct, `product ${updatedProduct.isAvailable ? 'enabled' : 'disabled'} successfully`)
     );
 });
+
+
+
+
+
+
+
+
 
 // Get products by category
 const getProductsByCategory = asynchandler(async (req, res) => {
@@ -317,6 +505,13 @@ const getProductsByCategory = asynchandler(async (req, res) => {
     );
 });
 
+
+
+
+
+
+
+
 // Get all unique categories
 const getProductCategories = asynchandler(async (req, res) => {
     const categories = await Product.distinct("category");
@@ -336,98 +531,385 @@ const getProductCategories = asynchandler(async (req, res) => {
 
 
 
+// const createCombo = asynchandler(async (req, res) => {
+//     ensureSuperAdmin(req);
+
+//     let {
+//         name,
+//         description,
+//         price,
+//         size,
+//         rules,
+//         options,
+//         isAvailable,
+//         image
+//     } = req.body;
+
+//     // ==========================
+//     // 🔐 BASIC VALIDATION
+//     // ==========================
+//     if (
+//         [name, description, price].some(
+//             (field) => !field || field.toString().trim() === ""
+//         )
+//     ) {
+//         throw new ApiError(400, "name, description and price are required");
+//     }
+
+//     if (!rules || !Array.isArray(rules) || rules.length === 0) {
+//         throw new ApiError(400, "rules must be a non-empty array");
+//     }
+
+//     // ==========================
+//     // 🔐 RULE VALIDATION
+//     // ==========================
+//     rules = rules.map((rule, index) => {
+//         if (!rule.category || !Array.isArray(rule.category)) {
+//             throw new ApiError(400, `rule ${index + 1}: category must be array`);
+//         }
+
+//         if (!rule.quantity || rule.quantity < 1) {
+//             throw new ApiError(400, `rule ${index + 1}: invalid quantity`);
+//         }
+
+//         return {
+//             category: rule.category.map((c) => c.trim()),
+//             quantity: Number(rule.quantity),
+//             isSelectionRequired:
+//                 rule.isSelectionRequired !== undefined
+//                     ? rule.isSelectionRequired
+//                     : true,
+//             label: rule.label?.trim() || ""
+//         };
+//     });
+
+//     // ==========================
+//     // 🖼️ IMAGE DEFAULT
+//     // ==========================
+//     image = image?.trim() || "";
+
+//     // ==========================
+//     // 🔁 CHECK DUPLICATE
+//     // ==========================
+//     const existingCombo = await Combo.findOne({
+//         name: name.trim()
+//     });
+
+//     if (existingCombo) {
+//         throw new ApiError(409, "combo with this name already exists");
+//     }
+
+//     // ==========================
+//     // 🧠 CREATE COMBO
+//     // ==========================
+//     const combo = await Combo.create({
+//         name: name.trim(),
+//         description: description.trim(),
+//         price: parseFloat(price),
+//         size: size?.trim(),
+//         image,
+//         rules,
+//         options,
+//         isAvailable: isAvailable !== undefined ? isAvailable : true
+//     });
+
+//     const createdCombo = await Combo.findById(combo._id).lean();
+
+//     if (!createdCombo) {
+//         throw new ApiError(500, "something went wrong while creating combo");
+//     }
+
+//     return res.status(201).json(
+//         new ApiResponse(201, createdCombo, "combo created successfully")
+//     );
+// });
+
+
+// const createCombo = asynchandler(async (req, res) => {
+//     ensureSuperAdmin(req);
+
+//     let {
+//         name,
+//         description,
+//         price,
+//         items,
+//         isAvailable,
+//         image
+//     } = req.body;
+
+//     // ==========================
+//     // 🔐 BASIC VALIDATION
+//     // ==========================
+//     if (
+//         [name, description, price].some(
+//             (field) => !field || field.toString().trim() === ""
+//         )
+//     ) {
+//         throw new ApiError(400, "name, description and price are required");
+//     }
+
+//     if (!items || !Array.isArray(items) || items.length === 0) {
+//         throw new ApiError(400, "items must be a non-empty array");
+//     }
+
+//     // ==========================
+//     // 🔐 ITEMS VALIDATION
+//     // ==========================
+//     items = items.map((item, index) => {
+//         if (!item.product_id) {
+//             throw new ApiError(400, `item ${index + 1}: product_id required`);
+//         }
+
+//         if (!item.size) {
+//             throw new ApiError(400, `item ${index + 1}: size is required`);
+//         }
+
+//         return {
+//             product: item.product_id,
+//             quantity:
+//                 item.quantity && item.quantity > 0
+//                     ? Number(item.quantity)
+//                     : 1,
+//             size: item.size.trim().toLowerCase() // normalize
+//         };
+//     });
+
+//     // ==========================
+//     // 🔁 CHECK DUPLICATE NAME
+//     // ==========================
+//     const existingCombo = await Combo.findOne({
+//         name: name.trim()
+//     });
+
+//     if (existingCombo) {
+//         throw new ApiError(409, "combo with this name already exists");
+//     }
+
+//     // ==========================
+//     // 🧠 CREATE COMBO
+//     // ==========================
+//     const combo = await Combo.create({
+//         name: name.trim(),
+//         description: description.trim(),
+//         price: parseFloat(price),
+//         image: image?.trim() || "",
+//         items,
+//         isAvailable: isAvailable !== undefined ? isAvailable : true
+//     });
+
+//     const createdCombo = await Combo.findById(combo._id)
+//         .populate("items.product")
+//         .lean();
+
+//     return res.status(201).json(
+//         new ApiResponse(201, createdCombo, "combo created successfully")
+//     );
+// });
+
+
+
+
 const createCombo = asynchandler(async (req, res) => {
-    ensureSuperAdmin(req);
+  const { name, description, price, size, rules } = req.body;
 
-    let {
-        name,
-        description,
-        price,
-        size,
-        rules,
-        options,
-        isAvailable,
-        image
-    } = req.body;
+  if (!name || !price || !rules) {
+    throw new ApiError(400, "Required fields missing");
+  }
 
-    // ==========================
-    // 🔐 BASIC VALIDATION
-    // ==========================
-    if (
-        [name, description, price].some(
-            (field) => !field || field.toString().trim() === ""
-        )
-    ) {
-        throw new ApiError(400, "name, description and price are required");
-    }
+  const combo = await Combo.create({
+    name,
+    description,
+    price,
+    size,
+    rules
+  });
 
-    if (!rules || !Array.isArray(rules) || rules.length === 0) {
-        throw new ApiError(400, "rules must be a non-empty array");
-    }
-
-    // ==========================
-    // 🔐 RULE VALIDATION
-    // ==========================
-    rules = rules.map((rule, index) => {
-        if (!rule.category || !Array.isArray(rule.category)) {
-            throw new ApiError(400, `rule ${index + 1}: category must be array`);
-        }
-
-        if (!rule.quantity || rule.quantity < 1) {
-            throw new ApiError(400, `rule ${index + 1}: invalid quantity`);
-        }
-
-        return {
-            category: rule.category.map((c) => c.trim()),
-            quantity: Number(rule.quantity),
-            isSelectionRequired:
-                rule.isSelectionRequired !== undefined
-                    ? rule.isSelectionRequired
-                    : true,
-            label: rule.label?.trim() || ""
-        };
-    });
-
-    // ==========================
-    // 🖼️ IMAGE DEFAULT
-    // ==========================
-    image = image?.trim() || "";
-
-    // ==========================
-    // 🔁 CHECK DUPLICATE
-    // ==========================
-    const existingCombo = await Combo.findOne({
-        name: name.trim()
-    });
-
-    if (existingCombo) {
-        throw new ApiError(409, "combo with this name already exists");
-    }
-
-    // ==========================
-    // 🧠 CREATE COMBO
-    // ==========================
-    const combo = await Combo.create({
-        name: name.trim(),
-        description: description.trim(),
-        price: parseFloat(price),
-        size: size?.trim(),
-        image,
-        rules,
-        options,
-        isAvailable: isAvailable !== undefined ? isAvailable : true
-    });
-
-    const createdCombo = await Combo.findById(combo._id).lean();
-
-    if (!createdCombo) {
-        throw new ApiError(500, "something went wrong while creating combo");
-    }
-
-    return res.status(201).json(
-        new ApiResponse(201, createdCombo, "combo created successfully")
-    );
+  res.status(201).json({
+    success: true,
+    combo
+  });
 });
+
+
+const getCombos = asynchandler(async (req, res) => {
+
+  const combos = await Combo.find({ isActive: true })
+    .select("-__v") // optional: remove unwanted fields
+    .sort({ createdAt: -1 }); // latest first
+
+  if (!combos || combos.length === 0) {
+    return res.status(200).json({
+      success: true,
+      message: "No active combos found",
+      data: []
+    });
+  }
+
+  res.status(200).json({
+    success: true,
+    count: combos.length,
+    data: combos
+  });
+
+});
+
+
+
+const getComboById = asynchandler(async (req, res) => {
+  const { comboId } = req.params;
+
+  // 🔒 Validate ObjectId first (VERY IMPORTANT)
+  if (!mongoose.Types.ObjectId.isValid(comboId)) {
+    throw new ApiError(400, "Invalid combo ID");
+  }
+
+  const combo = await Combo.findById(comboId).lean();
+
+  if (!combo) {
+    throw new ApiError(404, "Combo not found");
+  }
+
+  // 🔥 OPTIONAL: attach products for selectable rules
+  const enrichedRules = await Promise.all(
+    combo.rules.map(async (rule) => {
+
+      // skip fixed rules
+      if (rule.isFixed) return rule;
+
+      const products = await Product.find({
+        category: { $in: rule.category },
+        isAvailable: true
+      }).select("name category food_class variants");
+
+      return {
+        ...rule,
+        products
+      };
+    })
+  );
+
+  const finalCombo = {
+    ...combo,
+    rules: enrichedRules
+  };
+
+  return res.status(200).json(
+    new ApiResponse(200, finalCombo, "Combo fetched successfully")
+  );
+});
+
+
+
+
+
+const deleteCombo = asynchandler(async (req, res) => {
+  const { comboId } = req.params;
+
+  // 🔒 Validate ID
+  if (!mongoose.Types.ObjectId.isValid(comboId)) {
+    throw new ApiError(400, "Invalid combo ID");
+  }
+
+  const combo = await Combo.findById(comboId);
+
+  if (!combo) {
+    throw new ApiError(404, "Combo not found");
+  }
+
+  // ✅ Soft delete
+  combo.isActive = false;
+  await combo.save();
+
+  return res.status(200).json(
+    new ApiResponse(200, null, "Combo deleted (soft delete)")
+  );
+});
+
+
+
+const updateCombo = asynchandler(async (req, res) => {
+  const { comboId } = req.params;
+  const { name, description, price, size, rules, image, isAvailable } =
+    req.body;
+
+  // 🔒 Validate ID
+  if (!mongoose.Types.ObjectId.isValid(comboId)) {
+    throw new ApiError(400, "Invalid combo ID");
+  }
+
+  const combo = await Combo.findById(comboId);
+
+  if (!combo) {
+    throw new ApiError(404, "Combo not found");
+  }
+
+  // 🔐 Update fields if provided
+  if (name) combo.name = name.trim();
+  if (description) combo.description = description.trim();
+  if (price) combo.price = parseFloat(price);
+  if (size) combo.size = size.trim();
+  if (image) combo.image = image.trim();
+  if (isAvailable !== undefined) combo.isAvailable = isAvailable;
+
+  // 🔐 Update rules if provided
+  if (rules && Array.isArray(rules)) {
+    combo.rules = rules.map((rule) => ({
+      category: rule.category || [],
+      quantity: rule.quantity || 1,
+      isSelectionRequired: rule.isSelectionRequired ?? true,
+      label: rule.label || ""
+    }));
+  }
+
+  await combo.save();
+
+  // 🔄 Populate for response
+  const updatedCombo = await Combo.findById(comboId).lean();
+
+  return res.status(200).json(
+    new ApiResponse(200, updatedCombo, "Combo updated successfully")
+  );
+});
+
+
+
+
+const updateComboStatus = asynchandler(async (req, res) => {
+  const { comboId } = req.params;
+  const { isActive } = req.body;
+
+  // 🔒 Validate ID
+  if (!mongoose.Types.ObjectId.isValid(comboId)) {
+    throw new ApiError(400, "Invalid combo ID");
+  }
+
+  // 🔒 Validate input
+  if (typeof isActive !== "boolean") {
+    throw new ApiError(400, "isActive must be true or false");
+  }
+
+  const combo = await Combo.findById(comboId);
+
+  if (!combo) {
+    throw new ApiError(404, "Combo not found");
+  }
+
+  // 🔄 Update status
+  combo.isActive = isActive;
+  await combo.save();
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        comboId: combo._id,
+        isActive: combo.isActive
+      },
+      `Combo ${isActive ? "activated" : "deactivated"} successfully`
+    )
+  );
+});
+
 
 
 
@@ -440,5 +922,10 @@ export {
     toggleProductAvailability,
     getProductsByCategory,
     getProductCategories,
-    createCombo
+    createCombo,
+    getCombos,
+    getComboById,
+    deleteCombo,
+    updateCombo,
+    updateComboStatus
 };

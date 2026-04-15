@@ -8,7 +8,13 @@ import {
     toggleProductAvailability,
     getProductsByCategory,
     getProductCategories,
-    createCombo
+    createCombo,
+    getCombos,
+    getComboById,
+    deleteCombo,
+    updateCombo,
+    updateComboStatus
+
 } from "../controllers/product.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
@@ -22,7 +28,7 @@ router.use(validateApiKey)
 router.route("/all").get(getAllProducts)
 router.route("/categories").get(getProductCategories)
 router.route("/category/:category").get(getProductsByCategory)
-router.route("/:productId").get(getProductById)
+
 
 // Super admin only routes (authentication required)
 router.route("/create").post(verifyJWT, upload.single("image"), createProduct)
@@ -31,4 +37,20 @@ router.route("/update/:productId").patch(verifyJWT, upload.single("image"), upda
 router.route("/delete/:productId").delete(verifyJWT, deleteProduct)
 router.route("/toggle/:productId").patch(verifyJWT, toggleProductAvailability)
 
+
+router.route("/combos").get(getCombos);
+router.route("/singlecombo/:comboId").get(getComboById);
+router.route("/updatecombo/:comboId").patch(verifyJWT, updateCombo);
+router.route("/deletecombo/:comboId").delete(verifyJWT, deleteCombo);
+router.route("/updatecombostatus/:comboId").patch(verifyJWT, updateComboStatus);
+
+
+
+
+
+
+
+
+
+router.route("/:productId").get(getProductById)
 export default router;

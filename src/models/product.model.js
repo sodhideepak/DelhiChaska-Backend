@@ -1,5 +1,21 @@
 import mongoose from "mongoose";
 
+const variantSchema = new mongoose.Schema(
+  {
+    size: {
+      type: String, // "16oz", "32oz", "half", "full"
+      required: true,
+      trim: true
+    },
+    price: {
+      type: Number,
+      required: true,
+      min: 0
+    }
+  },
+  { _id: false }
+);
+
 const productSchema = new mongoose.Schema(
   {
     name: {
@@ -14,12 +30,6 @@ const productSchema = new mongoose.Schema(
       trim: true
     },
 
-    price: {
-      type: Number,
-      required: true,
-      min: 0
-    },
-
     image: {
       type: String,
       required: true
@@ -31,10 +41,27 @@ const productSchema = new mongoose.Schema(
       trim: true
     },
 
+    food_class: {
+      type: String,
+      required: true,
+      trim: true
+    },
+
     product_type: {
       type: String,
       required: true,
       trim: true
+    },
+
+    variants: {
+      type: [variantSchema],
+      required: true,
+      validate: {
+        validator: function (v) {
+          return v.length > 0;
+        },
+        message: "At least one variant is required"
+      }
     },
 
     isAvailable: {
@@ -47,4 +74,4 @@ const productSchema = new mongoose.Schema(
   }
 );
 
-export const Product = mongoose.model("product", productSchema);
+export const Product = mongoose.model("Product", productSchema);

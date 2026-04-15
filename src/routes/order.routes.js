@@ -1,6 +1,9 @@
 
 import { Router } from "express";
-import { addToCart } from "../controllers/order.controller.js";
+// import { addToCart } from "../controllers/order.controller.js";
+import { addToCart,
+         viewCart,
+         removeFromCart } from "../controllers/order.controller.js";
 import { validateApiKey } from "../middlewares/validateapi.middleware.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 
@@ -11,6 +14,8 @@ router.use(validateApiKey)
 
 
 router.route("/addtocart").post(verifyJWT,addToCart)
+router.route("/viewcart").get(verifyJWT,viewCart)
+router.route("/removefromcart").post(verifyJWT,removeFromCart)
 
 
 export default router;
