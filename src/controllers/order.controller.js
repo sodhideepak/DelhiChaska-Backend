@@ -765,6 +765,118 @@ const removeFromCart = asynchandler(async (req, res) => {
 });
 
 
+
+
+
+
+
+
+const getNextDeliveryDate = asynchandler(async (req, res) => {
+
+    // ==========================
+    // 🔥 CONFIG (DYNAMIC)
+    // ==========================
+    const deliveryDays = [1, 3, 5]; // Monday, Wednesday, Friday
+    const cutoffHour = 22; // 10 PM
+
+    // ==========================
+    // 🕒 CURRENT TIME (PST/PDT)
+    // ==========================
+    const now = new Date();
+
+    const usDate = new Date(
+        now.toLocaleString("en-US", { timeZone: "America/Los_Angeles" })
+    );
+
+    const today = usDate.getDay();
+    const currentHour = usDate.getHours();
+
+    // ==========================
+    // 🔍 FIND NEXT DELIVERY DAY
+    // ==========================
+    let daysToAdd = null;
+    let nextDeliveryDay = null;
+
+    for (let i = 1; i <= 7; i++) {
+        const nextDay = (today + i) % 7;
+
+        if (deliveryDays.includes(nextDay)) {
+            daysToAdd = i;
+            nextDeliveryDay = nextDay;
+            break;
+        }
+    }
+
+    if (daysToAdd === null) {
+        throw new ApiError(500, "No delivery days configured");
+    }
+
+    // ==========================
+    // 📅 NEXT DELIVERY DATE
+    // ==========================
+    const nextDeliveryDate = new Date(usDate);
+    nextDeliveryDate.setDate(usDate.getDate() + daysToAdd);
+
+    // ==========================
+    // 🔥 CHECK CUTOFF LOGIC
+    // ==========================
+    const previousDay = (nextDeliveryDay + 6) % 7; // day before delivery
+
+    let isAcceptingOrders = true;
+
+    // Case 1: Today is delivery day → NOT accepting
+    if (deliveryDays.includes(today)) {
+        isAcceptingOrders = false;
+    }
+
+    // Case 2: Today is previous day & after cutoff time
+    if (today === previousDay && currentHour >= cutoffHour) {
+        isAcceptingOrders = false;
+    }
+
+    // ==========================
+    // ❌ NOT ACCEPTING
+    // ==========================
+    if (!isAcceptingOrders) {
+        return res.status(200).json(
+            new ApiResponse(
+                200,
+                {
+                    acceptingOrders: false
+                },
+                "Currently not accepting orders"
+            )
+        );
+    }
+
+    // ==========================
+    // ✅ ACCEPTING → SEND DATE
+    // ==========================
+    const formattedDate = nextDeliveryDate.toLocaleDateString("en-US", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        timeZone: "America/Los_Angeles"
+    });
+
+    return res.status(200).json(
+        new ApiResponse(
+            200,
+            {
+                acceptingOrders: true,
+                date: nextDeliveryDate,
+                formatted: formattedDate,
+                day: nextDeliveryDate.toLocaleDateString("en-US", {
+                    weekday: "long",
+                    timeZone: "America/Los_Angeles"
+                })
+            },
+            "Next delivery date fetched successfully"
+        )
+    );
+});
+
 export {
     placeOrder,
     getUserOrders,
@@ -775,5 +887,6 @@ export {
     getAllOrders,
     addToCart,
     viewCart,
-    removeFromCart
+    removeFromCart,
+    getNextDeliveryDate
 };

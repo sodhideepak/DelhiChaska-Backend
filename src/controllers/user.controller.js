@@ -1077,6 +1077,104 @@ const editAddress = asynchandler(async (req, res) => {
 
 
 
+
+
+
+
+
+
+
+
+const deleteAddress = asynchandler(async (req, res) => {
+    const { addressId } = req.params;
+
+    if (!addressId) {
+        throw new ApiError(400, "addressId is required");
+    }
+
+    // ==========================
+    // 🔍 FIND ADDRESS
+    // ==========================
+    const address = await Address.findById(addressId);
+
+    if (!address) {
+        throw new ApiError(404, "Address not found");
+    }
+
+    // ==========================
+    // 🔐 OWNERSHIP CHECK
+    // ==========================
+    if (address.user.toString() !== req.user._id.toString()) {
+        throw new ApiError(403, "You are not allowed to delete this address");
+    }
+
+    // ==========================
+    // 🗑️ DELETE ADDRESS
+    // ==========================
+    await Address.findByIdAndDelete(addressId);
+
+    // ==========================
+    // 🔗 REMOVE FROM USER
+    // ==========================
+    await user.findByIdAndUpdate(
+        req.user._id,
+        {
+            $pull: {
+                addresses: addressId
+            }
+        }
+    );
+
+    return res.status(200).json(
+        new ApiResponse(200, {}, "Address deleted successfully")
+    );
+});
+
+
+
+
+
+
+
+
+
+
+
+const deleteAllAddresses = asynchandler(async (req, res) => {
+    const userId = req.user._id;
+
+    // ==========================
+    // 🔍 CHECK IF USER HAS ADDRESSES
+    // ==========================
+    const existingAddresses = await Address.find({ user: userId });
+
+    if (!existingAddresses || existingAddresses.length === 0) {
+        throw new ApiError(404, "No addresses found for this user");
+    }
+
+    // ==========================
+    // 🗑️ DELETE ALL ADDRESSES
+    // ==========================
+    await Address.deleteMany({ user: userId });
+
+    // ==========================
+    // 🔗 REMOVE FROM USER
+    // ==========================
+    await user.findByIdAndUpdate(
+        userId,
+        {
+            $set: {
+                addresses: []
+            }
+        }
+    );
+
+    return res.status(200).json(
+        new ApiResponse(200, {}, "All addresses deleted successfully")
+    );
+});
+
+
 const getCurrentuser = asynchandler(async (req, res) => {
 
 
@@ -1648,6 +1746,8 @@ export {
     resetpassword,
     contactformenquiry,
     bookingformenquiry,
-    deleteUser
+    deleteUser,
+    deleteAllAddresses,
+    deleteAddress
 
 }

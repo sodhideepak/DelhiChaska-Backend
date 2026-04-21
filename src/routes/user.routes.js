@@ -23,7 +23,9 @@ import {
     contactformenquiry,
     bookingformenquiry,
     verifyEmail_registeruser,
-    deleteUser
+    deleteUser,
+    deleteAllAddresses,
+    deleteAddress
      } from "../controllers/user.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
@@ -58,6 +60,7 @@ router.route("/change-password" ).post(verifyJWT,changeCurrentPassword)
 
 router.route("/address/add").post(verifyJWT,addAddress)
 router.route("/address/:addressId").patch(verifyJWT,editAddress)
+router.route("/address/:addressId").delete(verifyJWT,deleteAddress)
 
 router.route("/current-user" ).get(verifyJWT,getCurrentuser)
 
@@ -95,7 +98,7 @@ router.route("/bookingenquiry").post(bookingformenquiry)
 
 
 
-
+router.route("/deletealladdress").delete(verifyJWT, deleteAllAddresses);
 
 
 
