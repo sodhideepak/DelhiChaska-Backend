@@ -8,6 +8,10 @@ const cartSchema = new mongoose.Schema({
 
   items: [
     {
+       itemId: {
+        type: mongoose.Schema.Types.ObjectId, // or String if you prefer
+        required: true
+      },
       type: {
         type: String, // "product" or "combo"
         enum: ["product", "combo"],

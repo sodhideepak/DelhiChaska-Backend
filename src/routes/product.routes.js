@@ -13,7 +13,8 @@ import {
     getComboById,
     deleteCombo,
     updateCombo,
-    updateComboStatus
+    updateComboStatus,
+    updateProductImage
 
 } from "../controllers/product.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
@@ -43,6 +44,11 @@ router.route("/singlecombo/:comboId").get(getComboById);
 router.route("/updatecombo/:comboId").patch(verifyJWT, updateCombo);
 router.route("/deletecombo/:comboId").delete(verifyJWT, deleteCombo);
 router.route("/updatecombostatus/:comboId").patch(verifyJWT, updateComboStatus);
+
+
+
+
+router.route("/updateimage/:productId").patch(verifyJWT, upload.single("image"), updateProductImage);
 
 
 

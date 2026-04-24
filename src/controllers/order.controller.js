@@ -437,144 +437,144 @@ const getAllOrders = asynchandler(async (req, res) => {
 //   );
 // });
 
-const addToCart = asynchandler(async (req, res) => {
+// const addToCart = asynchandler(async (req, res) => {
 
-  // ==========================
-  // 🔐 AUTH CHECK
-  // ==========================
-  if (!req.user || !req.user._id) {
-    throw new ApiError(401, "Unauthorized user");
-  }
+//   // ==========================
+//   // 🔐 AUTH CHECK
+//   // ==========================
+//   if (!req.user || !req.user._id) {
+//     throw new ApiError(401, "Unauthorized user");
+//   }
 
-  const userId = req.user._id;
-  console.log("USER ID:", userId);
+//   const userId = req.user._id;
+//   console.log("USER ID:", userId);
 
-  const { items } = req.body;
+//   const { items } = req.body;
 
-  if (!items || !Array.isArray(items) || items.length === 0) {
-    throw new ApiError(400, "Items are required");
-  }
+//   if (!items || !Array.isArray(items) || items.length === 0) {
+//     throw new ApiError(400, "Items are required");
+//   }
 
-  // ==========================
-  // 🔥 ATOMIC FIND OR CREATE (BEST PRACTICE)
-  // ==========================
-  let cart = await Cart.findOneAndUpdate(
-    { user: userId },
-    { $setOnInsert: { user: userId, items: [] } },
-    { new: true, upsert: true }
-  );
+//   // ==========================
+//   // 🔥 ATOMIC FIND OR CREATE (BEST PRACTICE)
+//   // ==========================
+//   let cart = await Cart.findOneAndUpdate(
+//     { user: userId },
+//     { $setOnInsert: { user: userId, items: [] } },
+//     { new: true, upsert: true }
+//   );
 
-  if (!cart) {
-    throw new ApiError(500, "Cart creation failed");
-  }
+//   if (!cart) {
+//     throw new ApiError(500, "Cart creation failed");
+//   }
 
-  // ==========================
-  // 🔁 LOOP THROUGH ITEMS
-  // ==========================
-  for (const item of items) {
+//   // ==========================
+//   // 🔁 LOOP THROUGH ITEMS
+//   // ==========================
+//   for (const item of items) {
 
-    const {
-      type,
-      productId,
-      comboId,
-      quantity = 1,
-      selections = []
-    } = item;
+//     const {
+//       type,
+//       productId,
+//       comboId,
+//       quantity = 1,
+//       selections = []
+//     } = item;
 
-    // ==========================
-    // 🛒 PRODUCT
-    // ==========================
-    if (type === "product") {
+//     // ==========================
+//     // 🛒 PRODUCT
+//     // ==========================
+//     if (type === "product") {
 
-      if (!mongoose.Types.ObjectId.isValid(productId)) {
-        throw new ApiError(400, "Invalid product ID");
-      }
+//       if (!mongoose.Types.ObjectId.isValid(productId)) {
+//         throw new ApiError(400, "Invalid product ID");
+//       }
 
-      const product = await Product.findById(productId);
+//       const product = await Product.findById(productId);
 
-      if (!product || !product.isAvailable) {
-        throw new ApiError(404, "Product not available");
-      }
+//       if (!product || !product.isAvailable) {
+//         throw new ApiError(404, "Product not available");
+//       }
 
-      // 🔥 CHECK IF PRODUCT ALREADY EXISTS
-      const existingItem = cart.items.find(
-        i => i.type === "product" && i.productId?.toString() === productId
-      );
+//       // 🔥 CHECK IF PRODUCT ALREADY EXISTS
+//       const existingItem = cart.items.find(
+//         i => i.type === "product" && i.productId?.toString() === productId
+//       );
 
-      if (existingItem) {
-        existingItem.quantity += quantity;
-      } else {
-        cart.items.push({
-          type: "product",
-          productId,
-          quantity
-        });
-      }
-    }
+//       if (existingItem) {
+//         existingItem.quantity += quantity;
+//       } else {
+//         cart.items.push({
+//           type: "product",
+//           productId,
+//           quantity
+//         });
+//       }
+//     }
 
-    // ==========================
-    // 🍽️ COMBO
-    // ==========================
-    else if (type === "combo") {
+//     // ==========================
+//     // 🍽️ COMBO
+//     // ==========================
+//     else if (type === "combo") {
 
-      if (!mongoose.Types.ObjectId.isValid(comboId)) {
-        throw new ApiError(400, "Invalid combo ID");
-      }
+//       if (!mongoose.Types.ObjectId.isValid(comboId)) {
+//         throw new ApiError(400, "Invalid combo ID");
+//       }
 
-      const combo = await Combo.findById(comboId);
+//       const combo = await Combo.findById(comboId);
 
-      if (!combo || !combo.isActive) {
-        throw new ApiError(404, "Combo not available");
-      }
+//       if (!combo || !combo.isActive) {
+//         throw new ApiError(404, "Combo not available");
+//       }
 
-      // ==========================
-      // 🔥 RULE VALIDATION
-      // ==========================
-      combo.rules.forEach(rule => {
+//       // ==========================
+//       // 🔥 RULE VALIDATION
+//       // ==========================
+//       combo.rules.forEach(rule => {
 
-        if (rule.isFixed) return;
+//         if (rule.isFixed) return;
 
-        const userSelection = selections.find(
-          s => s.ruleId.toString() === rule._id.toString()
-        );
+//         const userSelection = selections.find(
+//           s => s.ruleId.toString() === rule._id.toString()
+//         );
 
-        if (!userSelection && !rule.isOptional) {
-          throw new ApiError(400, `Selection required for ${rule.title}`);
-        }
+//         if (!userSelection && !rule.isOptional) {
+//           throw new ApiError(400, `Selection required for ${rule.title}`);
+//         }
 
-        if (userSelection) {
-          if (userSelection.products.length !== rule.quantity) {
-            throw new ApiError(
-              400,
-              `Invalid selection for ${rule.title}`
-            );
-          }
-        }
-      });
+//         if (userSelection) {
+//           if (userSelection.products.length !== rule.quantity) {
+//             throw new ApiError(
+//               400,
+//               `Invalid selection for ${rule.title}`
+//             );
+//           }
+//         }
+//       });
 
-      // 🔥 SIMPLE: always push combo (can enhance later)
-      cart.items.push({
-        type: "combo",
-        comboId,
-        quantity,
-        selections
-      });
-    }
+//       // 🔥 SIMPLE: always push combo (can enhance later)
+//       cart.items.push({
+//         type: "combo",
+//         comboId,
+//         quantity,
+//         selections
+//       });
+//     }
 
-    else {
-      throw new ApiError(400, "Invalid item type");
-    }
-  }
+//     else {
+//       throw new ApiError(400, "Invalid item type");
+//     }
+//   }
 
-  // ==========================
-  // 💾 SAVE CART
-  // ==========================
-  await cart.save();
+//   // ==========================
+//   // 💾 SAVE CART
+//   // ==========================
+//   await cart.save();
 
-  return res.status(200).json(
-    new ApiResponse(200, cart, "Items added to cart successfully")
-  );
-});
+//   return res.status(200).json(
+//     new ApiResponse(200, cart, "Items added to cart successfully")
+//   );
+// });
 
 
 // const viewCart = asynchandler(async (req, res) => {
@@ -663,6 +663,143 @@ const addToCart = asynchandler(async (req, res) => {
 // });
 
 
+
+
+
+const addToCart = asynchandler(async (req, res) => {
+
+  // ==========================
+  // 🔐 AUTH CHECK
+  // ==========================
+  if (!req.user || !req.user._id) {
+    throw new ApiError(401, "Unauthorized user");
+  }
+
+  const userId = req.user._id;
+
+  const { items } = req.body;
+
+  if (!items || !Array.isArray(items) || items.length === 0) {
+    throw new ApiError(400, "Items are required");
+  }
+
+  // ==========================
+  // 🔥 ATOMIC FIND OR CREATE
+  // ==========================
+  let cart = await Cart.findOneAndUpdate(
+    { user: userId },
+    { $setOnInsert: { user: userId, items: [] } },
+    { new: true, upsert: true }
+  );
+
+  if (!cart) {
+    throw new ApiError(500, "Cart creation failed");
+  }
+
+  // ==========================
+  // 🔁 LOOP THROUGH ITEMS
+  // ==========================
+  for (const item of items) {
+
+    const {
+      type,
+      productId,
+      comboId,
+      quantity = 1,
+      selections = []
+    } = item;
+
+    // ==========================
+    // 🛒 PRODUCT
+    // ==========================
+    if (type === "product") {
+
+      if (!mongoose.Types.ObjectId.isValid(productId)) {
+        throw new ApiError(400, "Invalid product ID");
+      }
+
+      const product = await Product.findById(productId);
+
+      if (!product || !product.isAvailable) {
+        throw new ApiError(404, "Product not available");
+      }
+
+      const existingItem = cart.items.find(
+        i => i.type === "product" && i.productId?.toString() === productId
+      );
+
+      if (existingItem) {
+        existingItem.quantity += quantity;
+      } else {
+        cart.items.push({
+          itemId: new mongoose.Types.ObjectId(), // 🔥 NEW FIELD
+          type: "product",
+          productId,
+          quantity
+        });
+      }
+    }
+
+    // ==========================
+    // 🍽️ COMBO
+    // ==========================
+    else if (type === "combo") {
+
+      if (!mongoose.Types.ObjectId.isValid(comboId)) {
+        throw new ApiError(400, "Invalid combo ID");
+      }
+
+      const combo = await Combo.findById(comboId);
+
+      if (!combo || !combo.isActive) {
+        throw new ApiError(404, "Combo not available");
+      }
+
+      combo.rules.forEach(rule => {
+
+        if (rule.isFixed) return;
+
+        const userSelection = selections.find(
+          s => s.ruleId.toString() === rule._id.toString()
+        );
+
+        if (!userSelection && !rule.isOptional) {
+          throw new ApiError(400, `Selection required for ${rule.title}`);
+        }
+
+        if (userSelection) {
+          if (userSelection.products.length !== rule.quantity) {
+            throw new ApiError(
+              400,
+              `Invalid selection for ${rule.title}`
+            );
+          }
+        }
+      });
+
+      cart.items.push({
+        itemId: new mongoose.Types.ObjectId(), // 🔥 NEW FIELD
+        type: "combo",
+        comboId,
+        quantity,
+        selections
+      });
+    }
+
+    else {
+      throw new ApiError(400, "Invalid item type");
+    }
+  }
+
+  // ==========================
+  // 💾 SAVE CART
+  // ==========================
+  await cart.save();
+
+  return res.status(200).json(
+    new ApiResponse(200, cart, "Items added to cart successfully")
+  );
+});
 
 const viewCart = asynchandler(async (req, res) => {
   const userId = req.user?._id;
