@@ -1048,7 +1048,8 @@ const getNextDeliveryDate = asynchandler(async (req, res) => {
     // ==========================
     // 🔥 CONFIG (DYNAMIC)
     // ==========================
-    const deliveryDays = [1, 3, 5]; // Monday, Wednesday, Friday
+    // const deliveryDays = [1, 3, 5]; // Monday, Wednesday, Friday
+    const deliveryDays = []; // Monday, Wednesday, Friday
     const cutoffHour = 22; // 10 PM
 
     // ==========================
@@ -1148,6 +1149,10 @@ const getNextDeliveryDate = asynchandler(async (req, res) => {
         )
     );
 });
+
+
+
+
 
 export {
     placeOrder,
