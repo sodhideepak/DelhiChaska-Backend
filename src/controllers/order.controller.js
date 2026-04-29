@@ -1458,13 +1458,15 @@ const clearCart = asynchandler(async (req, res) => {
   );
 });
 
+
+
 const getNextDeliveryDate = asynchandler(async (req, res) => {
 
     // ==========================
     // 🔥 CONFIG (DYNAMIC)
     // ==========================
     // const deliveryDays = [1, 3, 5]; // Monday, Wednesday, Friday
-    const deliveryDays = [3]; // Monday, Wednesday, Friday
+    const deliveryDays = [1]; // Monday, Wednesday, Friday
     const cutoffHour = 22; // 10 PM
 
     // ==========================
