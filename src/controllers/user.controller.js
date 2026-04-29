@@ -100,11 +100,11 @@ const send_register_otp = asynchandler(async (email, otp, expiresAt) => {
         const mailoptions = {
             from: process.env.emailusername,
             to: email,
-            subject: "OTP to Register on Heetox",
+            subject: "OTP to Register on Delhi Chaska",
             html: `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
         <div style="text-align: center;">
-            <h2 style="color: #333;">Heetox</h2>
+            <h2 style="color: #333;">Delhi Chaska</h2>
             <h3 style="color: #444;">OTP Verification</h3>
         </div>
         <div style="padding: 20px; text-align: center;">
@@ -120,7 +120,7 @@ const send_register_otp = asynchandler(async (email, otp, expiresAt) => {
         
         <div style="margin-top: 30px; text-align: center; color: #aaa; font-size: 12px;">
             <p>If you did not request this OTP, please ignore this email.</p>
-            <p>&copy; 2024 Heetox. All rights reserved.</p>
+            <p>&copy; 2026 Delhi Chaska. All rights reserved.</p>
         </div>
     </div>
     `
@@ -233,7 +233,7 @@ const startRegistration = asynchandler(async (req, res) => {
     });
 
     // send OTP mail
-    await send_register_otp(email, otp, expiresAt);
+    send_register_otp(email, otp, expiresAt);
 
     return res.status(200).json(
         new ApiResponse(200, {}, "OTP sent to email")
@@ -707,20 +707,20 @@ const loginuser = asynchandler(async (req, res) => {
 
 
     const options = {
-    httpOnly: true,
-    secure: "false",
-    sameSite: "lax",
-    maxAge: 7 * 24 * 60 * 60 * 1000
-};
+        httpOnly: true,
+        secure: "false",
+        sameSite: "lax",
+        maxAge: 7 * 24 * 60 * 60 * 1000
+    };
 
     return res
         .status(200)
-        .cookie("accesstoken", accesstoken, options) 
+        .cookie("accesstoken", accesstoken, options)
         .cookie("refreshtoken", refreshtoken, options)
         .json(
             new ApiResponse(
                 200,
-                { 
+                {
                     user: loggedinuser,
                     accesstoken,
                     refreshtoken
@@ -1248,53 +1248,205 @@ const updateAccountDetails = asynchandler(async (req, res) => {
 
 
 
+const updateUserDetails = asynchandler(async (req, res) => {
+  const userId = req.user?._id;
 
-const re_verifyemail = asynchandler(async (req, res) => {
+  if (!userId) {
+    throw new ApiError(401, "Unauthorized");
+  }
 
+  // =========================
+  // 📥 INPUT FIELDS
+  // =========================
+  const {
+    name,
+    phone,
+    avatar
+  } = req.body;
 
+  // =========================
+  // 🚫 REMOVE RESTRICTED FIELDS
+  // =========================
+  const updateData = {};
 
-    const { email, Otp } = req.body
-    const User = await user.findOne({ email: email })
+  if (name) updateData.name = name;
+  if (phone) updateData.phone = phone;
+  if (avatar) updateData.avatar = avatar;
 
-    const verifyotp = await otp.findOne(
-        { email: email, Otp: Otp }
-    );
+  // ❌ explicitly ignore address / sensitive fields
+  delete req.body.addresses;
+  delete req.body.password;
+  delete req.body.refreshToken;
 
-    if (verifyotp) {
-        await otp.deleteOne({ _id: verifyotp._id })
-    }
-    else {
-        throw new ApiError(409, "invalid otp")
-    }
+  if (Object.keys(updateData).length === 0) {
+    throw new ApiError(400, "No valid fields provided for update");
+  }
 
-
-    const userdata = await user.findByIdAndUpdate(
-        User._id, {
-        $set: {
-            email: email,
-            is_email_verified: 1
-
-
-        },
-
+  // =========================
+  // 🔁 UPDATE USER
+  // =========================
+  const updatedUser = await user.findByIdAndUpdate(
+    userId,
+    {
+      $set: updateData
     },
-        {
-            new: true
-        }
-    ).select("-password -refreshToken -token").lean()
+    {
+      new: true,
+      runValidators: true
+    }
+  )
+    .select("-password -refreshToken -token")
+    .populate("addresses")
+    .lean();
+
+  if (!updatedUser) {
+    throw new ApiError(404, "User not found");
+  }
+
+  return res.status(200).json(
+    new ApiResponse(200, updatedUser, "User updated successfully")
+  );
+});
 
 
-    userdata.DOB = formattedDate
-    userdata.age = calculate_age(userdata.DOB)
 
 
-    return res
-        .status(200)
-        .json(new ApiResponse(200, userdata, "mail has been updated sucessfully"))
+const updateUserEmail = asynchandler(async (req, res) => {
+  const userId = req.user?._id;
+
+  if (!userId) {
+    throw new ApiError(401, "Unauthorized");
+  }
+
+  const { email } = req.body;
+
+  if (!email) {
+    throw new ApiError(400, "Email is required");
+  }
+
+  // =========================
+  // 📧 BASIC VALIDATION
+  // =========================
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  if (!emailRegex.test(email)) {
+    throw new ApiError(400, "Invalid email format");
+  }
+
+  // =========================
+  // 🔍 CHECK DUPLICATE EMAIL
+  // =========================
+  const existingUser = await user.findOne({ email });
+
+  if (existingUser && existingUser._id.toString() !== userId.toString()) {
+    throw new ApiError(400, "Email already in use");
+  }
+
+  // =========================
+  // 🔁 UPDATE EMAIL + RESET VERIFICATION
+  // =========================
+  const updatedUser = await user.findByIdAndUpdate(
+    userId,
+    {
+      $set: {
+        email,
+        isEmailVerified: false   // 🔥 KEY PART
+      }
+    },
+    {
+      new: true,
+      runValidators: true
+    }
+  )
+    .select("-password -refreshToken -token")
+    .populate("addresses")
+    .lean();
+
+  if (!updatedUser) {
+    throw new ApiError(404, "User not found");
+  }
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      updatedUser,
+      "Email updated successfully. Please verify your new email."
+    )
+  );
+});
 
 
 
-})
+const verifyEmail = asynchandler(async (req, res) => {
+  const { email, otp: inputOtp } = req.body;
+
+  if (!email || !inputOtp) {
+    throw new ApiError(400, "Email and OTP are required");
+  }
+
+  // =========================
+  // 🔍 FIND USER
+  // =========================
+  const User = await user.findOne({ email });
+
+  if (!User) {
+    throw new ApiError(404, "User not found");
+  }
+
+  // =========================
+  // 🔐 VERIFY OTP
+  // =========================
+  const verifyOtpDoc = await otp.findOne({
+    email,
+    Otp: inputOtp
+  });
+
+  if (!verifyOtpDoc) {
+    throw new ApiError(400, "Invalid or expired OTP");
+  }
+
+  // (optional) check expiry if you store it
+  if (verifyOtpDoc.expiresAt && verifyOtpDoc.expiresAt < new Date()) {
+    await otp.deleteOne({ _id: verifyOtpDoc._id });
+    throw new ApiError(400, "OTP expired");
+  }
+
+  // =========================
+  // 🧹 DELETE OTP (one-time use)
+  // =========================
+  await otp.deleteOne({ _id: verifyOtpDoc._id });
+
+  // =========================
+  // ✅ UPDATE USER
+  // =========================
+  const updatedUser = await user.findByIdAndUpdate(
+    User._id,
+    {
+      $set: {
+        isEmailVerified: true   // ✅ FIXED FIELD NAME
+      }
+    },
+    {
+      new: true
+    }
+  )
+    .select("-password -refreshToken -token")
+    .populate("addresses")
+    .lean();
+
+  if (!updatedUser) {
+    throw new ApiError(500, "Failed to verify email");
+  }
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      updatedUser,
+      "Email verified successfully"
+    )
+  );
+});
+
 
 
 
@@ -1748,6 +1900,12 @@ export {
     bookingformenquiry,
     deleteUser,
     deleteAllAddresses,
-    deleteAddress
+    deleteAddress,
+    verifyEmail,
+    updateUserEmail,
+    updateUserDetails,
+    
+
+    
 
 }

@@ -25,7 +25,11 @@ import {
     verifyEmail_registeruser,
     deleteUser,
     deleteAllAddresses,
-    deleteAddress
+    deleteAddress,
+    verifyEmail,
+    updateUserEmail,
+    updateUserDetails,
+    
      } from "../controllers/user.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
@@ -85,6 +89,18 @@ router.route("/resetpassword").post(resetpassword)
 
 router.route("/deleteuser/:userId").delete(deleteUser)
 
+ 
+
+
+ 
+
+
+ 
+router.route("/verify-email").post(verifyJWT, verifyEmail);
+
+router.route("/update-email").post(verifyJWT, updateUserEmail);
+
+router.route("/update-details").patch(verifyJWT, updateUserDetails);
 
 
 

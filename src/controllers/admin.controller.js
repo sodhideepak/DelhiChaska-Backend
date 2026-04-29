@@ -12,6 +12,10 @@ import jwt from "jsonwebtoken"
 import * as nodemailer from "nodemailer"
 import Randomstring from "randomstring";
 import bcrypt from "bcrypt";
+import { Order }   from "../models/order.model.js";
+import { Cart }    from "../models/cart.model.js";
+import { Product } from "../models/product.model.js";
+import { Address } from "../models/address.model.js";
 
 
 
@@ -1476,6 +1480,180 @@ const getCityByZip = asynchandler(async (req, res) => {
 });
 
 
+
+
+
+
+
+// order controllers
+
+
+
+
+
+// ─────────────────────────────────────────────
+// 📋 VIEW ALL ORDERS (Admin)
+// ─────────────────────────────────────────────
+const adminViewAllOrders = asynchandler(async (req, res) => {
+    ensureSuperAdmin(req);
+  // optional filters via query params
+  // e.g. /admin/orders?status=pending&payment=cod&page=1&limit=10
+  const { status, payment, page = 1, limit = 10 } = req.query;
+
+  const filter = {};
+  if (status)  filter.status           = status;
+  if (payment) filter["payment.method"] = payment;
+
+  const skip = (Number(page) - 1) * Number(limit);
+
+  const [orders, total] = await Promise.all([
+    Order.find(filter)
+      .populate("userId", "full_name email phone_number")
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(Number(limit))
+      .lean(),
+    Order.countDocuments(filter)
+  ]);
+
+  if (!orders || orders.length === 0) {
+    return res.status(200).json(
+      new ApiResponse(200, { orders: [], total: 0 }, "No orders found")
+    );
+  }
+
+  const formattedOrders = orders.map(order => ({
+    orderId:       order._id,
+    user: {
+      userId:      order.userId?._id,
+      name:        order.userId?.full_name,
+      email:       order.userId?.email,
+      phone:       order.userId?.phone_number
+    },
+    status:        order.status,
+    payment:       order.payment,
+    totalAmount:   order.totalAmount,
+    itemCount:     order.items.length,
+    items:         order.items.map(item => ({
+      productId:   item.productId,
+      name:        item.name,
+      quantity:    item.quantity,
+      price:       item.price,
+      type:        item.type,
+      total:       item.price * item.quantity
+    })),
+    deliveryDetails: order.deliveryDetails,
+    placedAt:      order.createdAt
+  }));
+
+  return res.status(200).json(
+    new ApiResponse(200, {
+      orders: formattedOrders,
+      pagination: {
+        total,
+        page:       Number(page),
+        limit:      Number(limit),
+        totalPages: Math.ceil(total / Number(limit))
+      }
+    }, "Orders fetched successfully")
+  );
+});
+
+
+// ─────────────────────────────────────────────
+// 🔄 UPDATE ORDER STATUS (Admin)  → sends mail
+// ─────────────────────────────────────────────
+const adminUpdateOrderStatus = asynchandler(async (req, res) => {
+    ensureSuperAdmin(req);
+  const { orderId } = req.params;
+  const { status }  = req.body;
+
+  const allowedStatuses = [
+    "confirmed",
+    "preparing",
+    "out_for_delivery",
+    "delivered",
+    "cancelled"
+  ];
+
+  if (!status || !allowedStatuses.includes(status)) {
+    throw new ApiError(
+      400,
+      `Invalid status. Allowed: ${allowedStatuses.join(", ")}`
+    );
+  }
+
+  const order = await Order.findById(orderId)
+    .populate("userId", "full_name email");
+
+  if (!order) {
+    throw new ApiError(404, "Order not found");
+  }
+
+  if (order.status === "delivered" || order.status === "cancelled") {
+    throw new ApiError(
+      400,
+      `Cannot update a ${order.status} order`
+    );
+  }
+
+  order.status = status;
+  await order.save();
+
+  // ── Send status update mail to user ──
+  await send_order_status_mail(
+    order.userId.email,
+    order.userId.full_name,
+    order,
+    status
+  );
+
+  return res.status(200).json(
+    new ApiResponse(200, {
+      orderId:   order._id,
+      newStatus: order.status
+    }, `Order status updated to "${status}" and mail sent`)
+  );
+});
+
+
+// ─────────────────────────────────────────────
+// 💳 UPDATE PAYMENT STATUS (Admin)
+// ─────────────────────────────────────────────
+const adminUpdatePaymentStatus = asynchandler(async (req, res) => {
+    ensureSuperAdmin(req);
+  const { orderId }       = req.params;
+  const { paymentStatus } = req.body;
+
+  const allowedPaymentStatuses = ["pending", "paid", "failed"];
+
+  if (!paymentStatus || !allowedPaymentStatuses.includes(paymentStatus)) {
+    throw new ApiError(
+      400,
+      `Invalid payment status. Allowed: ${allowedPaymentStatuses.join(", ")}`
+    );
+  }
+
+  const order = await Order.findById(orderId);
+
+  if (!order) {
+    throw new ApiError(404, "Order not found");
+  }
+
+  order.payment.status = paymentStatus;
+  await order.save();
+
+  return res.status(200).json(
+    new ApiResponse(200, {
+      orderId:           order._id,
+      newPaymentStatus:  order.payment.status
+    }, `Payment status updated to "${paymentStatus}"`)
+  );
+});
+
+
+
+
 export {
         registeruser,
         startEmployeeRegistration,
@@ -1499,6 +1677,9 @@ export {
         addZipPrefix,
         getZipPrefixes,
         deleteZipPrefix,
-        getCityByZip
+        getCityByZip,
+        adminViewAllOrders,
+        adminUpdateOrderStatus,
+        adminUpdatePaymentStatus
 
     }

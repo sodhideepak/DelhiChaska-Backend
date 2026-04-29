@@ -75,19 +75,23 @@ const orderSchema = new mongoose.Schema(
 
     // optional delivery info
     deliveryDetails: {
-      address: {
-        type: String,
-        trim: true
-      },
-      phone: {
-        type: String,
-        trim: true
-      },
-      instructions: {
-        type: String,
-        trim: true
-      }
-    },
+  addressId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "address"
+  },
+  addressLine1: { type: String, trim: true },
+  addressLine2: { type: String, trim: true },
+  city:         { type: String, trim: true },
+  state:        { type: String, trim: true },
+  zipCode:      { type: String, trim: true },
+  country:      { type: String, trim: true },
+  location: {
+    lat: Number,
+    lng: Number
+  },
+  phone:        { type: String, trim: true },
+  instructions: { type: String, trim: true }  // optional, user can still pass this
+  },
 
     // payment info
     payment: {

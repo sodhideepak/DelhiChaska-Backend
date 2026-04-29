@@ -26,7 +26,10 @@ import {
     addZipPrefix,
     getZipPrefixes,
     deleteZipPrefix,
-    getCityByZip
+    getCityByZip,
+    adminViewAllOrders,
+    adminUpdateOrderStatus,
+    adminUpdatePaymentStatus
      } from "../controllers/admin.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
@@ -103,6 +106,15 @@ router.route("/zip/:zip/country/:country").get(verifyJWT, getCityByZip);
 
 
 
+
+
+
+
+// ─────── ORDER ROUTES ─────── 
+
+router.route("/orders/all").get(verifyJWT,adminViewAllOrders);
+router.route("/order/:orderId/status").patch(verifyJWT,adminUpdateOrderStatus);
+router.route("/order/:orderId/payment").patch(verifyJWT,adminUpdatePaymentStatus);
 
 
 
