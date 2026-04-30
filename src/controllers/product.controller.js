@@ -730,17 +730,31 @@ const createCombo = asynchandler(async (req, res) => {
   });
 });
 
-
 const getCombos = asynchandler(async (req, res) => {
+  const { isActive } = req.query;
 
-  const combos = await Combo.find({ isActive: true })
-    .select("-__v") // optional: remove unwanted fields
-    .sort({ createdAt: -1 }); // latest first
+  let filter = {};
+
+  // 🔥 Availability logic (same as products)
+  if (isActive === "true") {
+    filter.isActive = true;
+  } else if (isActive === "false") {
+    filter.isActive = false;
+  } else if (isActive === "all") {
+    // no filter → fetch all
+  } else {
+    // ✅ default behavior
+    filter.isActive = true;
+  }
+
+  const combos = await Combo.find(filter)
+    .select("-__v")
+    .sort({ createdAt: -1 });
 
   if (!combos || combos.length === 0) {
     return res.status(200).json({
       success: true,
-      message: "No active combos found",
+      message: "No combos found",
       data: []
     });
   }
@@ -750,7 +764,6 @@ const getCombos = asynchandler(async (req, res) => {
     count: combos.length,
     data: combos
   });
-
 });
 
 
@@ -802,7 +815,7 @@ const getComboById = asynchandler(async (req, res) => {
 
 
 
-const deleteCombo = asynchandler(async (req, res) => {
+const toggleComboAvailability = asynchandler(async (req, res) => {
   const { comboId } = req.params;
 
   // 🔒 Validate ID
@@ -824,6 +837,32 @@ const deleteCombo = asynchandler(async (req, res) => {
     new ApiResponse(200, null, "Combo deleted (soft delete)")
   );
 });
+
+
+
+
+
+const deleteCombo = asynchandler(async (req, res) => {
+  const { comboId } = req.params;
+
+  // 🔒 Validate ID
+  if (!mongoose.Types.ObjectId.isValid(comboId)) {
+    throw new ApiError(400, "Invalid combo ID");
+  }
+
+  // 🔥 Direct delete from DB
+  const deletedCombo = await Combo.findByIdAndDelete(comboId);
+
+  if (!deletedCombo) {
+    throw new ApiError(404, "Combo not found");
+  }
+
+  return res.status(200).json(
+    new ApiResponse(200, deletedCombo, "Combo permanently deleted")
+  );
+});
+
+
 
 
 

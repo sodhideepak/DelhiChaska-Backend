@@ -96,11 +96,11 @@ router.route("/deleteuser/:userId").delete(deleteUser)
 
 
  
-router.route("/verify-email").post(verifyJWT, verifyEmail);
+router.route("/verifyemail").post(verifyJWT, verifyEmail);
 
-router.route("/update-email").post(verifyJWT, updateUserEmail);
+router.route("/updateemail").post(verifyJWT, updateUserEmail);
 
-router.route("/update-details").patch(verifyJWT, updateUserDetails);
+router.route("/updatedetails").patch(verifyJWT, updateUserDetails);
 
 
 

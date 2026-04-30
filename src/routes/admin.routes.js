@@ -6,6 +6,7 @@ import {
     getAllEmployeesByStatus,
     verifyEmployeeRegistration,
     send_otp,
+    loginStaff,
     loginuser,
     logout,
     delete_account,
@@ -34,6 +35,7 @@ import {
 import { upload } from "../middlewares/multer.middleware.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 import { validateApiKey } from "../middlewares/validateapi.middleware.js";
+import { verifyStaffJWT } from "../middlewares/authstaff.middleware.js";
 
 
 const router =Router()
@@ -45,10 +47,10 @@ router.route("/register").post( registeruser)
 
 router.route("/startRegistration").post(startEmployeeRegistration)
 router.route("/employee/startRegistration").post(startEmployeeRegistration)
-router.route("/superadmin/profile").get(verifyJWT,getSuperAdminProfile)
-router.route("/employees/all").get(verifyJWT,getAllEmployeesByStatus)
-router.route("/employee/verify/:tempEmployeeId").post(verifyJWT,verifyEmployeeRegistration)
-
+router.route("/superadmin/profile").get(verifyStaffJWT,getSuperAdminProfile)
+router.route("/employees/all").get(verifyStaffJWT,getAllEmployeesByStatus)
+router.route("/employee/verify/:tempEmployeeId").post(verifyStaffJWT,verifyEmployeeRegistration)
+router.route("/employee/login").post(loginStaff)
 
 
 router.route("/sendotp").post(send_otp)
@@ -98,10 +100,10 @@ router.route("/bookingenquiry").post(bookingformenquiry)
 
 
 // zip prefix routes
-router.route("/addzipprefix").post(verifyJWT, addZipPrefix);
-router.route("/zipprefixes").get(verifyJWT, getZipPrefixes);
-router.route("/zipprefix/:id").delete(verifyJWT, deleteZipPrefix);
-router.route("/zip/:zip/country/:country").get(verifyJWT, getCityByZip);
+router.route("/addzipprefix").post(verifyStaffJWT, addZipPrefix);
+router.route("/zipprefixes").get(verifyStaffJWT, getZipPrefixes);
+router.route("/zipprefix/:id").delete(verifyStaffJWT, deleteZipPrefix);
+router.route("/zip/:zip/country/:country").get(verifyStaffJWT, getCityByZip);
 
 
 
@@ -112,9 +114,9 @@ router.route("/zip/:zip/country/:country").get(verifyJWT, getCityByZip);
 
 // ─────── ORDER ROUTES ─────── 
 
-router.route("/orders/all").get(verifyJWT,adminViewAllOrders);
-router.route("/order/:orderId/status").patch(verifyJWT,adminUpdateOrderStatus);
-router.route("/order/:orderId/payment").patch(verifyJWT,adminUpdatePaymentStatus);
+router.route("/orders/all").get(verifyStaffJWT,adminViewAllOrders);
+router.route("/order/:orderId/status").patch(verifyStaffJWT,adminUpdateOrderStatus);
+router.route("/order/:orderId/payment").patch(verifyStaffJWT,adminUpdatePaymentStatus);
 
 
 

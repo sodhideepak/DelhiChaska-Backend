@@ -49,7 +49,10 @@ const calculate_age = function calculateAge(dob) {
 }
 
 const ensureSuperAdmin = (req) => {
-    const isSuperAdmin = req.user?.email?.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
+    const isSuperAdmin = req.staff?.email?.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
+console.log(req.staff?.email?.toLowerCase());
+console.log(SUPER_ADMIN_EMAIL.toLowerCase());
+
 
     if (!isSuperAdmin) {
         throw new ApiError(403, "only super admin can perform this action");
@@ -57,7 +60,7 @@ const ensureSuperAdmin = (req) => {
 
     return {
         role: HARD_CODED_SUPER_ADMIN_ROLE,
-        email: req.user.email
+        email: req.staff.email
     };
 };
 
@@ -130,15 +133,15 @@ const sendresetpasswordmail=asynchandler(async(fullname,email,token)=>{
 
 const generateAccessAndRefreshTokens=async(userid)=>{
     try {
-        const User = await user.findById(userid)
+        const employee = await Employee.findById(userid)
         // console.log(User);
-        const accesstoken = User.generateAccessToken()
-        const refreshtoken = User.generateRefreshToken()
+        const accesstoken = employee.generateAccessToken()
+        const refreshtoken = employee.generateRefreshToken()
         // console.log(refreshtoken);
-        User.refreshToken=refreshtoken
+        employee.refreshToken=refreshtoken
         // console.log("1 :",User.refreshtoken);
         // console.log("2 :",refreshtoken);
-        await User.save({ validateBeforeSave: false })
+        await employee.save({ validateBeforeSave: false })
 
 
         return{accesstoken,refreshtoken}
@@ -723,6 +726,91 @@ const startEmployeeRegistration = asynchandler(async(req,res)=>{
         createdAt: tempEmployee.createdAt
     }, `employee registration submitted successfully! ${emailStatus}`))
 })
+
+
+
+const loginStaff = asynchandler(async (req, res) => {
+
+    const { email, password } = req.body;
+
+    const api = req.headers.apikey;
+    console.log(api);
+
+    // ==========================
+    // 🔒 Validation
+    // ==========================
+    if (!email) {
+        throw new ApiError(400, "email is required");
+    }
+
+    // ==========================
+    // 🔍 Find Employee
+    // ==========================
+    const staff = await Employee.findOne({
+        $or: [{ email }]
+    });
+
+    if (!staff) {
+        throw new ApiError(400, "staff does not exist");
+    }
+
+    // ==========================
+    // 🚫 Check Approval (important for staff)
+    // ==========================
+    if (staff.status !== "verified") {
+        throw new ApiError(403, "Your account is not verified yet");
+    }
+
+    // ==========================
+    // 🔑 Password Check
+    // ==========================
+    const isPasswordValid = await staff.isPasswordcorrect(password);
+
+    if (!isPasswordValid) {
+        throw new ApiError(400, "invalid staff credentials");
+    }
+
+    // ==========================
+    // 🎟️ Tokens
+    // ==========================
+    const { accesstoken, refreshtoken } = await generateAccessAndRefreshTokens(staff._id);
+
+    // ==========================
+    // 📦 Clean User Data
+    // ==========================
+    const loggedInStaff = await Employee.findById(staff._id)
+        .select("-password -refreshToken -token")
+        .lean();
+
+    // ==========================
+    // 🍪 Cookie Options
+    // ==========================
+    const options = {
+        httpOnly: true,
+        secure: false,
+    };
+
+    // ==========================
+    // 📤 Response
+    // ==========================
+    return res
+        .status(200)
+        .cookie("accesstoken", accesstoken, options)
+        .cookie("refreshtoken", refreshtoken, options)
+        .json(
+            new ApiResponse(
+                200,
+                {
+                    staff: loggedInStaff,
+                    accesstoken,
+                    refreshtoken
+                },
+                "staff logged in successfully"
+            )
+        );
+
+});
+
 
 
 
@@ -1661,6 +1749,7 @@ export {
         getAllEmployeesByStatus,
         verifyEmployeeRegistration,
         send_otp,
+        loginStaff,
         loginuser,
         logout,
         delete_account,
