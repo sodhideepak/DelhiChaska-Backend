@@ -7,6 +7,7 @@ import {
     verifyEmployeeRegistration,
     send_otp,
     loginStaff,
+    logoutStaff,
     loginuser,
     logout,
     delete_account,
@@ -51,6 +52,7 @@ router.route("/superadmin/profile").get(verifyStaffJWT,getSuperAdminProfile)
 router.route("/employees/all").get(verifyStaffJWT,getAllEmployeesByStatus)
 router.route("/employee/verify/:tempEmployeeId").post(verifyStaffJWT,verifyEmployeeRegistration)
 router.route("/employee/login").post(loginStaff)
+router.route("/employee/logout").post(verifyStaffJWT,logoutStaff)
 
 
 router.route("/sendotp").post(send_otp)

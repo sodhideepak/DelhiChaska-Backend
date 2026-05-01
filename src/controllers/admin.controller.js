@@ -813,6 +813,53 @@ const loginStaff = asynchandler(async (req, res) => {
 
 
 
+const logoutStaff = asynchandler(async (req, res) => {
+
+    // ==========================
+    // 🔐 Get Logged-in User
+    // ==========================
+    const staffId = req.staff?._id;
+
+    if (!staffId) {
+        throw new ApiError(401, "Unauthorized request");
+    }
+
+    // ==========================
+    // 🧹 Remove Refresh Token from DB
+    // ==========================
+    await Employee.findByIdAndUpdate(
+        staffId,
+        {
+            $unset: { refreshToken: 1 } // removes field
+        },
+        { new: true }
+    );
+
+    // ==========================
+    // 🍪 Cookie Options (same as login)
+    // ==========================
+    const options = {
+        httpOnly: true,
+        secure: false,
+    };
+
+    // ==========================
+    // 🚪 Clear Cookies
+    // ==========================
+    return res
+        .status(200)
+        .clearCookie("accesstoken", options)
+        .clearCookie("refreshtoken", options)
+        .json(
+            new ApiResponse(
+                200,
+                {},
+                "staff logged out successfully"
+            )
+        );
+
+});
+
 
 
 
@@ -1750,6 +1797,7 @@ export {
         verifyEmployeeRegistration,
         send_otp,
         loginStaff,
+        logoutStaff,
         loginuser,
         logout,
         delete_account,
