@@ -1212,14 +1212,85 @@ const updateAllProductImages = asynchandler(async (req, res) => {
 
 
 
+// const adminGetProductsWithAreaStatus = asynchandler(async (req, res) => {
+//     ensureSuperAdmin(req);
+
+//     const { page = 1, limit = 10,  category, isAvailable } = req.query;
+//     // console.log("area:", area);
+//     const { area } = req.params;
+
+// console.log("area:", area);
+
+//     let filter = {};
+
+//     if (category) {
+//         filter.category = { $regex: category, $options: "i" };
+//     }
+
+//     if (isAvailable !== undefined) {
+//         filter.isAvailable = isAvailable === "true";
+//     }
+
+//     const skip = (parseInt(page) - 1) * parseInt(limit);
+
+//     const products = await Product.find(filter)
+//         .sort({ createdAt: -1 })
+//         .skip(skip)
+//         .limit(parseInt(limit))
+//         .lean();
+
+//     const totalProducts = await Product.countDocuments(filter);
+//     const totalPages = Math.ceil(totalProducts / limit);
+
+//     const normalizedArea = area?.toLowerCase().trim();
+
+//     const updatedProducts = products.map((product) => {
+//         let isLiveInArea = true;
+
+//        if (normalizedArea) {
+//         if (!product.areas || product.areas.length === 0) {
+//         isLiveInArea = false; // ❌ empty = not live anywhere
+    
+        
+//         } else {
+//         isLiveInArea = product.areas
+//             .map(a => a.toLowerCase())
+//             .includes(normalizedArea);
+//         }
+// }
+
+//         return {
+//             ...product,
+//             isLiveInArea
+//         };
+//     });
+
+//     return res.status(200).json(
+//         new ApiResponse(
+//             200,
+//             {
+//                 products: updatedProducts,
+//                 pagination: {
+//                     currentPage: parseInt(page),
+//                     totalPages,
+//                     totalProducts,
+//                     hasNextPage: page < totalPages,
+//                     hasPrevPage: page > 1
+//                 }
+//             },
+//             "Products fetched with area live status"
+//         )
+//     );
+// });
+
+
 const adminGetProductsWithAreaStatus = asynchandler(async (req, res) => {
     ensureSuperAdmin(req);
 
-    const { page = 1, limit = 10,  category, isAvailable } = req.query;
-    // console.log("area:", area);
+    const { page = 1, limit = 10, category, isAvailable } = req.query;
     const { area } = req.params;
 
-console.log("area:", area);
+    const normalizedArea = area?.toLowerCase().trim();
 
     let filter = {};
 
@@ -1242,22 +1313,19 @@ console.log("area:", area);
     const totalProducts = await Product.countDocuments(filter);
     const totalPages = Math.ceil(totalProducts / limit);
 
-    const normalizedArea = area?.toLowerCase().trim();
-
+    // 🔥 Add isLiveInArea
     const updatedProducts = products.map((product) => {
         let isLiveInArea = true;
 
-       if (normalizedArea) {
-        if (!product.areas || product.areas.length === 0) {
-        isLiveInArea = false; // ❌ empty = not live anywhere
-    
-        
-        } else {
-        isLiveInArea = product.areas
-            .map(a => a.toLowerCase())
-            .includes(normalizedArea);
+        if (normalizedArea) {
+            if (!product.areas || product.areas.length === 0) {
+                isLiveInArea = false; // ❌ not live anywhere
+            } else {
+                isLiveInArea = product.areas
+                    .map(a => a.toLowerCase())
+                    .includes(normalizedArea);
+            }
         }
-}
 
         return {
             ...product,
@@ -1265,11 +1333,29 @@ console.log("area:", area);
         };
     });
 
+    // 🔥 GROUP BY CATEGORY
+    const groupedMap = {};
+
+    updatedProducts.forEach((product) => {
+        const cat = product.category || "uncategorized";
+
+        if (!groupedMap[cat]) {
+            groupedMap[cat] = [];
+        }
+
+        groupedMap[cat].push(product);
+    });
+
+    const groupedProducts = Object.keys(groupedMap).map((cat) => ({
+        category: cat,
+        items: groupedMap[cat]
+    }));
+
     return res.status(200).json(
         new ApiResponse(
             200,
             {
-                products: updatedProducts,
+                products: groupedProducts, // ✅ changed here
                 pagination: {
                     currentPage: parseInt(page),
                     totalPages,
@@ -1282,9 +1368,6 @@ console.log("area:", area);
         )
     );
 });
-
-
-
 
 
 const makeProductLiveInArea = asynchandler(async (req, res) => {
