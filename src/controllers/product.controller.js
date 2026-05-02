@@ -124,11 +124,14 @@ const createProduct = asynchandler(async (req, res) => {
     }
 
     const PRODUCT_TYPE_CONFIG = {
-        dal: ["16oz", "32oz"],
-        sabji: ["16oz", "32oz"],
+        paneer: ["16oz", "32oz"],
+        veg_curry: ["16oz", "32oz"],
+        chicken: ["16oz", "32oz"],
+        mutton: ["16oz", "32oz"],
+        veg_dry: ["16oz", "32oz"],
         rice: ["half", "full"],
-        indochinese: ["half", "full"],
-        roti: []
+        chinese: ["half", "full"],
+        breads: []
     };
 
     const allowedSizes = PRODUCT_TYPE_CONFIG[product_type.toLowerCase()];
