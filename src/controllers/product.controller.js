@@ -226,6 +226,7 @@ const getAllProducts = asynchandler(async (req, res) => {
 
     let filter = {};
 
+    // 🔍 Filters
     if (category) {
         filter.category = { $regex: category, $options: "i" };
     }
@@ -234,35 +235,52 @@ const getAllProducts = asynchandler(async (req, res) => {
         filter.isAvailable = isAvailable === "true";
     }
 
-    const options = {
-        page: parseInt(page),
-        limit: parseInt(limit),
-        sort: { createdAt: -1 },
-        lean: true
-    };
+    const skip = (parseInt(page) - 1) * parseInt(limit);
 
+    // 📦 Fetch products
     const products = await Product.find(filter)
-        .sort(options.sort)
-        .limit(options.limit * 1)
-        .skip((options.page - 1) * options.limit)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(parseInt(limit))
         .lean();
 
+    // 🔢 Count
     const totalProducts = await Product.countDocuments(filter);
-    const totalPages = Math.ceil(totalProducts / options.limit);
+    const totalPages = Math.ceil(totalProducts / limit);
 
+    // 🧠 Group by category
+    const groupedProducts = {};
+
+    products.forEach((product) => {
+        const cat = product.category || "Uncategorized";
+
+        if (!groupedProducts[cat]) {
+            groupedProducts[cat] = [];
+        }
+
+        groupedProducts[cat].push(product);
+    });
+
+    // 🔁 Convert object → array format
+    const list = Object.keys(groupedProducts).map((cat) => ({
+        category: cat,
+        products: groupedProducts[cat],
+    }));
+
+    // 📤 Final Response
     const response = {
-        products,
+        list, // <-- grouped structure
         pagination: {
-            currentPage: options.page,
+            currentPage: parseInt(page),
             totalPages,
             totalProducts,
-            hasNextPage: options.page < totalPages,
-            hasPrevPage: options.page > 1
-        }
+            hasNextPage: page < totalPages,
+            hasPrevPage: page > 1,
+        },
     };
 
     return res.status(200).json(
-        new ApiResponse(200, response, "products fetched successfully")
+        new ApiResponse(200, response, "Products grouped by category")
     );
 });
 

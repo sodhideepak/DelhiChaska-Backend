@@ -1695,6 +1695,156 @@ const adminViewAllOrders = asynchandler(async (req, res) => {
 });
 
 
+
+const AREA_CITY_MAP = {
+  bay_area: [
+    "San Francisco",
+    "San Jose",
+    "Oakland",
+    "Berkeley",
+    "Palo Alto",
+    "Fremont",
+    "Santa Clara"
+  ],
+  seattle_area: [
+    "Seattle",
+    "Bellevue",
+    "Redmond",
+    "Tacoma",
+    "Everett"
+  ],
+  new_york_area: [
+    "New York",
+    "Brooklyn",
+    "Queens",
+    "Manhattan"
+  ]
+};
+
+
+const adminViewOrdersByArea = asynchandler(async (req, res) => {
+  ensureSuperAdmin(req);
+console.log(req.query);
+
+  const {
+    area,
+    status,
+    payment,
+    page = 1,
+    limit = 10,
+    date,
+    startDate,
+    endDate
+  } = req.query;
+
+  // ❌ Area required
+  if (!area) {
+    throw new ApiError(400, "Area is required");
+  }
+
+  // 🔍 Get cities from mapping
+  const cities = AREA_CITY_MAP[area.toLowerCase()];
+
+  if (!cities) {
+    throw new ApiError(400, "Invalid area provided");
+  }
+
+  // 🎯 Base Filter
+  const filter = {
+    "deliveryDetails.city": { $in: cities }
+  };
+
+  if (status) filter.status = status;
+  if (payment) filter["payment.method"] = payment;
+
+  // ==========================
+  // 📅 Date Filters
+  // ==========================
+
+  // 👉 Single Date
+  if (date) {
+    const selectedDate = new Date(date);
+
+    const startOfDay = new Date(selectedDate);
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const endOfDay = new Date(selectedDate);
+    endOfDay.setHours(23, 59, 59, 999);
+    console.log(startOfDay, endOfDay);
+    filter.createdAt = {
+      $gte: startOfDay,
+      $lte: endOfDay
+    };
+  }
+
+  // 👉 Date Range
+  if (startDate && endDate) {
+    filter.createdAt = {
+      $gte: new Date(startDate),
+      $lte: new Date(endDate)
+    };
+  }
+
+  // ==========================
+  // 📄 Pagination
+  // ==========================
+  const skip = (Number(page) - 1) * Number(limit);
+
+  const [orders, total] = await Promise.all([
+    Order.find(filter)
+      .populate("userId", "full_name email phone_number")
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(Number(limit))
+      .lean(),
+
+    Order.countDocuments(filter)
+  ]);
+
+  if (!orders.length) {
+    return res.status(200).json(
+      new ApiResponse(200, { orders: [], total: 0 }, "No orders found for this area")
+    );
+  }
+
+  const formattedOrders = orders.map(order => ({
+    orderId: order._id,
+    user: {
+      userId: order.userId?._id,
+      name: order.userId?.full_name,
+      email: order.userId?.email,
+      phone: order.userId?.phone_number
+    },
+    status: order.status,
+    payment: order.payment,
+    totalAmount: order.totalAmount,
+    itemCount: order.items.length,
+    items: order.items.map(item => ({
+      productId: item.productId,
+      name: item.name,
+      quantity: item.quantity,
+      price: item.price,
+      type: item.type,
+      total: item.price * item.quantity
+    })),
+    deliveryDetails: order.deliveryDetails,
+    placedAt: order.createdAt
+  }));
+
+  return res.status(200).json(
+    new ApiResponse(200, {
+      area,
+      citiesCovered: cities,
+      orders: formattedOrders,
+      pagination: {
+        total,
+        page: Number(page),
+        limit: Number(limit),
+        totalPages: Math.ceil(total / Number(limit))
+      }
+    }, "Orders fetched successfully by area")
+  );
+});
 // ─────────────────────────────────────────────
 // 🔄 UPDATE ORDER STATUS (Admin)  → sends mail
 // ─────────────────────────────────────────────
@@ -1816,6 +1966,7 @@ export {
         deleteZipPrefix,
         getCityByZip,
         adminViewAllOrders,
+        adminViewOrdersByArea,
         adminUpdateOrderStatus,
         adminUpdatePaymentStatus
 

@@ -31,7 +31,8 @@ import {
     getCityByZip,
     adminViewAllOrders,
     adminUpdateOrderStatus,
-    adminUpdatePaymentStatus
+    adminUpdatePaymentStatus,
+    adminViewOrdersByArea
      } from "../controllers/admin.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
@@ -119,6 +120,7 @@ router.route("/zip/:zip/country/:country").get(verifyStaffJWT, getCityByZip);
 router.route("/orders/all").get(verifyStaffJWT,adminViewAllOrders);
 router.route("/order/:orderId/status").patch(verifyStaffJWT,adminUpdateOrderStatus);
 router.route("/order/:orderId/payment").patch(verifyStaffJWT,adminUpdatePaymentStatus);
+router.route("/orders/area").get(verifyStaffJWT,adminViewOrdersByArea);
 
 
 

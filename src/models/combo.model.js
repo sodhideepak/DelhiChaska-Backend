@@ -1,55 +1,59 @@
 import mongoose from "mongoose";
 
-const comboSchema = new mongoose.Schema({
-  name: String,
-  description: String,
-  price: Number,
+const comboSchema = new mongoose.Schema(
+  {
+    name: String,
+    description: String,
+    price: Number,
 
-  size: {
-    type: String, // "16oz", "32oz"
-  },
+    size: String,
 
-  rules: [
-    {
-      title: String, // "Rotis", "Veg Curries", etc
+    rules: [
+      {
+        title: String,
+        category: [String],
+        quantity: Number,
 
-      category: [String], 
-      // e.g. ["roti"] OR ["veg"] OR ["paneer", "chicken"]
+        isFixed: {
+          type: Boolean,
+          default: false
+        },
 
-      quantity: Number, // how many user must select
+        fixedItems: [
+          {
+            productId: {
+              type: mongoose.Schema.Types.ObjectId,
+              ref: "Product"
+            },
+            quantity: Number
+          }
+        ],
 
-      isFixed: {
-        type: Boolean,
-        default: false
-      },
+        isOptional: {
+          type: Boolean,
+          default: false
+        },
 
-      fixedItems: [
-        {
-          productId: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: "Product"
-          },
-          quantity: Number
+        allowCustomSelection: {
+          type: Boolean,
+          default: true
         }
-      ],
-
-      isOptional: {
-        type: Boolean,
-        default: false
-      },
-
-      allowCustomSelection: {
-        type: Boolean,
-        default: true
       }
+    ],
+
+    isActive: {
+      type: Boolean,
+      default: true
+    },
+
+    // 🔥 AREA FIELD
+    areas: {
+      type: [String],
+      default: [],
+      index: true
     }
-  ],
-
-  isActive: {
-    type: Boolean,
-    default: true
-  }
-
-}, { timestamps: true });
+  },
+  { timestamps: true }
+);
 
 export const Combo = mongoose.model("Combo", comboSchema);
