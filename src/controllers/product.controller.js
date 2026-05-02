@@ -142,7 +142,7 @@ const createProduct = asynchandler(async (req, res) => {
 
 
     // const ALLOWED_FOOD_CLASS = ["veg_curry", "paneer", "chicken", "mutton", "veg_other"];
-    const ALLOWED_FOOD_CLASS = ["veg_curry", "paneer", "chicken"];
+    const ALLOWED_FOOD_CLASS = ["veg_curry", "paneer", "chicken", "mutton", "veg_other", "veg_dry", "rice", "chinese", "breads"];
 
     if (!ALLOWED_FOOD_CLASS.includes(food_class.toLowerCase())) {
         throw new ApiError(
