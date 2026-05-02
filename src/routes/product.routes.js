@@ -38,13 +38,13 @@ router.route("/category/:category").get(getProductsByCategory)
 
 
 // Super admin only routes (authentication required)
-router.route("/create").post(verifyStaffJWT, upload.single("image"), createProduct)
+router.route("/createproduct").post(verifyStaffJWT, upload.single("image"), createProduct)
 router.route("/createcombo").post(verifyJWT, createCombo)
 router.route("/update/:productId").patch(verifyJWT, upload.single("image"), updateProduct)
 router.route("/delete/:productId").delete(verifyStaffJWT, deleteProduct)
 router.route("/toggle/:productId").patch(verifyJWT, toggleProductAvailability)
 
-
+    
 router.route("/combos").get(getCombos);
 router.route("/singlecombo/:comboId").get(getComboById);
 router.route("/updatecombo/:comboId").patch(verifyJWT, updateCombo);
