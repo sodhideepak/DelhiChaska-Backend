@@ -40,7 +40,7 @@ router.route("/category/:category").get(getProductsByCategory)
 // Super admin only routes (authentication required)
 router.route("/createproduct").post(verifyStaffJWT, upload.single("image"), createProduct)
 router.route("/createcombo").post(verifyJWT, createCombo)
-router.route("/update/:productId").patch(verifyJWT, upload.single("image"), updateProduct)
+router.route("/update/:productId").patch(verifyStaffJWT, upload.single("image"), updateProduct)
 router.route("/delete/:productId").delete(verifyStaffJWT, deleteProduct)
 router.route("/toggle/:productId").patch(verifyJWT, toggleProductAvailability)
 
@@ -54,7 +54,7 @@ router.route("/updatecombostatus/:comboId").patch(verifyJWT, updateComboStatus);
 
 
 
-router.route("/updateimage/:productId").patch(verifyJWT, upload.single("image"), updateProductImage);
+router.route("/updateimage/:productId").patch(verifyStaffJWT, upload.single("image"), updateProductImage);
 
 
 // Area management routes
