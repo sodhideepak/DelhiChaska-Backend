@@ -19,7 +19,12 @@ import {
     getAllAreas,
     getAreaById,
     updateArea,
-    deleteArea
+    deleteArea,
+    updateAllProductImages,
+    adminGetProductsWithAreaStatus,
+    makeProductLiveInArea,
+    makeProductGlobal,
+    removeProductFromArea
 
 } from "../controllers/product.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
@@ -39,7 +44,7 @@ router.route("/category/:category").get(getProductsByCategory)
 
 // Super admin only routes (authentication required)
 router.route("/createproduct").post(verifyStaffJWT, upload.single("image"), createProduct)
-router.route("/createcombo").post(verifyJWT, createCombo)
+router.route("/createcombo").post(verifyStaffJWT, createCombo)
 router.route("/update/:productId").patch(verifyStaffJWT, upload.single("image"), updateProduct)
 router.route("/delete/:productId").delete(verifyStaffJWT, deleteProduct)
 router.route("/toggle/:productId").patch(verifyJWT, toggleProductAvailability)
@@ -47,7 +52,7 @@ router.route("/toggle/:productId").patch(verifyJWT, toggleProductAvailability)
     
 router.route("/combos").get(getCombos);
 router.route("/singlecombo/:comboId").get(getComboById);
-router.route("/updatecombo/:comboId").patch(verifyJWT, updateCombo);
+router.route("/updatecombo/:comboId").patch(verifyStaffJWT, updateCombo);
 router.route("/deletecombo/:comboId").delete(verifyStaffJWT, deleteCombo);
 router.route("/updatecombostatus/:comboId").patch(verifyJWT, updateComboStatus);
 
@@ -58,15 +63,24 @@ router.route("/updateimage/:productId").patch(verifyStaffJWT, upload.single("ima
 
 
 // Area management routes
-router.route("/createarea").post(verifyJWT, createArea)
+router.route("/createarea").post(verifyStaffJWT, createArea) 
 router.route("/getallareas").get(getAllAreas)
 router.route("/area/:areaId").get(getAreaById)
-router.route("/updatearea/:areaId").patch(verifyJWT, updateArea)
+router.route("/updatearea/:areaId").patch(verifyStaffJWT, updateArea)
 router.route("/deletearea/:areaId").delete(verifyStaffJWT, deleteArea)
 
 
 
+ router.route("/admin/products/areastatus/:area").get(verifyStaffJWT, adminGetProductsWithAreaStatus)
+ router.route("/admin/products/makeliveinarea/:productid").patch(verifyStaffJWT, makeProductLiveInArea)
+ router.route("/admin/products/makegloballive/:productid").patch(verifyStaffJWT, makeProductGlobal)
+ router.route("/admin/products/removefromarea/:productid").patch(verifyStaffJWT, removeProductFromArea)
 
+
+
+
+
+router.route("/updateallproductimages").patch(verifyStaffJWT, updateAllProductImages)
 
 router.route("/:productId").get(getProductById)
 export default router;
