@@ -11,7 +11,9 @@ const SUPER_ADMIN_EMAIL = process.env.SUPER_ADMIN_EMAIL || "deepaksodhi0023@gmai
 const HARD_CODED_SUPER_ADMIN_ROLE = "super_admin";
 
 const ensureSuperAdmin = (req) => {
-    const isSuperAdmin = req.user?.email?.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
+        const isSuperAdmin = req.staff?.email?.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
+console.log(req.staff?.email?.toLowerCase());
+console.log(SUPER_ADMIN_EMAIL.toLowerCase());
 
     if (!isSuperAdmin) {
         throw new ApiError(403, "only super admin can perform this action");
@@ -19,7 +21,7 @@ const ensureSuperAdmin = (req) => {
 
     return {
         role: HARD_CODED_SUPER_ADMIN_ROLE,
-        email: req.user.email
+        email: req.staff.email
     };
 };
 
@@ -283,7 +285,6 @@ const getAllProducts = asynchandler(async (req, res) => {
         new ApiResponse(200, response, "Products grouped by category")
     );
 });
-
 
 
 
@@ -1043,6 +1044,139 @@ const updateProductImage = asynchandler(async (req, res) => {
 });
 
 
+
+
+
+const createArea = asynchandler(async (req, res) => {
+
+    const { name, code, cities } = req.body;
+
+    // ❌ validation
+    if (!name || !code) {
+        throw new ApiError(400, "Name and code are required");
+    }
+
+    // 🔍 check duplicate code
+    const existing = await Area.findOne({ code: code.toLowerCase() });
+
+    if (existing) {
+        throw new ApiError(400, "Area with this code already exists");
+    }
+
+    // ✅ create
+    const area = await Area.create({
+        name,
+        code: code.toLowerCase(),
+        cities: cities || []
+    });
+
+    return res.status(201).json(
+        new ApiResponse(201, area, "Area created successfully")
+    );
+});
+
+
+// ✅ GET ALL AREAS
+const getAllAreas = asynchandler(async (req, res) => {
+
+    const areas = await Area.find({ isActive: true }).sort({ createdAt: -1 });
+
+    return res.status(200).json(
+        new ApiResponse(200, areas, "Areas fetched successfully")
+    );
+});
+
+
+// ✅ GET AREA BY ID
+const getAreaById = asynchandler(async (req, res) => {
+
+    const { areaId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(areaId)) {
+        throw new ApiError(400, "Invalid area ID");
+    }
+
+    const area = await Area.findById(areaId);
+
+    if (!area) {
+        throw new ApiError(404, "Area not found");
+    }
+
+    return res.status(200).json(
+        new ApiResponse(200, area, "Area fetched successfully")
+    );
+});
+
+
+// ✅ UPDATE AREA
+const updateArea = asynchandler(async (req, res) => {
+
+    const { areaId } = req.params;
+    const { name, code, cities, isActive } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(areaId)) {
+        throw new ApiError(400, "Invalid area ID");
+    }
+
+    const area = await Area.findById(areaId);
+
+    if (!area) {
+        throw new ApiError(404, "Area not found");
+    }
+
+    // 🔍 check duplicate code
+    if (code && code.toLowerCase() !== area.code) {
+        const exists = await Area.findOne({ code: code.toLowerCase() });
+
+        if (exists) {
+            throw new ApiError(400, "Area code already in use");
+        }
+    }
+
+    // ✅ update fields
+    if (name) area.name = name;
+    if (code) area.code = code.toLowerCase();
+    if (cities) area.cities = cities;
+    if (typeof isActive === "boolean") area.isActive = isActive;
+
+    await area.save();
+
+    return res.status(200).json(
+        new ApiResponse(200, area, "Area updated successfully")
+    );
+});
+
+
+// ✅ DELETE AREA (SOFT DELETE)
+const deleteArea = asynchandler(async (req, res) => {
+
+    const { areaId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(areaId)) {
+        throw new ApiError(400, "Invalid area ID");
+    }
+
+    const area = await Area.findById(areaId);
+
+    if (!area) {
+        throw new ApiError(404, "Area not found");
+    }
+
+    // ✅ soft delete
+    area.isActive = false;
+    await area.save();
+
+    return res.status(200).json(
+        new ApiResponse(200, {}, "Area deleted successfully")
+    );
+});
+
+
+
+
+
+
+
 export {
     createProduct,
     getAllProducts,
@@ -1058,5 +1192,10 @@ export {
     deleteCombo,
     updateCombo,
     updateComboStatus,
-    updateProductImage
+    updateProductImage,
+    createArea,
+    getAllAreas,
+    getAreaById,
+    updateArea,
+    deleteArea
 };
