@@ -24,7 +24,10 @@ import {
     adminGetProductsWithAreaStatus,
     makeProductLiveInArea,
     makeProductGlobal,
-    removeProductFromArea
+    removeProductFromArea,
+    adminGetAllCombosByAreaStatus,
+    makeComboLiveInArea,
+    removeComboFromArea
 
 } from "../controllers/product.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
@@ -79,6 +82,10 @@ router.route("/deletearea/:areaId").delete(verifyStaffJWT, deleteArea)
 
 
 
+
+ router.route("/admin/combos/areastatus/:area").get(verifyStaffJWT, adminGetAllCombosByAreaStatus)
+ router.route("/admin/combos/makeliveinarea/:comboId").patch(verifyStaffJWT, makeComboLiveInArea)
+ router.route("/admin/combos/removefromarea/:comboId").patch(verifyStaffJWT, removeComboFromArea)
 
 router.route("/updateallproductimages").patch(verifyStaffJWT, updateAllProductImages)
 

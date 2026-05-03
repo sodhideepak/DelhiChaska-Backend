@@ -1287,7 +1287,7 @@ const updateAllProductImages = asynchandler(async (req, res) => {
 const adminGetProductsWithAreaStatus = asynchandler(async (req, res) => {
     ensureSuperAdmin(req);
 
-    const { page = 1, limit = 10, category, isAvailable } = req.query;
+    const { page = 1, limit = 60, category, isAvailable } = req.query;
     const { area } = req.params;
 
     const normalizedArea = area?.toLowerCase().trim();
@@ -1453,6 +1453,148 @@ const removeProductFromArea = asynchandler(async (req, res) => {
 
 
 
+
+
+
+
+
+const adminGetAllCombosByAreaStatus = asynchandler(async (req, res) => {
+  ensureSuperAdmin(req);
+
+  const { isActive } = req.query;
+  const { area } = req.params;
+
+  const normalizedArea = area?.toLowerCase().trim();
+
+  let filter = {};
+
+  // 🔥 Availability logic (same as your existing one)
+  if (isActive === "true") {
+    filter.isActive = true;
+  } else if (isActive === "false") {
+    filter.isActive = false;
+  } else if (isActive === "all") {
+    // no filter
+  } else {
+    filter.isActive = true; // default
+  }
+
+  const combos = await Combo.find(filter)
+    .select("-__v")
+    .sort({ createdAt: -1 })
+    .lean();
+
+  if (!combos || combos.length === 0) {
+    return res.status(200).json({
+      success: true,
+      message: "No combos found",
+      data: []
+    });
+  }
+
+  // 🔥 Add isLiveInArea
+  const updatedCombos = combos.map((combo) => {
+    let isLiveInArea = true;
+
+    if (normalizedArea) {
+      if (!combo.areas || combo.areas.length === 0) {
+        isLiveInArea = false; // ❌ not live anywhere
+      } else {
+        isLiveInArea = combo.areas
+          .map(a => a.toLowerCase())
+          .includes(normalizedArea);
+      }
+    }
+
+    return {
+      ...combo,
+      isLiveInArea
+    };
+  });
+
+  return res.status(200).json({
+    success: true,
+    count: updatedCombos.length,
+    data: updatedCombos
+  });
+});
+
+
+
+
+const makeComboLiveInArea = asynchandler(async (req, res) => {
+  ensureSuperAdmin(req);
+
+  const { comboId } = req.params;
+  const { area } = req.body;
+
+  if (!area) {
+    throw new ApiError(400, "Area is required");
+  }
+
+  const normalizedArea = area.toLowerCase().trim();
+
+  const combo = await Combo.findByIdAndUpdate(
+    comboId,
+    {
+      $addToSet: { areas: normalizedArea } // ✅ prevents duplicates
+    },
+    { new: true }
+  );
+
+  if (!combo) {
+    throw new ApiError(404, "Combo not found");
+  }
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      combo,
+      `Combo is now live in ${normalizedArea}`
+    )
+  );
+
+});
+
+
+
+
+const removeComboFromArea = asynchandler(async (req, res) => {
+  ensureSuperAdmin(req);
+
+  const { comboId } = req.params;
+  const { area } = req.body;
+
+  if (!area) {
+    throw new ApiError(400, "Area is required");
+  }
+
+  const normalizedArea = area.toLowerCase().trim();
+
+  const combo = await Combo.findByIdAndUpdate(
+    comboId,
+    {
+      $pull: { areas: normalizedArea } // ✅ removes value
+    },
+    { new: true }
+  );
+
+  if (!combo) {
+    throw new ApiError(404, "Combo not found");
+  }
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      combo,
+      `Combo removed from ${normalizedArea}`
+    )
+  );
+});
+
+
+
+
 export {
     createProduct,
     getAllProducts,
@@ -1478,5 +1620,8 @@ export {
     adminGetProductsWithAreaStatus,
     makeProductLiveInArea,
     makeProductGlobal,
-    removeProductFromArea
+    removeProductFromArea,
+    adminGetAllCombosByAreaStatus,
+    makeComboLiveInArea,
+    removeComboFromArea
 };
