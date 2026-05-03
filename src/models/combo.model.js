@@ -40,6 +40,8 @@ const comboSchema = new mongoose.Schema(
         }
       }
     ],
+    
+    image: { type: String  },
 
     isActive: {
       type: Boolean,

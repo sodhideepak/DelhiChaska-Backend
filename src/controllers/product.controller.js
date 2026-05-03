@@ -403,6 +403,74 @@ const updateProduct = asynchandler(async (req, res) => {
 
 
 
+const updateProductImage = asynchandler(async (req, res) => {
+    ensureSuperAdmin(req);
+
+    const { productId } = req.params;
+
+    if (!productId) {
+        throw new ApiError(400, "productId is required");
+    }
+
+    // ==========================
+    // 🔍 FIND PRODUCT
+    // ==========================
+    const product = await Product.findById(productId);
+
+    if (!product) {
+        throw new ApiError(404, "Product not found");
+    }
+
+    // ==========================
+    // 📂 GET NEW IMAGE
+    // ==========================
+    const imagelocalpath = req.file?.path;
+
+    if (!imagelocalpath) {
+        throw new ApiError(400, "Product image file is required");
+    }
+
+    // ==========================
+    // ☁️ UPLOAD NEW IMAGE
+    // ==========================
+    const uploadedImage = await uploadoncloudinary(imagelocalpath);
+
+    if (!uploadedImage?.url) {
+        throw new ApiError(500, "Error uploading image");
+    }
+
+    let newImageUrl = uploadedImage.url.replace(/^http:/, "https:");
+
+    // ==========================
+    // 🗑️ DELETE OLD IMAGE (OPTIONAL BUT BEST PRACTICE)
+    // ==========================
+    try {
+        if (product.image && product.image !== " ") {
+            // extract public_id from URL
+            const publicId = product.image.split("/").pop().split(".")[0];
+
+            await deletefromcloudinary(publicId); // 🔥 you must have this helper
+        }
+    } catch (err) {
+        console.log("Old image deletion failed:", err.message);
+    }
+
+    // ==========================
+    // 🔄 UPDATE PRODUCT
+    // ==========================
+    product.image = newImageUrl;
+
+    await product.save();
+
+    return res.status(200).json(
+        new ApiResponse(200, product, "Product image updated successfully")
+    );
+});
+
+
+
+
+
 
 
 
@@ -937,6 +1005,78 @@ const updateCombo = asynchandler(async (req, res) => {
 
 
 
+
+const updateComboImage = asynchandler(async (req, res) => {
+    ensureSuperAdmin(req);
+
+    const { comboId } = req.params;
+
+    // ==========================
+    // 🔒 VALIDATE ID
+    // ==========================
+    if (!comboId) {
+        throw new ApiError(400, "comboId is required");
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(comboId)) {
+        throw new ApiError(400, "Invalid combo ID");
+    }
+
+    // ==========================
+    // 🔍 FIND COMBO
+    // ==========================
+    const combo = await Combo.findById(comboId);
+
+    if (!combo) {
+        throw new ApiError(404, "Combo not found");
+    }
+
+    // ==========================
+    // 📂 GET NEW IMAGE
+    // ==========================
+    const imagelocalpath = req.file?.path;
+
+    if (!imagelocalpath) {
+        throw new ApiError(400, "Combo image file is required");
+    }
+
+    // ==========================
+    // ☁️ UPLOAD NEW IMAGE
+    // ==========================
+    const uploadedImage = await uploadoncloudinary(imagelocalpath);
+
+    if (!uploadedImage?.url) {
+        throw new ApiError(500, "Error uploading image");
+    }
+
+    let newImageUrl = uploadedImage.url.replace(/^http:/, "https:");
+
+    // ==========================
+    // 🗑️ DELETE OLD IMAGE (BEST PRACTICE)
+    // ==========================
+    try {
+        if (combo.image && combo.image.trim() !== "") {
+            const publicId = combo.image.split("/").pop().split(".")[0];
+
+            await deletefromcloudinary(publicId);
+        }
+    } catch (err) {
+        console.log("Old combo image deletion failed:", err.message);
+    }
+
+    // ==========================
+    // 🔄 UPDATE COMBO
+    // ==========================
+    combo.image = newImageUrl;
+
+    await combo.save();
+
+    return res.status(200).json(
+        new ApiResponse(200, combo, "Combo image updated successfully")
+    );
+});
+
+
 const updateComboStatus = asynchandler(async (req, res) => {
   const { comboId } = req.params;
   const { isActive } = req.body;
@@ -975,78 +1115,6 @@ const updateComboStatus = asynchandler(async (req, res) => {
 
 
 
-
-
-
-
-
-
-
-
-
-const updateProductImage = asynchandler(async (req, res) => {
-    ensureSuperAdmin(req);
-
-    const { productId } = req.params;
-
-    if (!productId) {
-        throw new ApiError(400, "productId is required");
-    }
-
-    // ==========================
-    // 🔍 FIND PRODUCT
-    // ==========================
-    const product = await Product.findById(productId);
-
-    if (!product) {
-        throw new ApiError(404, "Product not found");
-    }
-
-    // ==========================
-    // 📂 GET NEW IMAGE
-    // ==========================
-    const imagelocalpath = req.file?.path;
-
-    if (!imagelocalpath) {
-        throw new ApiError(400, "Product image file is required");
-    }
-
-    // ==========================
-    // ☁️ UPLOAD NEW IMAGE
-    // ==========================
-    const uploadedImage = await uploadoncloudinary(imagelocalpath);
-
-    if (!uploadedImage?.url) {
-        throw new ApiError(500, "Error uploading image");
-    }
-
-    let newImageUrl = uploadedImage.url.replace(/^http:/, "https:");
-
-    // ==========================
-    // 🗑️ DELETE OLD IMAGE (OPTIONAL BUT BEST PRACTICE)
-    // ==========================
-    try {
-        if (product.image && product.image !== " ") {
-            // extract public_id from URL
-            const publicId = product.image.split("/").pop().split(".")[0];
-
-            await deletefromcloudinary(publicId); // 🔥 you must have this helper
-        }
-    } catch (err) {
-        console.log("Old image deletion failed:", err.message);
-    }
-
-    // ==========================
-    // 🔄 UPDATE PRODUCT
-    // ==========================
-    product.image = newImageUrl;
-
-    await product.save();
-
-    return res.status(200).json(
-        new ApiResponse(200, product, "Product image updated successfully")
-    );
-});
 
 
 
@@ -1623,5 +1691,6 @@ export {
     removeProductFromArea,
     adminGetAllCombosByAreaStatus,
     makeComboLiveInArea,
-    removeComboFromArea
+    removeComboFromArea,
+    updateComboImage
 };

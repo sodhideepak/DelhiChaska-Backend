@@ -27,7 +27,8 @@ import {
     removeProductFromArea,
     adminGetAllCombosByAreaStatus,
     makeComboLiveInArea,
-    removeComboFromArea
+    removeComboFromArea,
+    updateComboImage
 
 } from "../controllers/product.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
@@ -56,6 +57,7 @@ router.route("/toggle/:productId").patch(verifyJWT, toggleProductAvailability)
 router.route("/combos").get(getCombos);
 router.route("/singlecombo/:comboId").get(getComboById);
 router.route("/updatecombo/:comboId").patch(verifyStaffJWT, updateCombo);
+router.route("/updatecomboimage/:comboId").patch(verifyStaffJWT, upload.single("image"), updateComboImage);
 router.route("/deletecombo/:comboId").delete(verifyStaffJWT, deleteCombo);
 router.route("/updatecombostatus/:comboId").patch(verifyJWT, updateComboStatus);
 
