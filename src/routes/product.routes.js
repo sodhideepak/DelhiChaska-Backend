@@ -49,7 +49,7 @@ router.route("/category/:category").get(getProductsByCategory)
 // Super admin only routes (authentication required)
 router.route("/createproduct").post(verifyStaffJWT, upload.single("image"), createProduct)
 router.route("/createcombo").post(verifyStaffJWT, createCombo)
-router.route("/update/:productId").patch(verifyStaffJWT, upload.single("image"), updateProduct)
+router.route("/updateproduct/:productId").patch(verifyStaffJWT, upload.single("image"), updateProduct)
 router.route("/delete/:productId").delete(verifyStaffJWT, deleteProduct)
 router.route("/toggle/:productId").patch(verifyJWT, toggleProductAvailability)
 

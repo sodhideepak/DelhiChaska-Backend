@@ -327,27 +327,115 @@ const getProductById = asynchandler(async (req, res) => {
 
 
 // Update product
+// const updateProduct = asynchandler(async (req, res) => {
+//     ensureSuperAdmin(req);
+// console.log(req.body);
+// console.log(req.params.productId);
+
+//     const { productId } = req.params;
+//     const { name, description, price, category, product_type, isAvailable } = req.body;
+
+//     if (!productId) {
+//         throw new ApiError(400, "product ID is required");
+//     }
+
+//     const product = await Product.findById(productId);
+
+//     if (!product) {
+//         throw new ApiError(404, "product not found");
+//     }
+
+//     // Check if another product with the same name exists (excluding current product)
+//     if (name && name.trim() !== product.name) {
+//         const existingProduct = await Product.findOne({
+//             name: name.trim(),
+//             _id: { $ne: productId }
+//         });
+
+//         if (existingProduct) {
+//             throw new ApiError(409, "product with this name already exists");
+//         }
+//     }
+
+//     // Handle image update if new image is provided
+//     let imageUrl = product.image;
+//     const imagelocalpath = req.file?.path;
+
+//     if (imagelocalpath) {
+//         // Delete old image from cloudinary
+//         if (product.image) {
+//             await deleteFromCloudinary(product.image);
+//         }
+
+//         // Upload new image
+//         const image = await uploadoncloudinary(imagelocalpath);
+
+//         if (!image.url) {
+//             throw new ApiError(400, "error while uploading new product image");
+//         }
+
+//         imageUrl = image.url.replace(/^http:/, 'https:');
+//     }
+
+//     // Update fields
+//     const updateData = {
+//         ...(name && { name: name.trim() }),
+//         ...(description && { description: description.trim() }),
+//         ...(price && { price: parseFloat(price) }),
+//         ...(category && { category: category.trim() }),
+//         ...(product_type && { product_type: product_type.trim() }),
+//         ...(isAvailable !== undefined && { isAvailable }),
+//         ...(imageUrl !== product.image && { image: imageUrl })
+//     };
+
+//     const updatedProduct = await Product.findByIdAndUpdate(
+//         productId,
+//         { $set: updateData },
+//         { new: true }
+//     ).lean();
+
+//     return res.status(200).json(
+//         new ApiResponse(200, updatedProduct, "product updated successfully")
+//     );
+// });
 const updateProduct = asynchandler(async (req, res) => {
     ensureSuperAdmin(req);
 
     const { productId } = req.params;
-    const { name, description, price, category, product_type, isAvailable } = req.body;
 
     if (!productId) {
         throw new ApiError(400, "product ID is required");
     }
 
-    const product = await Product.findById(productId);
+    const cleanProductId = productId.trim();
+
+    if (!mongoose.Types.ObjectId.isValid(cleanProductId)) {
+        throw new ApiError(400, "invalid product ID");
+    }
+
+    const product = await Product.findById(cleanProductId);
 
     if (!product) {
         throw new ApiError(404, "product not found");
     }
 
-    // Check if another product with the same name exists (excluding current product)
+    let {
+        name,
+        description,
+        category,
+        product_type,
+        food_class,
+        variants,
+        isAvailable
+    } = req.body;
+
+    // ==========================
+    // 🔁 NAME DUPLICATE CHECK
+    // ==========================
     if (name && name.trim() !== product.name) {
         const existingProduct = await Product.findOne({
             name: name.trim(),
-            _id: { $ne: productId }
+            _id: { $ne: cleanProductId }
         });
 
         if (existingProduct) {
@@ -355,39 +443,127 @@ const updateProduct = asynchandler(async (req, res) => {
         }
     }
 
-    // Handle image update if new image is provided
+    // ==========================
+    // 📦 CONFIG
+    // ==========================
+    const PRODUCT_TYPE_CONFIG = {
+        paneer: ["16oz", "32oz"],
+        veg_curry: ["16oz", "32oz"],
+        chicken: ["16oz", "32oz"],
+        mutton: ["16oz", "32oz"],
+        veg_dry: ["16oz", "32oz"],
+        rice: ["half", "full"],
+        chinese: ["half", "full"],
+        breads: []
+    };
+
+    const ALLOWED_FOOD_CLASS = [
+        "veg_curry", "paneer", "chicken", "mutton",
+        "veg_other", "veg_dry", "rice", "chinese", "breads"
+    ];
+
+    // ==========================
+    // 🔄 DETERMINE FINAL TYPE
+    // ==========================
+    const finalProductType = product_type
+        ? product_type.toLowerCase()
+        : product.product_type;
+
+    const allowedSizes = PRODUCT_TYPE_CONFIG[finalProductType];
+
+    if (!allowedSizes) {
+        throw new ApiError(400, "invalid product_type");
+    }
+
+    // ==========================
+    // 🔄 FOOD CLASS VALIDATION
+    // ==========================
+    if (food_class && !ALLOWED_FOOD_CLASS.includes(food_class.toLowerCase())) {
+        throw new ApiError(
+            400,
+            `invalid food_class. Allowed: ${ALLOWED_FOOD_CLASS.join(", ")}`
+        );
+    }
+
+    // ==========================
+    // 🔄 VARIANTS VALIDATION
+    // ==========================
+    let formattedVariants;
+
+    if (variants !== undefined) {
+        if (!Array.isArray(variants) || variants.length === 0) {
+            throw new ApiError(400, "variants must be a non-empty array");
+        }
+
+        if (allowedSizes.length === 0) {
+            // breads / no-size
+            if (variants.length !== 1) {
+                throw new ApiError(400, "only one price allowed for this product");
+            }
+
+            formattedVariants = [
+                {
+                    size: "default",
+                    price: parseFloat(variants[0].price)
+                }
+            ];
+        } else {
+            formattedVariants = variants.map((v, index) => {
+                if (!v.size || !allowedSizes.includes(v.size.toLowerCase())) {
+                    throw new ApiError(
+                        400,
+                        `invalid size at index ${index + 1}. Allowed: ${allowedSizes.join(", ")}`
+                    );
+                }
+
+                if (!v.price || v.price <= 0) {
+                    throw new ApiError(400, `invalid price at index ${index + 1}`);
+                }
+
+                return {
+                    size: v.size.toLowerCase(),
+                    price: parseFloat(v.price)
+                };
+            });
+        }
+    }
+
+    // ==========================
+    // 🖼 IMAGE UPDATE
+    // ==========================
     let imageUrl = product.image;
     const imagelocalpath = req.file?.path;
 
     if (imagelocalpath) {
-        // Delete old image from cloudinary
         if (product.image) {
             await deleteFromCloudinary(product.image);
         }
 
-        // Upload new image
         const image = await uploadoncloudinary(imagelocalpath);
 
-        if (!image.url) {
-            throw new ApiError(400, "error while uploading new product image");
+        if (!image?.url) {
+            throw new ApiError(400, "error while uploading image");
         }
 
-        imageUrl = image.url.replace(/^http:/, 'https:');
+        imageUrl = image.url.replace(/^http:/, "https:");
     }
 
-    // Update fields
+    // ==========================
+    // 🧠 BUILD UPDATE OBJECT
+    // ==========================
     const updateData = {
         ...(name && { name: name.trim() }),
         ...(description && { description: description.trim() }),
-        ...(price && { price: parseFloat(price) }),
-        ...(category && { category: category.trim() }),
-        ...(product_type && { product_type: product_type.trim() }),
+        ...(category && { category: category.trim().toLowerCase() }),
+        ...(product_type && { product_type: product_type.toLowerCase() }),
+        ...(food_class && { food_class: food_class.toLowerCase() }),
         ...(isAvailable !== undefined && { isAvailable }),
+        ...(formattedVariants && { variants: formattedVariants }),
         ...(imageUrl !== product.image && { image: imageUrl })
     };
 
     const updatedProduct = await Product.findByIdAndUpdate(
-        productId,
+        cleanProductId,
         { $set: updateData },
         { new: true }
     ).lean();
