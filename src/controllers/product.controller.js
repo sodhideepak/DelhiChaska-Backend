@@ -5,6 +5,7 @@ import { Combo } from "../models/combo.model.js";
 import { Area } from "../models/areas.model.js";
 import { uploadoncloudinary, deleteFromCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
+import { Category } from "../models/category.model.js";
 import mongoose from "mongoose";
 
 
@@ -82,6 +83,100 @@ console.log(SUPER_ADMIN_EMAIL.toLowerCase());
 // });
 
 
+const addCategory = asynchandler(async (req, res) => {
+    ensureSuperAdmin(req);
+
+    let { name } = req.body;
+
+    if (!name || !name.trim()) {
+        throw new ApiError(400, "Category name is required");
+    }
+
+    const normalizedName = name.trim().toLowerCase();
+
+    // 🔍 Check if already exists
+    const existing = await Category.findOne({ name: normalizedName });
+
+    if (existing) {
+        throw new ApiError(400, "Category already exists");
+    }
+
+    // ✅ Create category
+    const category = await Category.create({
+        name: normalizedName,
+    });
+
+    return res.status(201).json(
+        new ApiResponse(201, category, "Category added successfully")
+    );
+});
+ 
+
+const removeCategory = asynchandler(async (req, res) => {
+    ensureSuperAdmin(req);
+
+    const { categoryId } = req.params;
+
+    if (!categoryId) {
+        throw new ApiError(400, "categoryId is required");
+    }
+
+    // 🔍 Find category first
+    const category = await Category.findById(categoryId);
+
+    if (!category) {
+        throw new ApiError(404, "Category not found");
+    }
+
+    // 🗑️ Delete all products linked to this category
+    const deletedProducts = await Product.deleteMany({
+        category: category.name, // ⚠️ assuming you store category as name
+    });
+
+    // 🗑️ Delete category
+    await Category.findByIdAndDelete(categoryId);
+
+    return res.status(200).json(
+        new ApiResponse(
+            200,
+            {
+                deletedProductsCount: deletedProducts.deletedCount,
+                deletedCategoryId: categoryId,
+            },
+            "Category and all associated products deleted successfully"
+        )
+    );
+});
+
+
+
+
+const getAllCategories = asynchandler(async (req, res) => {
+    const { isActive } = req.query;
+
+    let filter = {};
+
+    // 🔍 Optional filter
+    if (isActive === "true") {
+        filter.isActive = true;
+    } else if (isActive === "false") {
+        filter.isActive = false;
+    }
+
+    const categories = await Category.find(filter)
+        .sort({ createdAt: -1 });
+
+    return res.status(200).json(
+        new ApiResponse(
+            200,
+            {
+                total: categories.length,
+                categories,
+            },
+            "Categories fetched successfully"
+        )
+    );
+});
 
 
 
@@ -794,6 +889,41 @@ const getProductCategories = asynchandler(async (req, res) => {
 
 
 
+const removeProductImage = asynchandler(async (req, res) => {
+    ensureSuperAdmin(req);
+
+    const { productId } = req.params;
+
+    if (!productId) {
+        throw new ApiError(400, "productId is required");
+    }
+
+    // 🌄 Default image
+    const defaultImage = "https://res.cloudinary.com/ddvloqbxp/image/upload/v1777757830/y1xjxjzi1au1vsmqco6v.png";
+
+    // 🔍 Find product
+    const product = await Product.findById(productId);
+
+    if (!product) {
+        throw new ApiError(404, "Product not found");
+    }
+
+    // 🔁 Update image
+    product.image = defaultImage;
+    await product.save();
+
+    return res.status(200).json(
+        new ApiResponse(
+            200,
+            {
+                productId: product._id,
+                image: product.image,
+            },
+            "Product image reset to default successfully"
+        )
+    );
+});
+
 
 
 
@@ -1292,7 +1422,40 @@ const updateComboStatus = asynchandler(async (req, res) => {
 
 
 
+const removeComboImage = asynchandler(async (req, res) => {
+    ensureSuperAdmin(req);
 
+    const { comboId } = req.params;
+
+    if (!comboId) {
+        throw new ApiError(400, "comboId is required");
+    }
+
+    // 🌄 Default image
+    const defaultImage = "https://res.cloudinary.com/ddvloqbxp/image/upload/v1777757830/y1xjxjzi1au1vsmqco6v.png";
+
+    // 🔍 Find combo
+    const combo = await Combo.findById(comboId);
+
+    if (!combo) {
+        throw new ApiError(404, "Combo not found");
+    }
+
+    // 🔁 Replace image
+    combo.image = defaultImage;
+    await combo.save();
+
+    return res.status(200).json(
+        new ApiResponse(
+            200,
+            {
+                comboId: combo._id,
+                image: combo.image,
+            },
+            "Combo image reset to default successfully"
+        )
+    );
+});
 
 
 
@@ -1868,5 +2031,11 @@ export {
     adminGetAllCombosByAreaStatus,
     makeComboLiveInArea,
     removeComboFromArea,
-    updateComboImage
+    updateComboImage,
+    removeProductImage,
+    removeComboImage,
+    addCategory,
+    removeCategory,
+    getAllCategories
+
 };

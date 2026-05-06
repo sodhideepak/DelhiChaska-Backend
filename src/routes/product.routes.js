@@ -28,7 +28,12 @@ import {
     adminGetAllCombosByAreaStatus,
     makeComboLiveInArea,
     removeComboFromArea,
-    updateComboImage
+    updateComboImage,
+    removeProductImage,
+    removeComboImage,
+    addCategory,
+    removeCategory,
+    getAllCategories
 
 } from "../controllers/product.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
@@ -46,20 +51,32 @@ router.route("/categories").get(getProductCategories)
 router.route("/category/:category").get(getProductsByCategory)
 
 
+
+
+
+// Authenticated routes for defining caegories
+router.route("/addcategory").post(verifyStaffJWT, addCategory)
+router.route("/removecategory/:categoryId").delete(verifyStaffJWT, removeCategory)
+router.route("/allrootcategories").get(getAllCategories)
+
+
+
 // Super admin only routes (authentication required)
 router.route("/createproduct").post(verifyStaffJWT, upload.single("image"), createProduct)
 router.route("/createcombo").post(verifyStaffJWT, createCombo)
 router.route("/updateproduct/:productId").patch(verifyStaffJWT, upload.single("image"), updateProduct)
 router.route("/delete/:productId").delete(verifyStaffJWT, deleteProduct)
 router.route("/toggle/:productId").patch(verifyJWT, toggleProductAvailability)
+router.route("/removeproductimage/:productId").patch(verifyStaffJWT, removeProductImage)
 
     
-router.route("/combos").get(getCombos);
+router.route("/combos").get(getCombos);  
 router.route("/singlecombo/:comboId").get(getComboById);
 router.route("/updatecombo/:comboId").patch(verifyStaffJWT, updateCombo);
 router.route("/updatecomboimage/:comboId").patch(verifyStaffJWT, upload.single("image"), updateComboImage);
 router.route("/deletecombo/:comboId").delete(verifyStaffJWT, deleteCombo);
 router.route("/updatecombostatus/:comboId").patch(verifyJWT, updateComboStatus);
+router.route("/removecomboimage/:comboId").patch(verifyStaffJWT, removeComboImage)
 
 
 
