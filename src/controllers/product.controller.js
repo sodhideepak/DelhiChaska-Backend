@@ -1458,7 +1458,7 @@ const updateCombo = asynchandler(async (req, res) => {
     combo.rules = rules.map((rule) => ({
       category: rule.category || [],
       quantity: rule.quantity || 1,
-      isSelectionRequired: rule.isSelectionRequired ?? true,
+      allowCustomSelection: rule.allowCustomSelection ?? true,
       label: rule.label || ""
     }));
   }
@@ -1472,9 +1472,6 @@ const updateCombo = asynchandler(async (req, res) => {
     new ApiResponse(200, updatedCombo, "Combo updated successfully")
   );
 });
-
-
-
 
 
 const updateComboImage = asynchandler(async (req, res) => {
