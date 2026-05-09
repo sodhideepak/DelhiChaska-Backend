@@ -387,7 +387,95 @@ const getAllProducts = asynchandler(async (req, res) => {
 });
 
 
+const getAllProductsByArea = asynchandler(async (req, res) => {
+    const {
+        page = 1,
+        limit = 60,
+        category,
+        isAvailable,
+        area
+    } = req.query;
 
+    let filter = {};
+
+    // 🔍 Category filter
+    if (category) {
+        filter.category = { $regex: category, $options: "i" };
+    }
+
+    // 🔍 Availability filter
+    if (isAvailable !== undefined) {
+        filter.isAvailable = isAvailable === "true";
+    }
+
+    // 🔍 Area filter
+    // Product will show only if area exists in areas array
+    if (area) {
+        filter.areas = {
+            $in: [area.toLowerCase()]
+        };
+    }
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    // 📦 Fetch products
+    const products = await Product.find(filter)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(parseInt(limit))
+        .lean();
+
+    // 🔢 Count
+    const totalProducts = await Product.countDocuments(filter);
+    const totalPages = Math.ceil(totalProducts / parseInt(limit));
+
+    // 🧠 Group by category
+    const groupedProducts = {};
+
+    products.forEach((product) => {
+        const cat = product.category || "Uncategorized";
+
+        if (!groupedProducts[cat]) {
+            groupedProducts[cat] = [];
+        }
+
+        groupedProducts[cat].push(product);
+    });
+
+    // 🔁 Convert object → array
+    const list = Object.keys(groupedProducts).map((cat) => ({
+        category: cat,
+        products: groupedProducts[cat],
+    }));
+
+    // 📤 Response
+    const response = {
+        list,
+        appliedFilters: {
+            category: category || null,
+            area: area || null,
+            isAvailable:
+                isAvailable !== undefined
+                    ? isAvailable === "true"
+                    : null,
+        },
+        pagination: {
+            currentPage: parseInt(page),
+            totalPages,
+            totalProducts,
+            hasNextPage: parseInt(page) < totalPages,
+            hasPrevPage: parseInt(page) > 1,
+        },
+    };
+
+    return res.status(200).json(
+        new ApiResponse(
+            200,
+            response,
+            "Products fetched successfully with area filter"
+        )
+    );
+});
 
 
 
@@ -1165,6 +1253,56 @@ const getCombos = asynchandler(async (req, res) => {
 });
 
 
+const getCombosByArea = asynchandler(async (req, res) => {
+  const { isActive, area } = req.query;
+
+  let filter = {};
+
+  // 🔥 Active status filter
+  if (isActive === "true") {
+    filter.isActive = true;
+  } else if (isActive === "false") {
+    filter.isActive = false;
+  } else if (isActive === "all") {
+    // no filter
+  } else {
+    // ✅ default behavior
+    filter.isActive = true;
+  }
+
+  // 🔍 Area filter
+  if (area) {
+    filter.areas = {
+      $in: [area.toLowerCase()]
+    };
+  }
+
+  const combos = await Combo.find(filter)
+    .select("-__v")
+    .sort({ createdAt: -1 });
+
+  if (!combos || combos.length === 0) {
+    return res.status(200).json({
+      success: true,
+      message: "No combos found",
+      appliedFilters: {
+        area: area || null,
+        isActive: isActive || "true"
+      },
+      data: []
+    });
+  }
+
+  res.status(200).json({
+    success: true,
+    count: combos.length,
+    appliedFilters: {
+      area: area || null,
+      isActive: isActive || "true"
+    },
+    data: combos
+  });
+});
 
 const getComboById = asynchandler(async (req, res) => {
   const { comboId } = req.params;
@@ -2005,6 +2143,7 @@ const removeComboFromArea = asynchandler(async (req, res) => {
 export {
     createProduct,
     getAllProducts,
+    getAllProductsByArea,
     getProductById,
     updateProduct,
     deleteProduct,
@@ -2013,6 +2152,7 @@ export {
     getProductCategories,
     createCombo,
     getCombos,
+    getCombosByArea,
     getComboById,
     deleteCombo,
     updateCombo,

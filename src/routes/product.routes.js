@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
     createProduct,
     getAllProducts,
+    getAllProductsByArea,
     getProductById,
     updateProduct,
     deleteProduct,
@@ -10,6 +11,7 @@ import {
     getProductCategories,
     createCombo,
     getCombos,
+    getCombosByArea,
     getComboById,
     deleteCombo,
     updateCombo,
@@ -47,6 +49,7 @@ router.use(validateApiKey)
 
 // Public routes (no authentication required)
 router.route("/all").get(getAllProducts)
+router.route("/allproductsbyarea").get(getAllProductsByArea)
 router.route("/categories").get(getProductCategories)
 router.route("/category/:category").get(getProductsByCategory)
 
@@ -71,6 +74,7 @@ router.route("/removeproductimage/:productId").patch(verifyStaffJWT, removeProdu
 
     
 router.route("/combos").get(getCombos);  
+router.route("/combosbyarea").get(getCombosByArea);
 router.route("/singlecombo/:comboId").get(getComboById);
 router.route("/updatecombo/:comboId").patch(verifyStaffJWT, updateCombo);
 router.route("/updatecomboimage/:comboId").patch(verifyStaffJWT, upload.single("image"), updateComboImage);
