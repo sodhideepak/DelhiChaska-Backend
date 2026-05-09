@@ -32,56 +32,99 @@ const employeeSchema = new mongoose.Schema(
 
     role: {
       type: String,
-      enum: ["admin", "chef", "driver", "support","kitchen"],
+      enum: [
+        "admin",
+        "chef",
+        "driver",
+        "support",
+        "kitchen"
+      ],
       required: true
     },
 
-    // ✅ NEW FIELD
+    // ─────────────────────────────────────────────
+    // ASSIGNED AREA
+    // ─────────────────────────────────────────────
     assignedArea: {
       type: String,
-      required: true,
       lowercase: true,
       trim: true,
-      index: true
+      index: true,
+      default: null
     },
 
+    // ─────────────────────────────────────────────
+    // DRIVER AVAILABILITY
+    // ─────────────────────────────────────────────
+    isDriverAvailable: {
+      type: Boolean,
+      default: true
+    },
+
+    // ─────────────────────────────────────────────
+    // EMPLOYEE STATUS
+    // ─────────────────────────────────────────────
     status: {
       type: String,
-      enum: ["not_verified", "verified", "rejected"],
+      enum: [
+        "not_verified",
+        "verified",
+        "rejected"
+      ],
       default: "not_verified"
     },
 
+    // ─────────────────────────────────────────────
+    // PROFILE IMAGE
+    // ─────────────────────────────────────────────
     profile_image: {
       type: String,
       default: ""
     }
+
   },
   {
     timestamps: true
   }
 );
 
-// ✅ Compare password
+// ─────────────────────────────────────────────
+// COMPARE PASSWORD
+// ─────────────────────────────────────────────
 employeeSchema.methods.isPasswordcorrect =
   async function (password) {
+
     return await bcrypt.compare(
       password,
       this.password
     );
   };
 
-// ✅ Generate Access Token
+// ─────────────────────────────────────────────
+// GENERATE ACCESS TOKEN
+// ─────────────────────────────────────────────
 employeeSchema.methods.generateAccessToken =
   function () {
+
     return Jwt.sign(
       {
         _id: this._id,
+
         email: this.email,
+
         phone: this.phone,
+
         role: this.role,
-        assignedArea: this.assignedArea
+
+        assignedArea:
+          this.assignedArea,
+
+        isDriverAvailable:
+          this.isDriverAvailable
       },
+
       process.env.Access_Token_Secret,
+
       {
         expiresIn:
           process.env.Access_Token_Expiry
@@ -89,14 +132,19 @@ employeeSchema.methods.generateAccessToken =
     );
   };
 
-// ✅ Generate Refresh Token
+// ─────────────────────────────────────────────
+// GENERATE REFRESH TOKEN
+// ─────────────────────────────────────────────
 employeeSchema.methods.generateRefreshToken =
   function () {
+
     return Jwt.sign(
       {
         _id: this._id
       },
+
       process.env.Refresh_Token_Secret,
+
       {
         expiresIn:
           process.env.Refresh_Token_Expiry

@@ -670,8 +670,7 @@ const startEmployeeRegistration = asynchandler(async (req, res) => {
     phone,
     password,
     role,
-    profile_image,
-    assignedArea
+    profile_image
   } = req.body;
 
   // ✅ Validation
@@ -681,8 +680,7 @@ const startEmployeeRegistration = asynchandler(async (req, res) => {
       email,
       phone,
       password,
-      role,
-      assignedArea
+      role
     ].some(
       (field) =>
         !field || field.toString().trim() === ""
@@ -725,7 +723,6 @@ const startEmployeeRegistration = asynchandler(async (req, res) => {
     phone: phone.trim(),
     password: hashedPassword,
     role,
-    assignedArea: assignedArea.trim().toLowerCase(),
     status: "not_verified",
     profile_image: profile_image || ""
   });
@@ -771,7 +768,6 @@ const startEmployeeRegistration = asynchandler(async (req, res) => {
         name: tempEmployee.name,
         email: tempEmployee.email,
         role: tempEmployee.role,
-        assignedArea: tempEmployee.assignedArea,
         status: tempEmployee.status,
         createdAt: tempEmployee.createdAt
       },
@@ -2691,7 +2687,474 @@ const kitchenViewOrdersByArea = asynchandler(async (req, res) => {
 
 
 
+// const getAllDrivers = asynchandler(async (req, res) => {
 
+//   // ─────────────────────────────────────────────
+//   // QUERY PARAMS
+//   // ─────────────────────────────────────────────
+//   const {
+//     isDriverAvailable,
+//     assignedArea,
+//     search,
+//     page = 1,
+//     limit = 10
+//   } = req.query;
+
+//   // ─────────────────────────────────────────────
+//   // BASE FILTER
+//   // ─────────────────────────────────────────────
+//   const filter = {
+//     role: "driver"
+//   };
+
+//   // ─────────────────────────────────────────────
+//   // APPLY FILTERS ONLY FOR ADMIN
+//   // ─────────────────────────────────────────────
+//   if (req.staff?.role === "admin") {
+
+//     // ✅ DRIVER AVAILABILITY
+//     if (
+//       typeof isDriverAvailable !==
+//       "undefined"
+//     ) {
+
+//       filter.isDriverAvailable =
+//         isDriverAvailable === "true";
+//     }
+
+//     // ✅ ASSIGNED AREA
+//     if (assignedArea) {
+
+//       filter.assignedArea = {
+//         $regex: assignedArea,
+//         $options: "i"
+//       };
+//     }
+
+//     // ✅ SEARCH
+//     if (search) {
+
+//       filter.$or = [
+
+//         {
+//           name: {
+//             $regex: search,
+//             $options: "i"
+//           }
+//         },
+
+//         {
+//           email: {
+//             $regex: search,
+//             $options: "i"
+//           }
+//         },
+
+//         {
+//           phone: {
+//             $regex: search,
+//             $options: "i"
+//           }
+//         }
+
+//       ];
+//     }
+//   }
+
+//   // ─────────────────────────────────────────────
+//   // PAGINATION
+//   // ─────────────────────────────────────────────
+//   const currentPage =
+//     Number(page) || 1;
+
+//   const perPage =
+//     Number(limit) || 10;
+
+//   const skip =
+//     (currentPage - 1) * perPage;
+
+//   // ─────────────────────────────────────────────
+//   // FETCH DRIVERS
+//   // ─────────────────────────────────────────────
+//   const [drivers, totalDrivers] =
+//     await Promise.all([
+
+//       Employee.find(filter)
+
+//         .select("-password -refreshToken")
+
+//         .sort({
+//           createdAt: -1
+//         })
+
+//         .skip(skip)
+
+//         .limit(perPage)
+
+//         .lean(),
+
+//       Employee.countDocuments(filter)
+//     ]);
+
+//   // ─────────────────────────────────────────────
+//   // FORMAT DRIVERS
+//   // ─────────────────────────────────────────────
+//   const formattedDrivers =
+//     drivers.map(driver => ({
+
+//       driverId:
+//         driver._id,
+
+//       name:
+//         driver.name || "",
+
+//       username:
+//         driver.username || "",
+
+//       email:
+//         driver.email || "",
+
+//       phone:
+//         driver.phone || "",
+
+//       role:
+//         driver.role,
+
+//       assignedArea:
+//         driver.assignedArea || null,
+
+//       isDriverAvailable:
+//         driver.isDriverAvailable || false,
+
+//       status:
+//         driver.status,
+
+//       profile_image:
+//         driver.profile_image || "",
+
+//       createdAt:
+//         driver.createdAt
+//     }));
+
+//   // ─────────────────────────────────────────────
+//   // RESPONSE
+//   // ─────────────────────────────────────────────
+//   return res.status(200).json(
+//     new ApiResponse(
+//       200,
+//       {
+
+//         filters:
+//           req.staff?.role === "admin"
+//             ? {
+//                 isDriverAvailable:
+//                   typeof isDriverAvailable !==
+//                   "undefined"
+//                     ? isDriverAvailable ===
+//                       "true"
+//                     : null,
+
+//                 assignedArea:
+//                   assignedArea || null,
+
+//                 search:
+//                   search || null
+//               }
+//             : null,
+
+//         drivers:
+//           formattedDrivers,
+
+//         pagination: {
+
+//           totalDrivers,
+
+//           currentPage,
+
+//           totalPages:
+//             Math.ceil(
+//               totalDrivers / perPage
+//             ),
+
+//           limit:
+//             perPage
+//         }
+
+//       },
+//       "Drivers fetched successfully"
+//     )
+//   );
+// });
+
+
+
+//
+// ─────────────────────────────────────────────
+// GET ALL EMPLOYEES
+// ─────────────────────────────────────────────
+//
+const getAllDrivers = asynchandler(async (req, res) => {
+
+  ensureSuperAdmin(req);
+
+  // ─────────────────────────────────────────────
+  // QUERY PARAMS
+  // ─────────────────────────────────────────────
+  const {
+    status,
+    assignedArea,
+    isDriverAvailable,
+    search,
+    page = 1,
+    limit = 10
+  } = req.query;
+
+  // ─────────────────────────────────────────────
+  // BASE FILTER
+  // ─────────────────────────────────────────────
+  const filter = {
+    role: "driver"
+  };
+
+  // ─────────────────────────────────────────────
+  // STATUS FILTER
+  // Example:
+  // ?status=verified
+  // ─────────────────────────────────────────────
+  if (
+    typeof status === "string" &&
+    status.trim() !== ""
+  ) {
+
+    filter.status =
+      status.trim().toLowerCase();
+  }
+
+  // ─────────────────────────────────────────────
+  // ASSIGNED AREA FILTER
+  // Example:
+  // ?assignedArea=seattle
+  // ─────────────────────────────────────────────
+  if (
+    typeof assignedArea ===
+      "string" &&
+    assignedArea.trim() !== ""
+  ) {
+
+    filter.assignedArea = {
+      $regex:
+        assignedArea.trim(),
+      $options: "i"
+    };
+  }
+
+  // ─────────────────────────────────────────────
+  // DRIVER AVAILABILITY FILTER
+  // Example:
+  // ?isDriverAvailable=false
+  // ─────────────────────────────────────────────
+  if (
+    typeof isDriverAvailable ===
+    "string"
+  ) {
+
+    const availability =
+      isDriverAvailable
+        .trim()
+        .toLowerCase();
+
+    if (
+      availability === "true" ||
+      availability === "false"
+    ) {
+
+      filter.isDriverAvailable =
+        availability === "true";
+    }
+  }
+
+  // ─────────────────────────────────────────────
+  // SEARCH FILTER
+  // Example:
+  // ?search=driver1
+  // ─────────────────────────────────────────────
+  if (
+    typeof search === "string" &&
+    search.trim() !== ""
+  ) {
+
+    filter.$or = [
+
+      {
+        name: {
+          $regex: search.trim(),
+          $options: "i"
+        }
+      },
+
+      {
+        username: {
+          $regex: search.trim(),
+          $options: "i"
+        }
+      },
+
+      {
+        email: {
+          $regex: search.trim(),
+          $options: "i"
+        }
+      },
+
+      {
+        phone: {
+          $regex: search.trim(),
+          $options: "i"
+        }
+      }
+
+    ];
+  }
+
+  // ✅ DEBUG
+  console.log(filter);
+
+  // ─────────────────────────────────────────────
+  // PAGINATION
+  // ─────────────────────────────────────────────
+  const currentPage =
+    Number(page) || 1;
+
+  const perPage =
+    Number(limit) || 10;
+
+  const skip =
+    (currentPage - 1) * perPage;
+
+  // ─────────────────────────────────────────────
+  // FETCH DRIVERS
+  // ─────────────────────────────────────────────
+  const [drivers, totalDrivers] =
+    await Promise.all([
+
+      Employee.find(filter)
+
+        .select(
+          "-password -refreshToken"
+        )
+
+        .sort({
+          createdAt: -1
+        })
+
+        .skip(skip)
+
+        .limit(perPage)
+
+        .lean(),
+
+      Employee.countDocuments(filter)
+    ]);
+
+  // ─────────────────────────────────────────────
+  // FORMAT RESPONSE
+  // ─────────────────────────────────────────────
+  const formattedDrivers =
+    drivers.map(driver => ({
+
+      employeeId:
+        driver._id,
+
+      name:
+        driver.name || "",
+
+      username:
+        driver.username || "",
+
+      email:
+        driver.email || "",
+
+      phone:
+        driver.phone || "",
+
+      role:
+        driver.role,
+
+      assignedArea:
+        driver.assignedArea || null,
+
+      isDriverAvailable:
+        driver.isDriverAvailable,
+
+      status:
+        driver.status,
+
+      profile_image:
+        driver.profile_image || "",
+
+      createdAt:
+        driver.createdAt
+    }));
+
+  // ─────────────────────────────────────────────
+  // RESPONSE
+  // ─────────────────────────────────────────────
+  return res.status(200).json(
+
+    new ApiResponse(
+      200,
+      {
+
+        filters: {
+
+          status:
+            status || null,
+
+          assignedArea:
+            assignedArea || null,
+
+          isDriverAvailable:
+            typeof isDriverAvailable ===
+            "string"
+              ? isDriverAvailable
+                  .trim()
+                  .toLowerCase() ===
+                "true"
+              : null,
+
+          search:
+            search || null
+        },
+
+        totalDrivers,
+
+        drivers:
+          formattedDrivers,
+
+        pagination: {
+
+          currentPage,
+
+          totalPages:
+            Math.ceil(
+              totalDrivers / perPage
+            ),
+
+          limit:
+            perPage
+        }
+
+      },
+
+      "Drivers fetched successfully"
+    )
+  );
+});
+//
+// ─────────────────────────────────────────────
+// ASSIGN AREA TO DRIVER
+// ─────────────────────────────────────────────
+//
 const assignAreaToDriver = asynchandler(async (req, res) => {
 
   ensureSuperAdmin(req);
@@ -2700,74 +3163,111 @@ const assignAreaToDriver = asynchandler(async (req, res) => {
   // BODY
   // ─────────────────────────────────────────────
   const {
-    driverId,
-    area
+    employeeId,
+    assignedArea,
+    action // add | remove
   } = req.body;
 
   // ─────────────────────────────────────────────
   // VALIDATION
   // ─────────────────────────────────────────────
-  if (!driverId) {
+  if (!employeeId) {
     throw new ApiError(
       400,
-      "Driver ID is required"
+      "Employee ID is required"
     );
   }
 
-  if (!area) {
+  if (!action) {
     throw new ApiError(
       400,
-      "Area is required"
+      "Action is required"
     );
   }
 
-  // ─────────────────────────────────────────────
-  // CHECK AREA
-  // ─────────────────────────────────────────────
-  const validArea =
-    AREA_CITY_MAP[
-      area.toLowerCase()
-    ];
-
-  if (!validArea) {
-    throw new ApiError(
-      400,
-      "Invalid area"
-    );
-  }
-
-  // ─────────────────────────────────────────────
-  // FIND DRIVER
-  // ─────────────────────────────────────────────
-  const driver =
-    await Staff.findById(driverId);
-
-  if (!driver) {
-    throw new ApiError(
-      404,
-      "Driver not found"
-    );
-  }
-
-  // ─────────────────────────────────────────────
-  // CHECK ROLE
-  // ─────────────────────────────────────────────
   if (
-    driver.role !== "driver"
+    !["add", "remove"]
+      .includes(action)
   ) {
     throw new ApiError(
       400,
-      "Staff member is not a driver"
+      "Action must be add or remove"
     );
   }
 
   // ─────────────────────────────────────────────
-  // ASSIGN AREA
+  // FIND EMPLOYEE
   // ─────────────────────────────────────────────
-  driver.assignedArea =
-    area.toLowerCase();
+  const employee =
+    await Employee.findById(
+      employeeId
+    );
 
-  await driver.save();
+  if (!employee) {
+    throw new ApiError(
+      404,
+      "Employee not found"
+    );
+  }
+
+  // ─────────────────────────────────────────────
+  // DRIVER CHECK
+  // ─────────────────────────────────────────────
+  if (
+    employee.role !== "driver"
+  ) {
+    throw new ApiError(
+      400,
+      "Only drivers can have assigned areas"
+    );
+  }
+
+  // ─────────────────────────────────────────────
+  // ADD AREA
+  // ─────────────────────────────────────────────
+  if (action === "add") {
+
+    if (!assignedArea) {
+      throw new ApiError(
+        400,
+        "Assigned area is required"
+      );
+    }
+
+    employee.assignedArea =
+      assignedArea.toLowerCase();
+
+    // ✅ DRIVER BUSY
+    employee.isDriverAvailable =
+      false;
+  }
+
+  // ─────────────────────────────────────────────
+  // REMOVE AREA
+  // ─────────────────────────────────────────────
+  if (action === "remove") {
+
+    // ✅ REMOVE AREA
+    employee.assignedArea =
+      null;
+
+    // ✅ DRIVER AVAILABLE AGAIN
+    employee.isDriverAvailable =
+      true;
+  }
+
+  // ─────────────────────────────────────────────
+  // SAVE
+  // ─────────────────────────────────────────────
+  await employee.save();
+
+  // ─────────────────────────────────────────────
+  // RESPONSE MESSAGE
+  // ─────────────────────────────────────────────
+  const message =
+    action === "add"
+      ? "Area assigned successfully"
+      : "Area removed successfully";
 
   // ─────────────────────────────────────────────
   // RESPONSE
@@ -2776,22 +3276,300 @@ const assignAreaToDriver = asynchandler(async (req, res) => {
     new ApiResponse(
       200,
       {
-        driverId:
-          driver._id,
+
+        employeeId:
+          employee._id,
 
         name:
-          driver.name,
+          employee.name,
 
         role:
-          driver.role,
+          employee.role,
 
         assignedArea:
-          driver.assignedArea
+          employee.assignedArea,
+
+        isDriverAvailable:
+          employee.isDriverAvailable
       },
-      "Area assigned to driver successfully"
+      message
     )
   );
 });
+
+const getUnverifiedDrivers = asynchandler(async (req, res) => {
+
+  ensureSuperAdmin(req);
+
+  // ─────────────────────────────────────────────
+  // QUERY PARAMS
+  // ─────────────────────────────────────────────
+  const {
+    search,
+    page = 1,
+    limit = 10
+  } = req.query;
+
+  // ─────────────────────────────────────────────
+  // FILTER
+  // ─────────────────────────────────────────────
+  const filter = {
+
+    role: "driver",
+
+    // status: "not_verified"
+  };
+
+  // ✅ SEARCH FILTER
+  if (search) {
+
+    filter.$or = [
+
+      {
+        name: {
+          $regex: search,
+          $options: "i"
+        }
+      },
+
+      {
+        username: {
+          $regex: search,
+          $options: "i"
+        }
+      },
+
+      {
+        email: {
+          $regex: search,
+          $options: "i"
+        }
+      },
+
+      {
+        phone: {
+          $regex: search,
+          $options: "i"
+        }
+      }
+
+    ];
+  }
+
+  // ─────────────────────────────────────────────
+  // PAGINATION
+  // ─────────────────────────────────────────────
+  const currentPage =
+    Number(page) || 1;
+
+  const perPage =
+    Number(limit) || 10;
+
+  const skip =
+    (currentPage - 1) * perPage;
+
+  // ─────────────────────────────────────────────
+  // FETCH DRIVERS
+  // ─────────────────────────────────────────────
+  const [drivers, totalDrivers] =
+    await Promise.all([
+
+      Employee.find(filter)
+
+        .select("-password -refreshToken")
+
+        .sort({
+          createdAt: -1
+        })
+
+        .skip(skip)
+
+        .limit(perPage)
+
+        .lean(),
+
+      Employee.countDocuments(filter)
+    ]);
+
+  // ─────────────────────────────────────────────
+  // FORMAT RESPONSE
+  // ─────────────────────────────────────────────
+  const formattedDrivers =
+    drivers.map(driver => ({
+
+      driverId:
+        driver._id,
+
+      name:
+        driver.name || "",
+
+      username:
+        driver.username || "",
+
+      email:
+        driver.email || "",
+
+      phone:
+        driver.phone || "",
+
+      role:
+        driver.role,
+
+      assignedArea:
+        driver.assignedArea || null,
+
+      isDriverAvailable:
+        driver.isDriverAvailable || false,
+
+      status:
+        driver.status,
+
+      profile_image:
+        driver.profile_image || "",
+
+      createdAt:
+        driver.createdAt
+    }));
+
+  // ─────────────────────────────────────────────
+  // RESPONSE
+  // ─────────────────────────────────────────────
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+
+        filters: {
+          search:
+            search || null
+        },
+
+        drivers:
+          formattedDrivers,
+
+        pagination: {
+
+          totalDrivers,
+
+          currentPage,
+
+          totalPages:
+            Math.ceil(
+              totalDrivers / perPage
+            ),
+
+          limit:
+            perPage
+        }
+
+      },
+      "Unverified drivers fetched successfully"
+    )
+  );
+});
+
+
+
+// const assignAreaToDriver = asynchandler(async (req, res) => {
+
+//   ensureSuperAdmin(req);
+
+//   // ─────────────────────────────────────────────
+//   // BODY
+//   // ─────────────────────────────────────────────
+//   const {
+//     driverId,
+//     area
+//   } = req.body;
+
+//   // ─────────────────────────────────────────────
+//   // VALIDATION
+//   // ─────────────────────────────────────────────
+//   if (!driverId) {
+//     throw new ApiError(
+//       400,
+//       "Driver ID is required"
+//     );
+//   }
+
+//   if (!area) {
+//     throw new ApiError(
+//       400,
+//       "Area is required"
+//     );
+//   }
+
+//   // ─────────────────────────────────────────────
+//   // CHECK AREA
+//   // ─────────────────────────────────────────────
+//   const validArea =
+//     AREA_CITY_MAP[
+//       area.toLowerCase()
+//     ];
+
+//   if (!validArea) {
+//     throw new ApiError(
+//       400,
+//       "Invalid area"
+//     );
+//   }
+
+//   // ─────────────────────────────────────────────
+//   // FIND DRIVER
+//   // ─────────────────────────────────────────────
+//   const driver =
+//     await Staff.findById(driverId);
+
+//   if (!driver) {
+//     throw new ApiError(
+//       404,
+//       "Driver not found"
+//     );
+//   }
+
+//   // ─────────────────────────────────────────────
+//   // CHECK ROLE
+//   // ─────────────────────────────────────────────
+//   if (
+//     driver.role !== "driver"
+//   ) {
+//     throw new ApiError(
+//       400,
+//       "Staff member is not a driver"
+//     );
+//   }
+
+//   // ─────────────────────────────────────────────
+//   // ASSIGN AREA
+//   // ─────────────────────────────────────────────
+//   driver.assignedArea =
+//     area.toLowerCase();
+
+//   await driver.save();
+
+//   // ─────────────────────────────────────────────
+//   // RESPONSE
+//   // ─────────────────────────────────────────────
+//   return res.status(200).json(
+//     new ApiResponse(
+//       200,
+//       {
+//         driverId:
+//           driver._id,
+
+//         name:
+//           driver.name,
+
+//         role:
+//           driver.role,
+
+//         assignedArea:
+//           driver.assignedArea
+//       },
+//       "Area assigned to driver successfully"
+//     )
+//   );
+// });
 
 
 
@@ -2982,6 +3760,220 @@ const getAllUsers = asynchandler(async (req, res) => {
 
 
 
+
+
+
+
+
+const getAllDriversfull = asynchandler(async (req, res) => {
+
+  ensureSuperAdmin(req);
+
+  // ─────────────────────────────────────────────
+  // QUERY PARAMS
+  // ─────────────────────────────────────────────
+  const {
+    page = 1,
+    limit = 10
+  } = req.query;
+
+  // ─────────────────────────────────────────────
+  // PAGINATION
+  // ─────────────────────────────────────────────
+  const currentPage =
+    Number(page) || 1;
+
+  const perPage =
+    Number(limit) || 10;
+
+  const skip =
+    (currentPage - 1) * perPage;
+
+  // ─────────────────────────────────────────────
+  // FETCH DRIVERS ONLY
+  // ─────────────────────────────────────────────
+  const [drivers, totalDrivers] =
+    await Promise.all([
+
+      Employee.find({
+        role: "driver"
+      })
+
+        .select(
+          "-password -refreshToken"
+        )
+
+        .sort({
+          createdAt: -1
+        })
+
+        .skip(skip)
+
+        .limit(perPage)
+
+        .lean(),
+
+      Employee.countDocuments({
+        role: "driver"
+      })
+    ]);
+
+  // ─────────────────────────────────────────────
+  // FORMAT RESPONSE
+  // ─────────────────────────────────────────────
+  const formattedDrivers =
+    drivers.map(driver => ({
+
+      employeeId:
+        driver._id,
+
+      name:
+        driver.name || "",
+
+      username:
+        driver.username || "",
+
+      email:
+        driver.email || "",
+
+      phone:
+        driver.phone || "",
+
+      role:
+        driver.role,
+
+      assignedArea:
+        driver.assignedArea || null,
+
+      isDriverAvailable:
+        driver.isDriverAvailable || false,
+
+      status:
+        driver.status,
+
+      profile_image:
+        driver.profile_image || "",
+
+      createdAt:
+        driver.createdAt
+    }));
+
+  // ─────────────────────────────────────────────
+  // RESPONSE
+  // ─────────────────────────────────────────────
+  return res.status(200).json(
+
+    new ApiResponse(
+      200,
+      {
+
+        totalDrivers,
+
+        drivers:
+          formattedDrivers,
+
+        pagination: {
+
+          currentPage,
+
+          totalPages:
+            Math.ceil(
+              totalDrivers / perPage
+            ),
+
+          limit:
+            perPage
+        }
+
+      },
+
+      "Drivers fetched successfully"
+    )
+  );
+});
+
+
+
+
+
+
+
+
+
+
+const deleteEmployee = asynchandler(async (req, res) => {
+
+  ensureSuperAdmin(req);
+
+  // ─────────────────────────────────────────────
+  // PARAMS
+  // ─────────────────────────────────────────────
+  const { employeeId } = req.params;
+
+  if (!employeeId) {
+    throw new ApiError(
+      400,
+      "Employee ID is required"
+    );
+  }
+
+  // ─────────────────────────────────────────────
+  // FIND EMPLOYEE
+  // ─────────────────────────────────────────────
+  const employee =
+    await Employee.findById(employeeId);
+
+  if (!employee) {
+    throw new ApiError(
+      404,
+      "Employee not found"
+    );
+  }
+
+  // ─────────────────────────────────────────────
+  // PREVENT SELF DELETE
+  // ─────────────────────────────────────────────
+  if (
+    req.staff?._id?.toString() ===
+    employee._id.toString()
+  ) {
+    throw new ApiError(
+      400,
+      "You cannot delete yourself"
+    );
+  }
+
+  // ─────────────────────────────────────────────
+  // DELETE EMPLOYEE
+  // ─────────────────────────────────────────────
+  await Employee.findByIdAndDelete(
+    employeeId
+  );
+
+  // ─────────────────────────────────────────────
+  // RESPONSE
+  // ─────────────────────────────────────────────
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        employeeId:
+          employee._id,
+
+        name:
+          employee.name,
+
+        role:
+          employee.role
+      },
+      "Employee deleted successfully"
+    )
+  );
+});
+
+
+
+
 export {
         registeruser,
         startEmployeeRegistration,
@@ -3014,6 +4006,10 @@ export {
         adminUpdatePaymentStatus,
         getAllUsers,
         kitchenViewOrdersByArea,
-        assignAreaToDriver
+        assignAreaToDriver,
+        getAllDrivers,
+        deleteEmployee,
+        getUnverifiedDrivers,
+        getAllDriversfull
 
     }

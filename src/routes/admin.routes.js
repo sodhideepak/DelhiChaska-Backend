@@ -35,7 +35,11 @@ import {
     adminViewOrdersByArea,
         getAllUsers,
         kitchenViewOrdersByArea,
-        assignAreaToDriver
+        assignAreaToDriver,
+        getAllDrivers,
+        deleteEmployee,
+        getUnverifiedDrivers,
+        getAllDriversfull
      } from "../controllers/admin.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
@@ -137,6 +141,7 @@ router.route("/orders/kitchen/area").get(verifyStaffJWT,kitchenViewOrdersByArea)
 
 
 // Driver assignment route
+router.route("/drivers").get(verifyStaffJWT,getAllDrivers)
 router.route("/assignarea/driver").post(verifyStaffJWT,assignAreaToDriver)
 
 
@@ -146,6 +151,25 @@ router.route("/assignarea/driver").post(verifyStaffJWT,assignAreaToDriver)
 
 
 router.route("/allusers").get(verifyStaffJWT,getAllUsers)
+
+
+
+
+
+
+
+
+router.route("/unverifieddrivers").get(verifyStaffJWT,getUnverifiedDrivers)
+
+
+
+
+
+
+router.route("/alldriversfull").get(verifyStaffJWT,getAllDriversfull)
+
+
+router.route("/employee/:employeeId").delete(verifyStaffJWT,deleteEmployee)
 
 
 export default router 

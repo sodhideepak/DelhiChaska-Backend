@@ -37,7 +37,6 @@ const tempEmployeeSchema = new mongoose.Schema(
     // ✅ NEW FIELD
     assignedArea: {
       type: String,
-      required: true,
       lowercase: true,
       trim: true
     },
