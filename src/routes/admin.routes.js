@@ -34,7 +34,8 @@ import {
     adminUpdatePaymentStatus,
     adminViewOrdersByArea,
         getAllUsers,
-        kitchenViewOrdersByArea
+        kitchenViewOrdersByArea,
+        assignAreaToDriver
      } from "../controllers/admin.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
@@ -130,10 +131,13 @@ router.route("/orders/area").get(verifyStaffJWT,adminViewOrdersByArea);
 
 // kitchen routes
 router.route("/orders/kitchen/area").get(verifyStaffJWT,kitchenViewOrdersByArea)
+    
 
 
 
 
+// Driver assignment route
+router.route("/assignarea/driver").post(verifyStaffJWT,assignAreaToDriver)
 
 
 

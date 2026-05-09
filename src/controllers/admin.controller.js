@@ -708,7 +708,7 @@ const startEmployeeRegistration = asynchandler(async (req, res) => {
     $or: [{ email }, { phone }]
   });
 
-  if (existingTempEmployee) {
+  if (existingTempEmployee) { 
     throw new ApiError(
       409,
       "employee registration is already pending for verification"
@@ -780,7 +780,7 @@ const startEmployeeRegistration = asynchandler(async (req, res) => {
   );
 });
 
-
+ 
 
 const loginStaff = asynchandler(async (req, res) => {
 
@@ -1876,7 +1876,7 @@ const AREA_CITY_MAP = {
     "Santa Clara",
     "California"
   ],
-  seattle_area: [
+  seattle: [
     "Seattle",
     "Bellevue",
     "Redmond",
@@ -2692,6 +2692,111 @@ const kitchenViewOrdersByArea = asynchandler(async (req, res) => {
 
 
 
+const assignAreaToDriver = asynchandler(async (req, res) => {
+
+  ensureSuperAdmin(req);
+
+  // ─────────────────────────────────────────────
+  // BODY
+  // ─────────────────────────────────────────────
+  const {
+    driverId,
+    area
+  } = req.body;
+
+  // ─────────────────────────────────────────────
+  // VALIDATION
+  // ─────────────────────────────────────────────
+  if (!driverId) {
+    throw new ApiError(
+      400,
+      "Driver ID is required"
+    );
+  }
+
+  if (!area) {
+    throw new ApiError(
+      400,
+      "Area is required"
+    );
+  }
+
+  // ─────────────────────────────────────────────
+  // CHECK AREA
+  // ─────────────────────────────────────────────
+  const validArea =
+    AREA_CITY_MAP[
+      area.toLowerCase()
+    ];
+
+  if (!validArea) {
+    throw new ApiError(
+      400,
+      "Invalid area"
+    );
+  }
+
+  // ─────────────────────────────────────────────
+  // FIND DRIVER
+  // ─────────────────────────────────────────────
+  const driver =
+    await Staff.findById(driverId);
+
+  if (!driver) {
+    throw new ApiError(
+      404,
+      "Driver not found"
+    );
+  }
+
+  // ─────────────────────────────────────────────
+  // CHECK ROLE
+  // ─────────────────────────────────────────────
+  if (
+    driver.role !== "driver"
+  ) {
+    throw new ApiError(
+      400,
+      "Staff member is not a driver"
+    );
+  }
+
+  // ─────────────────────────────────────────────
+  // ASSIGN AREA
+  // ─────────────────────────────────────────────
+  driver.assignedArea =
+    area.toLowerCase();
+
+  await driver.save();
+
+  // ─────────────────────────────────────────────
+  // RESPONSE
+  // ─────────────────────────────────────────────
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        driverId:
+          driver._id,
+
+        name:
+          driver.name,
+
+        role:
+          driver.role,
+
+        assignedArea:
+          driver.assignedArea
+      },
+      "Area assigned to driver successfully"
+    )
+  );
+});
+
+
+
+
+
 
 
 
@@ -2908,6 +3013,7 @@ export {
         adminUpdateOrderStatus,
         adminUpdatePaymentStatus,
         getAllUsers,
-        kitchenViewOrdersByArea
+        kitchenViewOrdersByArea,
+        assignAreaToDriver
 
     }

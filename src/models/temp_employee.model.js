@@ -30,7 +30,7 @@ const tempEmployeeSchema = new mongoose.Schema(
 
     role: {
       type: String,
-      enum: ["admin", "chef", "driver", "support"],
+      enum: ["admin", "chef", "driver", "support","kitchen"],
       required: true
     },
 
