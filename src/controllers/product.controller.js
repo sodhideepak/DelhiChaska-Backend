@@ -1306,8 +1306,9 @@ const getCombosByArea = asynchandler(async (req, res) => {
 
 const getComboById = asynchandler(async (req, res) => {
   const { comboId } = req.params;
+  const { area } = req.query;
 
-  // 🔒 Validate ObjectId first (VERY IMPORTANT)
+  // 🔒 Validate ObjectId
   if (!mongoose.Types.ObjectId.isValid(comboId)) {
     throw new ApiError(400, "Invalid combo ID");
   }
@@ -1318,20 +1319,39 @@ const getComboById = asynchandler(async (req, res) => {
     throw new ApiError(404, "Combo not found");
   }
 
-  // 🔥 OPTIONAL: attach products for selectable rules
+  // 🔥 Enrich rules with products
   const enrichedRules = await Promise.all(
     combo.rules.map(async (rule) => {
 
-      // skip fixed rules
-      if (rule.isFixed) return rule;
+      // ✅ Keep full rule data
+      const ruleData = {
+        ...rule
+      };
 
-      const products = await Product.find({
+      // ✅ Skip fixed rules
+      if (rule.isFixed) {
+        return ruleData;
+      }
+
+      // 🔍 Product filter
+      let productFilter = {
         category: { $in: rule.category },
         isAvailable: true
-      }).select("name category food_class variants");
+      };
+
+      // ✅ Area filter
+      if (area) {
+        productFilter.areas = {
+          $in: [area.toLowerCase()]
+        };
+      }
+
+      const products = await Product.find(productFilter)
+        .select("name category food_class variants areas");
 
       return {
-        ...rule,
+        ...ruleData,
+        label: rule.label || "",
         products
       };
     })
@@ -1339,11 +1359,18 @@ const getComboById = asynchandler(async (req, res) => {
 
   const finalCombo = {
     ...combo,
+    appliedFilters: {
+      area: area || null
+    },
     rules: enrichedRules
   };
 
   return res.status(200).json(
-    new ApiResponse(200, finalCombo, "Combo fetched successfully")
+    new ApiResponse(
+      200,
+      finalCombo,
+      "Combo fetched successfully"
+    )
   );
 });
 

@@ -10,7 +10,7 @@ const comboSchema = new mongoose.Schema(
 
     rules: [
       {
-        title: String,
+        label: String,
         category: [String],
         quantity: Number,
 
@@ -40,7 +40,7 @@ const comboSchema = new mongoose.Schema(
         }
       }
     ],
-    
+
     image: { type: String  },
 
     isActive: {
