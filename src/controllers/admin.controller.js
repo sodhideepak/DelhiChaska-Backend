@@ -659,74 +659,125 @@ const sendEmployeeApprovalNotification = async(employeeName, employeeEmail, role
     });
 };
 
-const startEmployeeRegistration = asynchandler(async(req,res)=>{
-    const {
-        name,
-        email,
-        phone,
-        password,
-        role,
-        profile_image
-    } = req.body
+// CONTROLLER
 
-    if ([name, email, phone, password, role].some((field) => !field || field.toString().trim() === "")) {
-        throw new ApiError(400, "name, email, phone, password and role are required");
-    }
+const startEmployeeRegistration = asynchandler(async (req, res) => {
 
-    const existingEmployee = await Employee.findOne({
-        $or: [{ email }, { phone }]
-    });
+  const {
+    name,
+    email,
+    phone,
+    password,
+    role,
+    profile_image,
+    assignedArea
+  } = req.body;
 
-    if (existingEmployee) {
-        throw new ApiError(409, "employee already exists");
-    }
+  // ✅ Validation
+  if (
+    [
+      name,
+      email,
+      phone,
+      password,
+      role,
+      assignedArea
+    ].some(
+      (field) =>
+        !field || field.toString().trim() === ""
+    )
+  ) {
+    throw new ApiError(
+      400,
+      "name, email, phone, password, role and assignedArea are required"
+    );
+  }
 
-    const existingTempEmployee = await TempEmployee.findOne({
-        $or: [{ email }, { phone }]
-    });
+  // ✅ Existing employee check
+  const existingEmployee = await Employee.findOne({
+    $or: [{ email }, { phone }]
+  });
 
-    if (existingTempEmployee) {
-        throw new ApiError(409, "employee registration is already pending for verification");
-    }
+  if (existingEmployee) {
+    throw new ApiError(409, "employee already exists");
+  }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+  // ✅ Existing temp employee check
+  const existingTempEmployee = await TempEmployee.findOne({
+    $or: [{ email }, { phone }]
+  });
 
-    const tempEmployee = await TempEmployee.create({
-        name,
-        email,
-        phone,
-        password: hashedPassword,
-        role,
-        status: "not_verified",
-        profile_image: profile_image || ""
-    });
+  if (existingTempEmployee) {
+    throw new ApiError(
+      409,
+      "employee registration is already pending for verification"
+    );
+  }
 
-    // Send notification emails (non-blocking)
-    let emailStatus = "emails sent successfully";
+  // ✅ Hash password
+  const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Send admin notification
-    sendEmployeeRegistrationNotification(name, email, role).catch(error => {
-        console.log("Failed to send admin notification:", error.message);
-        emailStatus = "registration successful, but admin notification failed";
-    });
+  // ✅ Create temp employee
+  const tempEmployee = await TempEmployee.create({
+    name: name.trim(),
+    email: email.trim().toLowerCase(),
+    phone: phone.trim(),
+    password: hashedPassword,
+    role,
+    assignedArea: assignedArea.trim().toLowerCase(),
+    status: "not_verified",
+    profile_image: profile_image || ""
+  });
 
-    // Send employee confirmation
-    sendEmployeeSubmissionConfirmation(name, email).catch(error => {
-        console.log("Failed to send employee confirmation:", error.message);
-        emailStatus = "registration successful, but employee confirmation failed";
-    });
+  // ✅ Send notification emails
+  let emailStatus = "emails sent successfully";
 
-    return res
-    .status(201)
-    .json(new ApiResponse(201, {
+  // Admin notification
+  sendEmployeeRegistrationNotification(
+    name,
+    email,
+    role
+  ).catch((error) => {
+    console.log(
+      "Failed to send admin notification:",
+      error.message
+    );
+
+    emailStatus =
+      "registration successful, but admin notification failed";
+  });
+
+  // Employee confirmation
+  sendEmployeeSubmissionConfirmation(
+    name,
+    email
+  ).catch((error) => {
+    console.log(
+      "Failed to send employee confirmation:",
+      error.message
+    );
+
+    emailStatus =
+      "registration successful, but employee confirmation failed";
+  });
+
+  // ✅ Response
+  return res.status(201).json(
+    new ApiResponse(
+      201,
+      {
         id: tempEmployee._id,
         name: tempEmployee.name,
         email: tempEmployee.email,
         role: tempEmployee.role,
+        assignedArea: tempEmployee.assignedArea,
         status: tempEmployee.status,
         createdAt: tempEmployee.createdAt
-    }, `employee registration submitted successfully! ${emailStatus}`))
-})
+      },
+      `employee registration submitted successfully! ${emailStatus}`
+    )
+  );
+});
 
 
 
@@ -931,11 +982,11 @@ const getSuperAdminProfile = asynchandler(async(req,res)=>{
 
 
 
-
 const verifyEmployeeRegistration = asynchandler(async(req,res)=>{
     ensureSuperAdmin(req);
 
     const { tempEmployeeId } = req.params;
+
     const tempEmployee = await TempEmployee.findById(tempEmployeeId);
 
     if (!tempEmployee) {
@@ -956,6 +1007,10 @@ const verifyEmployeeRegistration = asynchandler(async(req,res)=>{
         phone: tempEmployee.phone,
         password: tempEmployee.password,
         role: tempEmployee.role,
+
+        // ✅ ADDED
+        assignedArea: tempEmployee.assignedArea,
+
         status: "verified",
         profile_image: tempEmployee.profile_image
     });
@@ -963,20 +1018,130 @@ const verifyEmployeeRegistration = asynchandler(async(req,res)=>{
     employee.$__.activePaths.clear("modify");
 
     await employee.save();
+
     await TempEmployee.findByIdAndDelete(tempEmployeeId);
 
     // Send approval notification email to employee (non-blocking)
     let emailStatus = "approval notification sent successfully";
 
-    sendEmployeeApprovalNotification(tempEmployee.name, tempEmployee.email, tempEmployee.role).catch(error => {
+    sendEmployeeApprovalNotification(
+        tempEmployee.name,
+        tempEmployee.email,
+        tempEmployee.role
+    ).catch(error => {
         console.log("Failed to send approval email:", error.message);
-        emailStatus = "employee verified, but approval notification failed";
+
+        emailStatus =
+        "employee verified, but approval notification failed";
     });
 
     return res
     .status(201)
-    .json(new ApiResponse(201,employee, `employee verified and registered successfully! ${emailStatus}`))
-})
+    .json(
+        new ApiResponse(
+            201,
+            employee,
+            `employee verified and registered successfully! ${emailStatus}`
+        )
+    );
+});
+
+
+
+
+
+const getEmployeesByRole = asynchandler(async (req, res) => {
+
+    ensureSuperAdmin(req);
+
+    const {
+        role,
+        assignedArea,
+        page = 1,
+        limit = 20
+    } = req.query;
+
+    let filter = {};
+
+    // ✅ Role filter
+    if (role) {
+        filter.role = role;
+    }
+
+    // ✅ Assigned area filter
+    if (assignedArea) {
+        filter.assignedArea = assignedArea.toLowerCase();
+    }
+
+    const skip =
+        (parseInt(page) - 1) * parseInt(limit);
+
+    // ✅ Fetch employees
+    const employees = await Employee.find(filter)
+        .select("-password")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(parseInt(limit))
+        .lean();
+
+    // ✅ Count
+    const totalEmployees =
+        await Employee.countDocuments(filter);
+
+    const totalPages = Math.ceil(
+        totalEmployees / parseInt(limit)
+    );
+
+    return res.status(200).json(
+        new ApiResponse(
+            200,
+            {
+                employees,
+
+                appliedFilters: {
+                    role: role || null,
+                    assignedArea:
+                        assignedArea || null
+                },
+
+                pagination: {
+                    currentPage: parseInt(page),
+                    totalPages,
+                    totalEmployees,
+                    hasNextPage:
+                        parseInt(page) < totalPages,
+                    hasPrevPage:
+                        parseInt(page) > 1
+                }
+            },
+            "Employees fetched successfully"
+        )
+    );
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1891,8 +2056,6 @@ const adminViewOrdersByArea = asynchandler(async (req, res) => {
       user: {
         userId: order.userId?._id,
         name: order.userId?.full_name,
-        email: order.userId?.email,
-        phone: order.userId?.phone_number
       },
 
       status: order.status,
@@ -2031,8 +2194,7 @@ const adminUpdateOrderStatus = asynchandler(async (req, res) => {
   // PREVENT UPDATES
   // ─────────────────────────────────────────────
   if (
-    order.status === "delivered" ||
-    order.status === "cancelled"
+    order.status === "delivered"
   ) {
     throw new ApiError(
       400,

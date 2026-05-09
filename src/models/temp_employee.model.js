@@ -1,3 +1,5 @@
+// TEMP EMPLOYEE MODEL
+
 import mongoose from "mongoose";
 
 const tempEmployeeSchema = new mongoose.Schema(
@@ -32,6 +34,14 @@ const tempEmployeeSchema = new mongoose.Schema(
       required: true
     },
 
+    // ✅ NEW FIELD
+    assignedArea: {
+      type: String,
+      required: true,
+      lowercase: true,
+      trim: true
+    },
+
     status: {
       type: String,
       enum: ["not_verified", "verified", "rejected"],
@@ -48,4 +58,7 @@ const tempEmployeeSchema = new mongoose.Schema(
   }
 );
 
-export const TempEmployee = mongoose.model("tempEmployee", tempEmployeeSchema);
+export const TempEmployee = mongoose.model(
+  "tempEmployee",
+  tempEmployeeSchema
+);

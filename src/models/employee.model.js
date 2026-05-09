@@ -21,7 +21,8 @@ const employeeSchema = new mongoose.Schema(
     phone: {
       type: String,
       required: true,
-      unique: true
+      unique: true,
+      trim: true
     },
 
     password: {
@@ -35,6 +36,15 @@ const employeeSchema = new mongoose.Schema(
       required: true
     },
 
+    // ✅ NEW FIELD
+    assignedArea: {
+      type: String,
+      required: true,
+      lowercase: true,
+      trim: true,
+      index: true
+    },
+
     status: {
       type: String,
       enum: ["not_verified", "verified", "rejected"],
@@ -42,55 +52,59 @@ const employeeSchema = new mongoose.Schema(
     },
 
     profile_image: {
-      type: String
+      type: String,
+      default: ""
     }
-
-    
   },
   {
     timestamps: true
   }
 );
 
-
-// Compare password
-employeeSchema.methods.isPasswordcorrect = async function (password) {
-    return await bcrypt.compare(password, this.password);
-};
-
-
-// Generate Access Token
-employeeSchema.methods.generateAccessToken = function () {
-    return Jwt.sign(
-        {
-            _id: this._id,
-            email: this.email,
-            phone: this.phone
-        },
-        process.env.Access_Token_Secret,
-        {
-            expiresIn: process.env.Access_Token_Expiry
-        }
+// ✅ Compare password
+employeeSchema.methods.isPasswordcorrect =
+  async function (password) {
+    return await bcrypt.compare(
+      password,
+      this.password
     );
-};
+  };
 
-
-// Generate Refresh Token
-employeeSchema.methods.generateRefreshToken = function () {
+// ✅ Generate Access Token
+employeeSchema.methods.generateAccessToken =
+  function () {
     return Jwt.sign(
-        {
-            _id: this._id
-        },
-        process.env.Refresh_Token_Secret,
-        {
-            expiresIn: process.env.Refresh_Token_Expiry
-        }
+      {
+        _id: this._id,
+        email: this.email,
+        phone: this.phone,
+        role: this.role,
+        assignedArea: this.assignedArea
+      },
+      process.env.Access_Token_Secret,
+      {
+        expiresIn:
+          process.env.Access_Token_Expiry
+      }
     );
-};
+  };
 
+// ✅ Generate Refresh Token
+employeeSchema.methods.generateRefreshToken =
+  function () {
+    return Jwt.sign(
+      {
+        _id: this._id
+      },
+      process.env.Refresh_Token_Secret,
+      {
+        expiresIn:
+          process.env.Refresh_Token_Expiry
+      }
+    );
+  };
 
-
-
-
-
-export const Employee = mongoose.model("employee", employeeSchema);
+export const Employee = mongoose.model(
+  "employee",
+  employeeSchema
+);
