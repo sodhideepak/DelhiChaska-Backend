@@ -118,8 +118,8 @@ router.route("/zip/:zip/country/:country").get(verifyStaffJWT, getCityByZip);
 // ─────── ORDER ROUTES ─────── 
 
 router.route("/orders/all").get(verifyStaffJWT,adminViewAllOrders);
-router.route("/order/:orderId/status").patch(verifyStaffJWT,adminUpdateOrderStatus);
-router.route("/order/:orderId/payment").patch(verifyStaffJWT,adminUpdatePaymentStatus);
+router.route("/order/orderstatus/:orderId").patch(verifyStaffJWT,adminUpdateOrderStatus);
+router.route("/order/updatepaymentstatus/:orderId").patch(verifyStaffJWT,adminUpdatePaymentStatus);
 router.route("/orders/area").get(verifyStaffJWT,adminViewOrdersByArea);
 
 

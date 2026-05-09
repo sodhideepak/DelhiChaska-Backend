@@ -8,9 +8,12 @@ import { addToCart,
          deleteCartItem,
          clearCart,
          ProceedToOrder,
-         viewMyOrders } from "../controllers/order.controller.js";
+         viewMyOrders,
+            notifyPaymentDone,
+         viewAllOrders } from "../controllers/order.controller.js";
 import { validateApiKey } from "../middlewares/validateapi.middleware.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
+import { verifyStaffJWT } from "../middlewares/authstaff.middleware.js";
 
 const router = Router();
 
@@ -28,5 +31,11 @@ router.route("/clearcart").post(verifyJWT,clearCart)
 
 router.route("/proceedtoorder").post(verifyJWT,ProceedToOrder)
 router.route("/myorders").get(verifyJWT,viewMyOrders)
+router.route("/notifypaymentdone/:orderId").post(verifyJWT,notifyPaymentDone)
 
+
+
+
+// admin routes
+router.route("/allorders").get(verifyStaffJWT,viewAllOrders)
 export default router;

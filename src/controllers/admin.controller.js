@@ -12,6 +12,7 @@ import jwt from "jsonwebtoken"
 import * as nodemailer from "nodemailer"
 import Randomstring from "randomstring";
 import bcrypt from "bcrypt";
+import { sendEmail } from "../utils/sendutilmail.js";
 import { Order }   from "../models/order.model.js";
 import { Cart }    from "../models/cart.model.js";
 import { Product } from "../models/product.model.js";
@@ -1669,6 +1670,8 @@ const adminViewAllOrders = asynchandler(async (req, res) => {
     payment:       order.payment,
     totalAmount:   order.totalAmount,
     itemCount:     order.items.length,
+    paymentRequested: order.paymentRequested,
+
     items:         order.items.map(item => ({
       productId:   item.productId,
       name:        item.name,
@@ -1704,7 +1707,8 @@ const AREA_CITY_MAP = {
     "Berkeley",
     "Palo Alto",
     "Fremont",
-    "Santa Clara"
+    "Santa Clara",
+    "California"
   ],
   seattle_area: [
     "Seattle",
@@ -1721,138 +1725,277 @@ const AREA_CITY_MAP = {
   ]
 };
 
-
 const adminViewOrdersByArea = asynchandler(async (req, res) => {
+
   ensureSuperAdmin(req);
-console.log(req.query);
 
   const {
     area,
+
+    // ✅ OPTIONAL FILTERS
     status,
-    payment,
-    page = 1,
-    limit = 10,
+    paymentStatus,
+
+    // ✅ DATE FILTERS
     date,
     startDate,
-    endDate
+    endDate,
+
+    page = 1,
+    limit = 10
+
   } = req.query;
 
-  // ❌ Area required
+  // ─────────────────────────────────────────────
+  // AREA REQUIRED
+  // ─────────────────────────────────────────────
   if (!area) {
-    throw new ApiError(400, "Area is required");
+    throw new ApiError(
+      400,
+      "Area is required"
+    );
   }
 
-  // 🔍 Get cities from mapping
-  const cities = AREA_CITY_MAP[area.toLowerCase()];
+  // ─────────────────────────────────────────────
+  // GET CITIES
+  // ─────────────────────────────────────────────
+  const cities =
+    AREA_CITY_MAP[area.toLowerCase()];
 
   if (!cities) {
-    throw new ApiError(400, "Invalid area provided");
+    throw new ApiError(
+      400,
+      "Invalid area provided"
+    );
   }
 
-  // 🎯 Base Filter
+  // ─────────────────────────────────────────────
+  // BASE FILTER
+  // ─────────────────────────────────────────────
   const filter = {
-    "deliveryDetails.city": { $in: cities }
+    "deliveryDetails.city": {
+      $in: cities
+    }
   };
 
-  if (status) filter.status = status;
-  if (payment) filter["payment.method"] = payment;
+  // ─────────────────────────────────────────────
+  // APPLY FILTERS ONLY IF PRESENT
+  // ─────────────────────────────────────────────
 
-  // ==========================
-  // 📅 Date Filters
-  // ==========================
+  // ✅ ORDER STATUS
+  if (status) {
+    filter.status = status;
+  }
 
-  // 👉 Single Date
+  // ✅ PAYMENT STATUS
+  if (paymentStatus) {
+    filter["payment.status"] =
+      paymentStatus;
+  }
+
+  // ✅ SINGLE DATE
   if (date) {
+
     const selectedDate = new Date(date);
 
-    const startOfDay = new Date(selectedDate);
-    startOfDay.setHours(0, 0, 0, 0);
+    const startOfDay =
+      new Date(selectedDate);
 
-    const endOfDay = new Date(selectedDate);
-    endOfDay.setHours(23, 59, 59, 999);
-    console.log(startOfDay, endOfDay);
+    startOfDay.setHours(
+      0,
+      0,
+      0,
+      0
+    );
+
+    const endOfDay =
+      new Date(selectedDate);
+
+    endOfDay.setHours(
+      23,
+      59,
+      59,
+      999
+    );
+
     filter.createdAt = {
       $gte: startOfDay,
       $lte: endOfDay
     };
   }
 
-  // 👉 Date Range
-  if (startDate && endDate) {
-    filter.createdAt = {
-      $gte: new Date(startDate),
-      $lte: new Date(endDate)
-    };
+  // ✅ DATE RANGE
+  if (startDate || endDate) {
+
+    filter.createdAt = {};
+
+    if (startDate) {
+      filter.createdAt.$gte =
+        new Date(startDate);
+    }
+
+    if (endDate) {
+
+      const end = new Date(endDate);
+
+      end.setHours(
+        23,
+        59,
+        59,
+        999
+      );
+
+      filter.createdAt.$lte = end;
+    }
   }
 
-  // ==========================
-  // 📄 Pagination
-  // ==========================
-  const skip = (Number(page) - 1) * Number(limit);
+  // ─────────────────────────────────────────────
+  // PAGINATION
+  // ─────────────────────────────────────────────
+  const currentPage =
+    Number(page) || 1;
 
-  const [orders, total] = await Promise.all([
-    Order.find(filter)
-      .populate("userId", "full_name email phone_number")
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(Number(limit))
-      .lean(),
+  const perPage =
+    Number(limit) || 10;
 
-    Order.countDocuments(filter)
-  ]);
+  const skip =
+    (currentPage - 1) * perPage;
 
-  if (!orders.length) {
-    return res.status(200).json(
-      new ApiResponse(200, { orders: [], total: 0 }, "No orders found for this area")
-    );
-  }
+  // ─────────────────────────────────────────────
+  // FETCH ORDERS
+  // ─────────────────────────────────────────────
+  const [orders, totalOrders] =
+    await Promise.all([
 
-  const formattedOrders = orders.map(order => ({
-    orderId: order._id,
-    user: {
-      userId: order.userId?._id,
-      name: order.userId?.full_name,
-      email: order.userId?.email,
-      phone: order.userId?.phone_number
-    },
-    status: order.status,
-    payment: order.payment,
-    totalAmount: order.totalAmount,
-    itemCount: order.items.length,
-    items: order.items.map(item => ({
-      productId: item.productId,
-      name: item.name,
-      quantity: item.quantity,
-      price: item.price,
-      type: item.type,
-      total: item.price * item.quantity
-    })),
-    deliveryDetails: order.deliveryDetails,
-    placedAt: order.createdAt
-  }));
+      Order.find(filter)
+        .populate(
+          "userId",
+          "full_name email phone_number"
+        )
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(perPage)
+        .lean(),
 
+      Order.countDocuments(filter)
+    ]);
+
+  // ─────────────────────────────────────────────
+  // FORMAT ORDERS
+  // ─────────────────────────────────────────────
+  const formattedOrders =
+    orders.map(order => ({
+
+      orderId: order._id,
+
+      user: {
+        userId: order.userId?._id,
+        name: order.userId?.full_name,
+        email: order.userId?.email,
+        phone: order.userId?.phone_number
+      },
+
+      status: order.status,
+
+      payment: {
+        method:
+          order.payment?.method || "",
+        status:
+          order.payment?.status || ""
+      },
+
+      paymentRequested:
+        order.paymentRequested || false,
+
+      totalAmount:
+        order.totalAmount,
+
+      deliveryDate:
+        order.deliveryDate || null,
+
+      deliveredAt:
+        order.deliveredAt || null,
+
+      itemCount:
+        order.items.length,
+
+      items: order.items.map(item => ({
+        productId: item.productId,
+        name: item.name,
+        quantity: item.quantity,
+        price: item.price,
+        type: item.type,
+        total:
+          item.price * item.quantity
+      })),
+
+      deliveryDetails:
+        order.deliveryDetails,
+
+      placedAt:
+        order.createdAt
+
+    }));
+
+  // ─────────────────────────────────────────────
+  // RESPONSE
+  // ─────────────────────────────────────────────
   return res.status(200).json(
-    new ApiResponse(200, {
-      area,
-      citiesCovered: cities,
-      orders: formattedOrders,
-      pagination: {
-        total,
-        page: Number(page),
-        limit: Number(limit),
-        totalPages: Math.ceil(total / Number(limit))
-      }
-    }, "Orders fetched successfully by area")
+    new ApiResponse(
+      200,
+      {
+        area,
+
+        citiesCovered: cities,
+
+        filters: {
+          status: status || null,
+          paymentStatus:
+            paymentStatus || null,
+          date: date || null,
+          startDate:
+            startDate || null,
+          endDate:
+            endDate || null
+        },
+
+        orders: formattedOrders,
+
+        pagination: {
+          totalOrders,
+
+          currentPage,
+
+          totalPages: Math.ceil(
+            totalOrders / perPage
+          ),
+
+          limit: perPage
+        }
+
+      },
+      "Orders fetched successfully by area"
+    )
   );
 });
 // ─────────────────────────────────────────────
 // 🔄 UPDATE ORDER STATUS (Admin)  → sends mail
 // ─────────────────────────────────────────────
-const adminUpdateOrderStatus = asynchandler(async (req, res) => {
-    ensureSuperAdmin(req);
-  const { orderId } = req.params;
-  const { status }  = req.body;
 
+const adminUpdateOrderStatus = asynchandler(async (req, res) => {
+
+  ensureSuperAdmin(req);
+
+  // ─────────────────────────────────────────────
+  // PARAMS
+  // ─────────────────────────────────────────────
+  const { orderId } = req.params;
+
+  const { status } = req.body;
+
+  // ─────────────────────────────────────────────
+  // VALIDATION
+  // ─────────────────────────────────────────────
   const allowedStatuses = [
     "confirmed",
     "preparing",
@@ -1861,78 +2004,285 @@ const adminUpdateOrderStatus = asynchandler(async (req, res) => {
     "cancelled"
   ];
 
-  if (!status || !allowedStatuses.includes(status)) {
+  if (
+    !status ||
+    !allowedStatuses.includes(status)
+  ) {
     throw new ApiError(
       400,
       `Invalid status. Allowed: ${allowedStatuses.join(", ")}`
     );
   }
 
+  // ─────────────────────────────────────────────
+  // FIND ORDER
+  // ─────────────────────────────────────────────
   const order = await Order.findById(orderId)
     .populate("userId", "full_name email");
 
   if (!order) {
-    throw new ApiError(404, "Order not found");
+    throw new ApiError(
+      404,
+      "Order not found"
+    );
   }
 
-  if (order.status === "delivered" || order.status === "cancelled") {
+  // ─────────────────────────────────────────────
+  // PREVENT UPDATES
+  // ─────────────────────────────────────────────
+  if (
+    order.status === "delivered" ||
+    order.status === "cancelled"
+  ) {
     throw new ApiError(
       400,
       `Cannot update a ${order.status} order`
     );
   }
 
+  // ─────────────────────────────────────────────
+  // UPDATE STATUS
+  // ─────────────────────────────────────────────
   order.status = status;
+
+  // ✅ SET DELIVERED TIME
+  if (status === "delivered") {
+    order.deliveredAt = new Date();
+  }
+
+  // ✅ RESET PAYMENT REQUEST
+  if (
+    status === "confirmed" &&
+    order.paymentRequested
+  ) {
+    order.paymentRequested = false;
+  }
+
   await order.save();
 
-  // ── Send status update mail to user ──
-  await send_order_status_mail(
-    order.userId.email,
-    order.userId.full_name,
-    order,
-    status
-  );
+  // ─────────────────────────────────────────────
+  // SEND EMAIL TO USER
+  // ─────────────────────────────────────────────
+  if (order.userId?.email) {
 
+    await sendEmail({
+
+      to: order.userId.email,
+
+      subject: `Order Status Updated - ${status}`,
+
+      html: `
+        <div style="font-family: Arial, sans-serif; padding: 20px;">
+
+          <h2>
+            Your Order Status Has Been Updated
+          </h2>
+
+          <p>
+            Hello ${order.userId.full_name || "Customer"},
+          </p>
+
+          <p>
+            Your order status has been updated successfully.
+          </p>
+
+          <hr />
+
+          <p>
+            <strong>Order ID:</strong>
+            ${order._id}
+          </p>
+
+          <p>
+            <strong>New Status:</strong>
+            ${status}
+          </p>
+
+          <p>
+            <strong>Total Amount:</strong>
+            $${order.totalAmount}
+          </p>
+
+          ${
+            order.deliveredAt
+              ? `
+                <p>
+                  <strong>Delivered At:</strong>
+                  ${new Date(order.deliveredAt).toLocaleString()}
+                </p>
+              `
+              : ""
+          }
+
+          <hr />
+
+          <p>
+            Thank you for ordering with us ❤️
+          </p>
+
+        </div>
+      `
+    });
+  }
+
+  // ─────────────────────────────────────────────
+  // RESPONSE
+  // ─────────────────────────────────────────────
   return res.status(200).json(
-    new ApiResponse(200, {
-      orderId:   order._id,
-      newStatus: order.status
-    }, `Order status updated to "${status}" and mail sent`)
+    new ApiResponse(
+      200,
+      {
+        orderId: order._id,
+
+        previousStatus: order.status,
+
+        newStatus: status,
+
+        deliveredAt:
+          order.deliveredAt || null,
+
+        paymentRequested:
+          order.paymentRequested || false
+      },
+      `Order status updated to "${status}" successfully`
+    )
   );
 });
-
 
 // ─────────────────────────────────────────────
 // 💳 UPDATE PAYMENT STATUS (Admin)
 // ─────────────────────────────────────────────
+
 const adminUpdatePaymentStatus = asynchandler(async (req, res) => {
-    ensureSuperAdmin(req);
-  const { orderId }       = req.params;
+
+  ensureSuperAdmin(req);
+
+  // ─────────────────────────────────────────────
+  // PARAMS
+  // ─────────────────────────────────────────────
+  const { orderId } = req.params;
+
   const { paymentStatus } = req.body;
 
-  const allowedPaymentStatuses = ["pending", "paid", "failed"];
+  // ─────────────────────────────────────────────
+  // VALIDATION
+  // ─────────────────────────────────────────────
+  const allowedPaymentStatuses = [
+    "pending",
+    "paid",
+    "failed"
+  ];
 
-  if (!paymentStatus || !allowedPaymentStatuses.includes(paymentStatus)) {
+  if (
+    !paymentStatus ||
+    !allowedPaymentStatuses.includes(paymentStatus)
+  ) {
     throw new ApiError(
       400,
       `Invalid payment status. Allowed: ${allowedPaymentStatuses.join(", ")}`
     );
   }
 
-  const order = await Order.findById(orderId);
+  // ─────────────────────────────────────────────
+  // FIND ORDER
+  // ─────────────────────────────────────────────
+  const order = await Order.findById(orderId)
+    .populate("userId", "full_name email");
 
   if (!order) {
-    throw new ApiError(404, "Order not found");
+    throw new ApiError(
+      404,
+      "Order not found"
+    );
   }
 
+  // ─────────────────────────────────────────────
+  // UPDATE PAYMENT STATUS
+  // ─────────────────────────────────────────────
   order.payment.status = paymentStatus;
+
+  // ✅ RESET PAYMENT REQUEST
+  // AFTER PAYMENT APPROVED
+  if (paymentStatus === "paid") {
+    order.paymentRequested = false;
+  }
+
   await order.save();
 
+  // ─────────────────────────────────────────────
+  // SEND EMAIL TO USER
+  // ─────────────────────────────────────────────
+  if (
+    paymentStatus === "paid" &&
+    order.userId?.email
+  ) {
+
+    await sendEmail({
+
+      to: order.userId.email,
+
+      subject: "Payment Approved Successfully",
+
+      html: `
+        <div style="font-family: Arial, sans-serif; padding: 20px;">
+
+          <h2>
+            Payment Approved ✅
+          </h2>
+
+          <p>
+            Hello ${order.userId.full_name || "Customer"},
+          </p>
+
+          <p>
+            Your payment has been successfully verified and approved by admin.
+          </p>
+
+          <hr />
+
+          <p>
+            <strong>Order ID:</strong>
+            ${order._id}
+          </p>
+
+          <p>
+            <strong>Payment Status:</strong>
+            ${paymentStatus}
+          </p>
+
+          <p>
+            <strong>Total Amount:</strong>
+            $${order.totalAmount}
+          </p>
+
+          <hr />
+
+          <p>
+            Thank you for ordering with us ❤️
+          </p>
+
+        </div>
+      `
+    });
+  }
+
+  // ─────────────────────────────────────────────
+  // RESPONSE
+  // ─────────────────────────────────────────────
   return res.status(200).json(
-    new ApiResponse(200, {
-      orderId:           order._id,
-      newPaymentStatus:  order.payment.status
-    }, `Payment status updated to "${paymentStatus}"`)
+    new ApiResponse(
+      200,
+      {
+        orderId: order._id,
+
+        paymentRequested:
+          order.paymentRequested || false,
+
+        newPaymentStatus:
+          order.payment.status
+      },
+      `Payment status updated to "${paymentStatus}"`
+    )
   );
 });
 

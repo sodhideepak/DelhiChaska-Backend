@@ -48,6 +48,10 @@ const addressSchema = new mongoose.Schema(
     location: {
         lat: Number,
         lng: Number
+    },
+    area:{
+        type: String,
+        trim: true
     }
 
 },

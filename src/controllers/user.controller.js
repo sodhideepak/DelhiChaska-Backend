@@ -968,7 +968,8 @@ const addAddress = asynchandler(async (req, res) => {
         country,
         location
     } = req.body;
-
+    
+    const area="bay_area"
     // ✅ basic validation
     if ([addressLine1, city, state, zipCode, country].some(
         (field) => !field || field.toString().trim() === ""
@@ -1006,7 +1007,8 @@ const addAddress = asynchandler(async (req, res) => {
         state,
         zipCode,
         country: country.toUpperCase(),
-        location
+        location,
+        area
     });
 
     // ✅ link to user
