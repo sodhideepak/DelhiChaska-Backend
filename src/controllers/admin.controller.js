@@ -21,6 +21,7 @@ import { Address } from "../models/address.model.js";
 
 
 
+
 const SUPER_ADMIN_EMAIL = process.env.SUPER_ADMIN_EMAIL || "deepaksodhi0023@gmail.com";
 const HARD_CODED_SUPER_ADMIN_ROLE = "super_admin";
 
@@ -1875,14 +1876,14 @@ const AREA_CITY_MAP = {
     "Santa Clara",
     "California"
   ],
-  seattle: [
+  seattle_area: [
     "Seattle",
     "Bellevue",
     "Redmond",
     "Tacoma",
     "Everett"
   ],
-  new_york: [
+  new_york_area: [
     "New York",
     "Brooklyn",
     "Queens",
@@ -2451,6 +2452,431 @@ const adminUpdatePaymentStatus = asynchandler(async (req, res) => {
 
 
 
+
+
+
+
+export const ensureKitchen = (req) => {
+
+  // ❌ NO USER
+  if (!req.staff) {
+    throw new ApiError(
+      401,
+      "Unauthorized access"
+    );
+  } 
+  console.log("Staff role:", req.staff.role);
+  
+  // ❌ NOT KITCHEN
+  if ( req.staff.role !== "admin"  && req.staff.role !== "kitchen") {
+    throw new ApiError(
+      403,
+      "Kitchen access only"
+    );
+  }
+
+  return true;
+};
+
+
+
+
+
+// kitchen routes 
+const kitchenViewOrdersByArea = asynchandler(async (req, res) => {
+
+  ensureKitchen(req);
+
+  // ─────────────────────────────────────────────
+  // QUERY PARAMS
+  // ─────────────────────────────────────────────
+  const {
+    area,
+    page = 1,
+    limit = 20
+  } = req.query;
+
+  // ─────────────────────────────────────────────
+  // AREA REQUIRED
+  // ─────────────────────────────────────────────
+  if (!area) {
+    throw new ApiError(
+      400,
+      "Area is required"
+    );
+  }
+
+  // ─────────────────────────────────────────────
+  // GET CITIES
+  // ─────────────────────────────────────────────
+  const cities =
+    AREA_CITY_MAP[area.toLowerCase()];
+
+  if (!cities) {
+    throw new ApiError(
+      400,
+      "Invalid area provided"
+    );
+  }
+
+  // ─────────────────────────────────────────────
+  // FILTER
+  // ONLY CONFIRMED ORDERS
+  // ─────────────────────────────────────────────
+  const filter = {
+    status: "confirmed",
+
+    "deliveryDetails.city": {
+      $in: cities
+    }
+  };
+
+  // ─────────────────────────────────────────────
+  // PAGINATION
+  // ─────────────────────────────────────────────
+  const currentPage =
+    Number(page) || 1;
+
+  const perPage =
+    Number(limit) || 20;
+
+  const skip =
+    (currentPage - 1) * perPage;
+
+  // ─────────────────────────────────────────────
+  // FETCH ORDERS
+  // ─────────────────────────────────────────────
+  const [orders, totalOrders] =
+    await Promise.all([
+
+      Order.find(filter)
+
+        .populate(
+          "userId",
+          "username"
+        )
+
+        .sort({
+          createdAt: -1
+        })
+
+        .skip(skip)
+
+        .limit(perPage)
+
+        .lean(),
+
+      Order.countDocuments(filter)
+    ]);
+
+  // ─────────────────────────────────────────────
+  // AGGREGATED ITEM QUANTITY
+  // ─────────────────────────────────────────────
+  const aggregatedItemsMap = {};
+
+  orders.forEach(order => {
+
+    order.items.forEach(item => {
+
+      const key =
+        `${item.name}_${item.type}`;
+
+      if (!aggregatedItemsMap[key]) {
+
+        aggregatedItemsMap[key] = {
+          name: item.name,
+          type: item.type,
+          totalQuantity: 0
+        };
+      }
+
+      aggregatedItemsMap[
+        key
+      ].totalQuantity += item.quantity;
+    });
+  });
+
+  const aggregatedItems =
+    Object.values(
+      aggregatedItemsMap
+    );
+
+  // ─────────────────────────────────────────────
+  // FORMAT ORDERS
+  // ─────────────────────────────────────────────
+  const formattedOrders =
+    orders.map(order => ({
+
+      orderId: order._id,
+
+      username:
+        order.userId?.username || "",
+
+      status:
+        order.status,
+
+      itemCount:
+        order.items.length,
+
+      items:
+        order.items.map(item => ({
+
+          name:
+            item.name,
+
+          quantity:
+            item.quantity,
+
+          type:
+            item.type
+
+        })),
+
+      placedAt:
+        order.createdAt
+    }));
+
+  // ─────────────────────────────────────────────
+  // RESPONSE
+  // ─────────────────────────────────────────────
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+
+        area,
+
+        citiesCovered:
+          cities,
+
+        orders:
+          formattedOrders,
+
+        // ✅ TOTAL ITEM REQUIREMENTS
+        aggregatedItems,
+
+        pagination: {
+
+          totalOrders,
+
+          currentPage,
+
+          totalPages:
+            Math.ceil(
+              totalOrders / perPage
+            ),
+
+          limit:
+            perPage
+        }
+
+      },
+      "Kitchen orders fetched successfully"
+    )
+  );
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+const getAllUsers = asynchandler(async (req, res) => {
+
+  ensureSuperAdmin(req);
+
+  // ─────────────────────────────────────────────
+  // QUERY PARAMS
+  // ─────────────────────────────────────────────
+  const {
+    search,
+    gender,
+    page = 1,
+    limit = 10
+  } = req.query;
+
+  // ─────────────────────────────────────────────
+  // FILTER
+  // ─────────────────────────────────────────────
+  const filter = {};
+
+  // ✅ SEARCH
+  if (search) {
+
+    filter.$or = [
+
+      {
+        full_name: {
+          $regex: search,
+          $options: "i"
+        }
+      },
+
+      {
+        username: {
+          $regex: search,
+          $options: "i"
+        }
+      },
+
+      {
+        email: {
+          $regex: search,
+          $options: "i"
+        }
+      },
+
+      {
+        phone_number: {
+          $regex: search,
+          $options: "i"
+        }
+      }
+
+    ];
+  }
+
+  // ✅ GENDER FILTER
+  if (gender) {
+    filter.gender = gender;
+  }
+
+  // ─────────────────────────────────────────────
+  // PAGINATION
+  // ─────────────────────────────────────────────
+  const currentPage =
+    Number(page) || 1;
+
+  const perPage =
+    Number(limit) || 10;
+
+  const skip =
+    (currentPage - 1) * perPage;
+
+  // ─────────────────────────────────────────────
+  // FETCH USERS
+  // ─────────────────────────────────────────────
+  const [users, totalUsers] =
+    await Promise.all([
+
+      user.find(filter)
+
+        .select(
+          "-password -refreshToken -token"
+        )
+
+        .populate(
+          "addresses"
+        )
+
+        .sort({
+          createdAt: -1
+        })
+
+        .skip(skip)
+
+        .limit(perPage)
+
+        .lean(),
+
+      user.countDocuments(filter)
+    ]);
+
+  // ─────────────────────────────────────────────
+  // FORMAT USERS
+  // ─────────────────────────────────────────────
+  const formattedUsers =
+    users.map(singleUser => ({
+
+      userId:
+        singleUser._id,
+
+      username:
+        singleUser.username,
+
+      full_name:
+        singleUser.full_name,
+
+      email:
+        singleUser.email,
+
+      phone_number:
+        singleUser.phone_number,
+
+      gender:
+        singleUser.gender,
+
+      DOB:
+        singleUser.DOB,
+
+      avatar:
+        singleUser.avatar || "",
+
+      is_email_verified:
+        singleUser.is_email_verified,
+
+      addresses:
+        singleUser.addresses || [],
+
+      createdAt:
+        singleUser.createdAt
+
+    }));
+
+  // ─────────────────────────────────────────────
+  // RESPONSE
+  // ─────────────────────────────────────────────
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        filters: {
+          search:
+            search || null,
+          gender:
+            gender || null
+        },
+
+        users:
+          formattedUsers,
+
+        pagination: {
+          totalUsers,
+
+          currentPage,
+
+          totalPages: Math.ceil(
+            totalUsers / perPage
+          ),
+
+          limit: perPage
+        }
+
+      },
+      "Users fetched successfully"
+    )
+  );
+});
+
+
+
+
+
 export {
         registeruser,
         startEmployeeRegistration,
@@ -2480,6 +2906,8 @@ export {
         adminViewAllOrders,
         adminViewOrdersByArea,
         adminUpdateOrderStatus,
-        adminUpdatePaymentStatus
+        adminUpdatePaymentStatus,
+        getAllUsers,
+        kitchenViewOrdersByArea
 
     }

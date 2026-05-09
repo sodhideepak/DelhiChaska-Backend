@@ -32,7 +32,9 @@ import {
     adminViewAllOrders,
     adminUpdateOrderStatus,
     adminUpdatePaymentStatus,
-    adminViewOrdersByArea
+    adminViewOrdersByArea,
+        getAllUsers,
+        kitchenViewOrdersByArea
      } from "../controllers/admin.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
@@ -122,6 +124,24 @@ router.route("/order/orderstatus/:orderId").patch(verifyStaffJWT,adminUpdateOrde
 router.route("/order/updatepaymentstatus/:orderId").patch(verifyStaffJWT,adminUpdatePaymentStatus);
 router.route("/orders/area").get(verifyStaffJWT,adminViewOrdersByArea);
 
+
+
+
+
+// kitchen routes
+router.route("/orders/kitchen/area").get(verifyStaffJWT,kitchenViewOrdersByArea)
+
+
+
+
+
+
+
+
+
+
+
+router.route("/allusers").get(verifyStaffJWT,getAllUsers)
 
 
 export default router 

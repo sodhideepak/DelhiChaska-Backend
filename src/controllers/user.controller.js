@@ -194,51 +194,177 @@ const calculate_age = function calculateAge(dob) {
     return `${years} years ${months} months ${days} days`;
 }
 
-
 const startRegistration = asynchandler(async (req, res) => {
 
-    const { full_name, email, phone_number, gender, DOB, password } = req.body;
-
-    if ([full_name, email, phone_number, gender, DOB, password]
-        .some(field => !field || field.toString().trim() === "")) {
-
-        throw new ApiError(400, "All fields are required");
-    }
-
-    const existingUser = await user.findOne({
-        $or: [{ email }, { phone_number }]
-    });
-
-    if (existingUser) {
-        throw new ApiError(409, "User already exists");
-    }
-
-    // generate OTP
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-
-    const expiresAt = "10 minutes";
-
-    // hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    await TempUser.create({
+    const {
         full_name,
         email,
         phone_number,
         gender,
         DOB,
-        password: hashedPassword,
+        password
+    } = req.body;
+
+    // ─────────────────────────────────────────────
+    // VALIDATION
+    // ─────────────────────────────────────────────
+    if (
+        [
+            full_name,
+            email,
+            phone_number,
+            gender,
+            DOB,
+            password
+        ].some(
+            field =>
+                !field ||
+                field.toString().trim() === ""
+        )
+    ) {
+        throw new ApiError(
+            400,
+            "All fields are required"
+        );
+    }
+
+    // ─────────────────────────────────────────────
+    // CHECK EXISTING USER
+    // ─────────────────────────────────────────────
+    const existingUser =
+        await user.findOne({
+            $or: [
+                { email },
+                { phone_number }
+            ]
+        });
+
+    if (existingUser) {
+        throw new ApiError(
+            409,
+            "User already exists"
+        );
+    }
+
+    // ─────────────────────────────────────────────
+    // GENERATE UNIQUE USERNAME
+    // readable + 6-8 chars
+    // ─────────────────────────────────────────────
+    const generateUsername =
+        async (fullName) => {
+
+            let baseName = fullName
+                .toLowerCase()
+                .replace(/[^a-z]/g, "")
+                .slice(0, 5);
+
+            if (!baseName) {
+                baseName = "user";
+            }
+
+            let username;
+            let exists = true;
+
+            while (exists) {
+
+                const randomNumber =
+                    Math.floor(
+                        10 +
+                        Math.random() * 900
+                    );
+
+                username =
+                    `${baseName}${randomNumber}`;
+
+                username =
+                    username.slice(0, 8);
+
+                const existingUsername =
+                    await user.findOne({
+                        username
+                    });
+
+                exists =
+                    !!existingUsername;
+            }
+
+            return username;
+        };
+
+    const username =
+        await generateUsername(
+            full_name
+        );
+
+    // ─────────────────────────────────────────────
+    // GENERATE OTP
+    // ─────────────────────────────────────────────
+    const otp =
+        Math.floor(
+            100000 +
+            Math.random() * 900000
+        ).toString();
+
+    const expiresAt =
+        "10 minutes";
+
+    // ─────────────────────────────────────────────
+    // HASH PASSWORD
+    // ─────────────────────────────────────────────
+    const hashedPassword =
+        await bcrypt.hash(
+            password,
+            10
+        );
+
+    // ─────────────────────────────────────────────
+    // SAVE TEMP USER
+    // ─────────────────────────────────────────────
+    await TempUser.create({
+
+        username,
+
+        full_name,
+
+        email,
+
+        phone_number,
+
+        gender,
+
+        DOB,
+
+        password:
+            hashedPassword,
+
         otp,
-        otp_expires: Date.now() + 10 * 60 * 1000
+
+        otp_expires:
+            Date.now() +
+            10 * 60 * 1000
     });
 
-    // send OTP mail
-    send_register_otp(email, otp, expiresAt);
-
-    return res.status(200).json(
-        new ApiResponse(200, {}, "OTP sent to email")
+    // ─────────────────────────────────────────────
+    // SEND OTP MAIL
+    // ─────────────────────────────────────────────
+    await send_register_otp(
+        email,
+        otp,
+        expiresAt
     );
 
+    // ─────────────────────────────────────────────
+    // RESPONSE
+    // ─────────────────────────────────────────────
+    return res.status(200).json(
+        new ApiResponse(
+            200,
+            {
+                username
+            },
+            "OTP sent to email"
+        )
+    );
 });
 
 
@@ -968,7 +1094,7 @@ const addAddress = asynchandler(async (req, res) => {
         country,
         location
     } = req.body;
-    
+
     const area="bay_area"
     // ✅ basic validation
     if ([addressLine1, city, state, zipCode, country].some(
