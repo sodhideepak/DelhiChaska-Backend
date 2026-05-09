@@ -1875,14 +1875,14 @@ const AREA_CITY_MAP = {
     "Santa Clara",
     "California"
   ],
-  seattle_area: [
+  seattle: [
     "Seattle",
     "Bellevue",
     "Redmond",
     "Tacoma",
     "Everett"
   ],
-  new_york_area: [
+  new_york: [
     "New York",
     "Brooklyn",
     "Queens",
