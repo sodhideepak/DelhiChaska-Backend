@@ -17,8 +17,9 @@ import { Order }   from "../models/order.model.js";
 import { Cart }    from "../models/cart.model.js";
 import { Product } from "../models/product.model.js";
 import { Address } from "../models/address.model.js";
+import { DeliveryBatch } from "../models/deliveryBatch.model.js";
 
-
+ 
 
 
 
@@ -3896,6 +3897,57 @@ const getAllDriversfull = asynchandler(async (req, res) => {
 
 
 
+const resetAllDrivers = asynchandler(async (req, res) => {
+
+  ensureSuperAdmin(req);
+
+  // ─────────────────────────────────────────────
+  // RESET ALL DRIVERS
+  // ─────────────────────────────────────────────
+  const result =
+    await Employee.updateMany(
+
+      {
+        role: "driver"
+      },
+
+      {
+        $set: {
+
+          // ✅ DRIVER FREE AGAIN
+          isDriverAvailable: true,
+
+          // ✅ REMOVE AREA
+          assignedArea: ""
+        }
+      }
+    );
+
+  // ─────────────────────────────────────────────
+  // RESPONSE
+  // ─────────────────────────────────────────────
+  return res.status(200).json(
+
+    new ApiResponse(
+      200,
+      {
+
+        matchedDrivers:
+          result.matchedCount,
+
+        updatedDrivers:
+          result.modifiedCount
+      },
+
+      "All drivers reset successfully"
+    )
+  );
+});
+
+
+
+
+
 
 
 
@@ -3974,6 +4026,381 @@ const deleteEmployee = asynchandler(async (req, res) => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+const createDeliveryBatch =
+asynchandler(async (req, res) => {
+
+  ensureSuperAdmin(req);
+
+  const {
+    driverId,
+    orderIds,
+    area
+  } = req.body;
+
+  if (!driverId) {
+    throw new ApiError(
+      400,
+      "Driver ID required"
+    );
+  }
+
+  if (
+    !orderIds ||
+    !Array.isArray(orderIds) ||
+    orderIds.length === 0
+  ) {
+    throw new ApiError(
+      400,
+      "Orders required"
+    );
+  }
+
+  // DRIVER
+  const driver =
+    await Employee.findById(driverId);
+
+  if (
+    !driver ||
+    driver.role !== "driver"
+  ) {
+    throw new ApiError(
+      404,
+      "Driver not found"
+    );
+  }
+
+  // CREATE BATCH
+  const batch =
+    await DeliveryBatch.create({
+
+      driverId,
+
+      area,
+
+      orders:
+        orderIds.map(
+          (orderId, index) => ({
+
+            orderId,
+
+            sequence:
+              index + 1
+          })
+        )
+    });
+
+  // UPDATE ORDERS
+  for (
+    let i = 0;
+    i < orderIds.length;
+    i++
+  ) {
+
+    await Order.findByIdAndUpdate(
+      orderIds[i],
+
+      {
+        deliveryAssignment: {
+
+          driverId,
+
+          batchId: batch._id,
+
+          deliverySequence:
+            i + 1,
+
+          assignedAt:
+            new Date()
+        }
+      }
+    );
+  }
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      batch,
+      "Orders assigned successfully"
+    )
+  );
+});
+
+
+
+
+
+
+const getDeliveryBatchDetails =
+asynchandler(async (req, res) => {
+
+  ensureSuperAdmin(req);
+
+  const { batchId } =
+    req.params;
+
+  const batch =
+    await DeliveryBatch.findById(
+      batchId
+    )
+
+    .populate(
+      "driverId",
+      "name phone"
+    )
+
+    .populate({
+      path: "orders.orderId",
+
+      populate: {
+        path: "userId",
+        select:
+          "full_name phone_number"
+      }
+    });
+
+  if (!batch) {
+    throw new ApiError(
+      404,
+      "Batch not found"
+    );
+  }
+
+  const formattedOrders =
+    batch.orders.map(item => {
+
+      const order =
+        item.orderId;
+
+      return {
+
+        sequence:
+          item.sequence,
+
+        orderId:
+          order._id,
+
+        customer: {
+
+          name:
+            order.userId?.full_name,
+
+          phone:
+            order.userId?.phone_number
+        },
+
+        address:
+          order.deliveryDetails,
+
+        latitude:
+          order.deliveryDetails
+            ?.location?.lat,
+
+        longitude:
+          order.deliveryDetails
+            ?.location?.lng,
+
+        totalAmount:
+          order.totalAmount,
+
+        status:
+          order.status
+      };
+    });
+
+  return res.status(200).json(
+
+    new ApiResponse(
+      200,
+      {
+
+        batchId:
+          batch._id,
+
+        driver:
+          batch.driverId,
+
+        status:
+          batch.status,
+
+        orders:
+          formattedOrders
+      },
+
+      "Batch fetched successfully"
+    )
+  );
+});
+
+
+
+
+const reorderDeliveryBatch =
+asynchandler(async (req, res) => {
+
+  ensureSuperAdmin(req);
+
+  const { batchId } =
+    req.params;
+
+  const { orders } =
+    req.body;
+
+  const batch =
+    await DeliveryBatch.findById(
+      batchId
+    );
+
+  if (!batch) {
+    throw new ApiError(
+      404,
+      "Batch not found"
+    );
+  }
+
+  batch.orders = orders;
+
+  await batch.save();
+
+  // UPDATE ORDERS
+  for (const item of orders) {
+
+    await Order.findByIdAndUpdate(
+
+      item.orderId,
+
+      {
+        "deliveryAssignment.deliverySequence":
+          item.sequence
+      }
+    );
+  }
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      batch,
+      "Batch reordered successfully"
+    )
+  );
+});
+
+
+
+const finalizeDeliveryBatch =
+asynchandler(async (req, res) => {
+
+  ensureSuperAdmin(req);
+
+  const { batchId } =
+    req.params;
+
+  const batch =
+    await DeliveryBatch.findById(
+      batchId
+    );
+
+  if (!batch) {
+    throw new ApiError(
+      404,
+      "Batch not found"
+    );
+  }
+
+  batch.status =
+    "finalized";
+
+  batch.finalizedAt =
+    new Date();
+
+  await batch.save();
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      batch,
+      "Batch finalized successfully"
+    )
+  );
+});
+
+
+
+
+
+
+const driverViewMyBatches =
+asynchandler(async (req, res) => {
+
+  const driverId =
+    req.staff._id;
+
+  const batches =
+    await DeliveryBatch.find({
+
+      driverId,
+
+      status: {
+        $in: [
+          "finalized",
+          "in_delivery"
+        ]
+      }
+    })
+
+    .populate({
+      path: "orders.orderId"
+    });
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      batches,
+      "Driver batches fetched"
+    )
+  );
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
 export {
         registeruser,
         startEmployeeRegistration,
@@ -4010,6 +4437,11 @@ export {
         getAllDrivers,
         deleteEmployee,
         getUnverifiedDrivers,
-        getAllDriversfull
-
+        getAllDriversfull,
+        resetAllDrivers,
+        createDeliveryBatch,
+        getDeliveryBatchDetails,
+        reorderDeliveryBatch,
+        finalizeDeliveryBatch,
+        driverViewMyBatches
     }

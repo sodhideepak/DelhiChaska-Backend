@@ -153,6 +153,32 @@ const orderSchema = new mongoose.Schema(
       }
     },
 
+
+    deliveryAssignment: {
+
+  driverId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "employee",
+    default: null
+  },
+
+  batchId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "deliverybatch",
+    default: null
+  },
+
+  deliverySequence: {
+    type: Number,
+    default: null
+  },
+
+  assignedAt: {
+    type: Date,
+    default: null
+  }
+},
+
  
   paymentRequested: {
   type: Boolean,

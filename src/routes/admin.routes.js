@@ -39,7 +39,13 @@ import {
         getAllDrivers,
         deleteEmployee,
         getUnverifiedDrivers,
-        getAllDriversfull
+        getAllDriversfull,
+            resetAllDrivers,
+        createDeliveryBatch,
+        getDeliveryBatchDetails,
+        reorderDeliveryBatch,
+        finalizeDeliveryBatch,
+        driverViewMyBatches
      } from "../controllers/admin.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
@@ -143,6 +149,7 @@ router.route("/orders/kitchen/area").get(verifyStaffJWT,kitchenViewOrdersByArea)
 // Driver assignment route
 router.route("/drivers").get(verifyStaffJWT,getAllDrivers)
 router.route("/assignarea/driver").post(verifyStaffJWT,assignAreaToDriver)
+router.route("/resetdrivers").post(verifyStaffJWT,resetAllDrivers)
 
 
 
@@ -172,6 +179,25 @@ router.route("/alldriversfull").get(verifyStaffJWT,getAllDriversfull)
 router.route("/employee/:employeeId").delete(verifyStaffJWT,deleteEmployee)
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+router.route("/createdeliverybatch").post(verifyStaffJWT,createDeliveryBatch)
+router.route("/deliverybatch/:batchId").get(verifyStaffJWT,getDeliveryBatchDetails) 
+router.route("/deliverybatch/reorder/:batchId").patch(verifyStaffJWT,reorderDeliveryBatch)
+router.route("/deliverybatch/finalize/:batchId").patch(verifyStaffJWT,finalizeDeliveryBatch)
+router.route("/driver/batches").get(verifyStaffJWT,driverViewMyBatches)
 export default router 
 
 
