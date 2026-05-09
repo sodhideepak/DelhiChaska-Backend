@@ -4397,6 +4397,404 @@ asynchandler(async (req, res) => {
 
 
 
+const getUnassignedConfirmedOrders =
+asynchandler(async (req, res) => {
+
+  ensureSuperAdmin(req);
+
+  // ─────────────────────────────────────────────
+  // QUERY PARAMS
+  // ─────────────────────────────────────────────
+  const {
+
+    area,
+
+    // ✅ OPTIONAL FILTERS
+    paymentStatus,
+    productName,
+
+    // ✅ DATE FILTERS
+    date,
+    startDate,
+    endDate,
+
+    page = 1,
+    limit = 10
+
+  } = req.query;
+
+  // ─────────────────────────────────────────────
+  // BASE FILTER
+  // ONLY:
+  // ✅ confirmed orders
+  // ✅ not assigned to batch
+  // ─────────────────────────────────────────────
+  const filter = {
+
+    status: "confirmed",
+
+    $or: [
+
+      {
+        "deliveryAssignment.batchId":
+          null
+      },
+
+      {
+        deliveryAssignment: {
+          $exists: false
+        }
+      }
+    ]
+  };
+
+  // ─────────────────────────────────────────────
+  // AREA FILTER
+  // ─────────────────────────────────────────────
+  if (
+    area &&
+    area.trim() !== ""
+  ) {
+
+    const cities =
+      AREA_CITY_MAP[
+        area.toLowerCase()
+      ];
+
+    if (!cities) {
+
+      throw new ApiError(
+        400,
+        "Invalid area provided"
+      );
+    }
+
+    filter["deliveryDetails.city"] = {
+      $in: cities
+    };
+  }
+
+  // ─────────────────────────────────────────────
+  // PAYMENT STATUS FILTER
+  // ─────────────────────────────────────────────
+  if (
+    paymentStatus &&
+    paymentStatus.trim() !== ""
+  ) {
+
+    filter["payment.status"] =
+      paymentStatus.trim();
+  }
+
+  // ─────────────────────────────────────────────
+  // PRODUCT FILTER
+  // ─────────────────────────────────────────────
+  if (
+    productName &&
+    productName.trim() !== ""
+  ) {
+
+    filter["items.name"] = {
+
+      $regex:
+        productName.trim(),
+
+      $options: "i"
+    };
+  }
+
+  // ─────────────────────────────────────────────
+  // SINGLE DATE FILTER
+  // ─────────────────────────────────────────────
+  if (date) {
+
+    const selectedDate =
+      new Date(date);
+
+    const startOfDay =
+      new Date(selectedDate);
+
+    startOfDay.setHours(
+      0,
+      0,
+      0,
+      0
+    );
+
+    const endOfDay =
+      new Date(selectedDate);
+
+    endOfDay.setHours(
+      23,
+      59,
+      59,
+      999
+    );
+
+    filter.createdAt = {
+
+      $gte:
+        startOfDay,
+
+      $lte:
+        endOfDay
+    };
+  }
+
+  // ─────────────────────────────────────────────
+  // DATE RANGE FILTER
+  // ─────────────────────────────────────────────
+  if (
+    startDate ||
+    endDate
+  ) {
+
+    filter.createdAt = {};
+
+    if (startDate) {
+
+      filter.createdAt.$gte =
+        new Date(startDate);
+    }
+
+    if (endDate) {
+
+      const end =
+        new Date(endDate);
+
+      end.setHours(
+        23,
+        59,
+        59,
+        999
+      );
+
+      filter.createdAt.$lte =
+        end;
+    }
+  }
+
+  console.log(filter);
+
+  // ─────────────────────────────────────────────
+  // PAGINATION
+  // ─────────────────────────────────────────────
+  const currentPage =
+    Number(page) || 1;
+
+  const perPage =
+    Number(limit) || 10;
+
+  const skip =
+    (currentPage - 1) * perPage;
+
+  // ─────────────────────────────────────────────
+  // FETCH ORDERS
+  // ─────────────────────────────────────────────
+  const [orders, totalOrders] =
+    await Promise.all([
+
+      Order.find(filter)
+
+        .populate(
+          "userId",
+          `
+          username
+          full_name
+          email
+          phone_number
+          `
+        )
+
+        .sort({
+          createdAt: -1
+        })
+
+        .skip(skip)
+
+        .limit(perPage)
+
+        .lean(),
+
+      Order.countDocuments(filter)
+    ]);
+
+  // ─────────────────────────────────────────────
+  // FORMAT RESPONSE
+  // ─────────────────────────────────────────────
+  const formattedOrders =
+    orders.map(order => ({
+
+      orderId:
+        order._id,
+
+      user: {
+
+        userId:
+          order.userId?._id,
+
+        username:
+          order.userId?.username || "",
+
+        full_name:
+          order.userId?.full_name || "",
+
+        email:
+          order.userId?.email || "",
+
+        phone:
+          order.userId?.phone_number || ""
+      },
+
+      status:
+        order.status,
+
+      payment:
+        order.payment || {},
+
+      totalAmount:
+        order.totalAmount,
+
+      paymentRequested:
+        order.paymentRequested || false,
+
+      deliveryDate:
+        order.deliveryDate || null,
+
+      deliveredAt:
+        order.deliveredAt || null,
+
+      deliveryDetails: {
+
+        addressLine1:
+          order.deliveryDetails
+            ?.addressLine1 || "",
+
+        addressLine2:
+          order.deliveryDetails
+            ?.addressLine2 || "",
+
+        city:
+          order.deliveryDetails
+            ?.city || "",
+
+        state:
+          order.deliveryDetails
+            ?.state || "",
+
+        zipCode:
+          order.deliveryDetails
+            ?.zipCode || "",
+
+        country:
+          order.deliveryDetails
+            ?.country || "",
+
+        phone:
+          order.deliveryDetails
+            ?.phone || "",
+
+        instructions:
+          order.deliveryDetails
+            ?.instructions || "",
+
+        location: {
+
+          lat:
+            order.deliveryDetails
+              ?.location?.lat || null,
+
+          lng:
+            order.deliveryDetails
+              ?.location?.lng || null
+        }
+      },
+
+      itemCount:
+        order.items.length,
+
+      items:
+        order.items.map(item => ({
+
+          productId:
+            item.productId,
+
+          name:
+            item.name,
+
+          quantity:
+            item.quantity,
+
+          price:
+            item.price,
+
+          type:
+            item.type,
+
+          total:
+            item.price *
+            item.quantity
+        })),
+
+      placedAt:
+        order.createdAt
+
+    }));
+
+  // ─────────────────────────────────────────────
+  // RESPONSE
+  // ─────────────────────────────────────────────
+  return res.status(200).json(
+
+    new ApiResponse(
+      200,
+      {
+
+        filters: {
+
+          area:
+            area || null,
+
+          paymentStatus:
+            paymentStatus || null,
+
+          productName:
+            productName || null,
+
+          date:
+            date || null,
+
+          startDate:
+            startDate || null,
+
+          endDate:
+            endDate || null
+        },
+
+        totalOrders,
+
+        orders:
+          formattedOrders,
+
+        pagination: {
+
+          currentPage,
+
+          totalPages:
+            Math.ceil(
+              totalOrders / perPage
+            ),
+
+          limit:
+            perPage
+        }
+
+      },
+
+      "Unassigned confirmed orders fetched successfully"
+    )
+  );
+});
 
 
 
@@ -4443,5 +4841,6 @@ export {
         getDeliveryBatchDetails,
         reorderDeliveryBatch,
         finalizeDeliveryBatch,
-        driverViewMyBatches
+        driverViewMyBatches,
+        getUnassignedConfirmedOrders
     }

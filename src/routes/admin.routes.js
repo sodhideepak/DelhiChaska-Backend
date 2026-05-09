@@ -45,7 +45,8 @@ import {
         getDeliveryBatchDetails,
         reorderDeliveryBatch,
         finalizeDeliveryBatch,
-        driverViewMyBatches
+        driverViewMyBatches,
+        getUnassignedConfirmedOrders
      } from "../controllers/admin.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
@@ -144,6 +145,7 @@ router.route("/orders/kitchen/area").get(verifyStaffJWT,kitchenViewOrdersByArea)
     
 
 
+router.route("/orders/unassigned-confirmed").get(verifyStaffJWT,getUnassignedConfirmedOrders)
 
 
 // Driver assignment route
