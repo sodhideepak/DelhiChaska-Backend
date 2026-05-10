@@ -3896,7 +3896,6 @@ const getAllDriversfull = asynchandler(async (req, res) => {
 
 
 
-
 const resetAllDrivers = asynchandler(async (req, res) => {
 
   ensureSuperAdmin(req);
@@ -3904,7 +3903,7 @@ const resetAllDrivers = asynchandler(async (req, res) => {
   // ─────────────────────────────────────────────
   // RESET ALL DRIVERS
   // ─────────────────────────────────────────────
-  const result =
+  const driverResult =
     await Employee.updateMany(
 
       {
@@ -3914,14 +3913,40 @@ const resetAllDrivers = asynchandler(async (req, res) => {
       {
         $set: {
 
-          // ✅ DRIVER FREE AGAIN
+          // ✅ DRIVER AVAILABLE AGAIN
           isDriverAvailable: true,
 
-          // ✅ REMOVE AREA
+          // ✅ REMOVE ASSIGNED AREA
           assignedArea: ""
         }
       }
     );
+
+  // ─────────────────────────────────────────────
+  // RESET CONFIRMED ORDERS
+  // REMOVE DRIVER + BATCH ASSIGNMENT
+  // ─────────────────────────────────────────────
+  const orderResult =
+    await Order.updateMany(
+
+      {
+        status: "confirmed"
+      },
+
+      {
+        $unset: {
+
+          deliveryAssignment: ""
+        }
+      }
+    );
+
+  // ─────────────────────────────────────────────
+  // DELETE ALL DELIVERY BATCHES
+  // OPTIONAL BUT RECOMMENDED
+  // ─────────────────────────────────────────────
+  const deletedBatches =
+    await DeliveryBatch.deleteMany({});
 
   // ─────────────────────────────────────────────
   // RESPONSE
@@ -3932,14 +3957,33 @@ const resetAllDrivers = asynchandler(async (req, res) => {
       200,
       {
 
-        matchedDrivers:
-          result.matchedCount,
+        drivers: {
 
-        updatedDrivers:
-          result.modifiedCount
+          matchedDrivers:
+            driverResult.matchedCount,
+
+          updatedDrivers:
+            driverResult.modifiedCount
+        },
+
+        orders: {
+
+          matchedOrders:
+            orderResult.matchedCount,
+
+          updatedOrders:
+            orderResult.modifiedCount
+        },
+
+        deletedBatches: {
+
+          count:
+            deletedBatches.deletedCount
+        }
+
       },
 
-      "All drivers reset successfully"
+      "All drivers, confirmed orders, and delivery batches reset successfully"
     )
   );
 });
