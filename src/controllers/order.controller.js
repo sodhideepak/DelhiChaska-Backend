@@ -2237,6 +2237,9 @@ const ProceedToOrder = asynchandler(async (req, res) => {
   );
 });
 
+
+
+
 const viewMyOrders = asynchandler(async (req, res) => {
 
   // ─────────────────────────────────────────────
@@ -2323,6 +2326,12 @@ const viewMyOrders = asynchandler(async (req, res) => {
   const orders = await Order.find(
     filter
   )
+
+    // ✅ POPULATE USER
+    .populate(
+      "userId",
+      "username full_name email"
+    )
 
     .sort({
       createdAt: -1
@@ -2433,6 +2442,22 @@ const viewMyOrders = asynchandler(async (req, res) => {
 
         orderId:
           order._id,
+
+        // ✅ USER DETAILS
+        user: {
+
+          userId:
+            order.userId?._id || null,
+
+          username:
+            order.userId?.username || "",
+
+          full_name:
+            order.userId?.full_name || "",
+
+          email:
+            order.userId?.email || ""
+        },
 
         status:
           order.status,
