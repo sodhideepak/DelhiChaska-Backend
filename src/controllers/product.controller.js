@@ -629,17 +629,16 @@ const updateProduct = asynchandler(async (req, res) => {
     // ==========================
     // 📦 CONFIG
     // ==========================
-    const PRODUCT_TYPE_CONFIG = {
-        paneer: ["16oz", "32oz"],
-        veg_curry: ["16oz", "32oz"],
-        chicken: ["16oz", "32oz"],
-        mutton: ["16oz", "32oz"],
-        veg_dry: ["16oz", "32oz"],
-        rice: ["half", "full"],
-        chinese: ["half", "full"],
+     const PRODUCT_TYPE_CONFIG = {
+        paneer: ["8oz","16oz", "32oz"],
+        veg_curry: ["8oz","16oz", "32oz"],
+        chicken: ["8oz","16oz", "32oz"],
+        mutton: ["8oz","16oz", "32oz"],
+        veg_dry: ["8oz","16oz", "32oz"],
+        rice: ["8oz","16oz", "32oz"],
+        chinese: ["8oz","16oz", "32oz"],
         breads: []
     };
-
     const ALLOWED_FOOD_CLASS = [
         "veg_curry", "paneer", "chicken", "mutton",
         "veg_other", "veg_dry", "rice", "chinese", "breads"
