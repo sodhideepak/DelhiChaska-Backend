@@ -1,50 +1,83 @@
 import mongoose from "mongoose";
 
-const orderItemSchema = new mongoose.Schema(
-  {
-    productId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "product",
-      required: true
-    },
+// ─────────────────────────────────────────────
+// ORDER ITEM SCHEMA
+// ─────────────────────────────────────────────
+const orderItemSchema = new mongoose.Schema({
 
-    name: {
-      type: String,
-      required: true
-    },
+  itemId: {
+    type: mongoose.Schema.Types.ObjectId,
+    default: () => new mongoose.Types.ObjectId()
+  },
 
-    quantity: {
-      type: Number,
-      required: true,
-      min: 1
+  type: {
+    type: String,
+    enum: ["product", "combo"],
+    required: true
+  },
+
+  productId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Product"
+  },
+
+  comboId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Combo"
+  },
+
+  name: {
+    type: String
+  },
+
+  quantity: {
+    type: Number,
+    default: 1
+  },
+
+  // ✅ IMPORTANT
+  selectedVariant: {
+
+    size: {
+      type: String
     },
 
     price: {
-      type: Number,
-      required: true,
-      min: 0
-    },
-
-    type: {
-      type: String,
-      enum: ["combo", "addon"],
-      required: true
+      type: Number
     }
+
   },
-  { _id: false }
-);
+
+  // ✅ IMPORTANT
+  subtotal: {
+    type: Number,
+    default: 0
+  },
+
+  selections: {
+    type: Array,
+    default: []
+  }
+
+}, { _id: false });
 
 // ─────────────────────────────────────────────
-// ✅ REUSABLE DELIVERY DATE FUNCTION
+// DELIVERY DATE FUNCTION
 // ─────────────────────────────────────────────
-const getNextDeliveryDate = (baseDate = new Date()) => {
+const getNextDeliveryDate = (
+  baseDate = new Date()
+) => {
 
-  const deliveryDays = [1]; // Monday
+  const deliveryDays = [1];
 
   const usDate = new Date(
-    baseDate.toLocaleString("en-US", {
-      timeZone: "America/Los_Angeles"
-    })
+    baseDate.toLocaleString(
+      "en-US",
+      {
+        timeZone:
+          "America/Los_Angeles"
+      }
+    )
   );
 
   const today = usDate.getDay();
@@ -53,32 +86,37 @@ const getNextDeliveryDate = (baseDate = new Date()) => {
 
   for (let i = 1; i <= 7; i++) {
 
-    const nextDay = (today + i) % 7;
+    const nextDay =
+      (today + i) % 7;
 
-    if (deliveryDays.includes(nextDay)) {
+    if (
+      deliveryDays.includes(nextDay)
+    ) {
       daysToAdd = i;
       break;
     }
   }
 
-  const nextDeliveryDate = new Date(usDate);
+  const nextDeliveryDate =
+    new Date(usDate);
 
-  nextDeliveryDate.setDate(usDate.getDate() + daysToAdd);
+  nextDeliveryDate.setDate(
+    usDate.getDate() + daysToAdd
+  );
 
   return nextDeliveryDate;
 };
 
+// ─────────────────────────────────────────────
+// ORDER SCHEMA
+// ─────────────────────────────────────────────
 const orderSchema = new mongoose.Schema(
   {
     userId: {
-      type: mongoose.Schema.Types.ObjectId,
+      type:
+        mongoose.Schema.Types.ObjectId,
       ref: "user",
       required: true
-    },
-
-    comboId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "combo"
     },
 
     items: {
@@ -94,6 +132,7 @@ const orderSchema = new mongoose.Schema(
 
     status: {
       type: String,
+
       enum: [
         "pending",
         "confirmed",
@@ -102,100 +141,139 @@ const orderSchema = new mongoose.Schema(
         "delivered",
         "cancelled"
       ],
+
       default: "pending"
     },
 
-    // ✅ expected delivery date
     deliveryDate: {
       type: Date,
-      default: () => getNextDeliveryDate()
+      default: () =>
+        getNextDeliveryDate()
     },
 
-    // ✅ actual delivered timestamp
     deliveredAt: {
       type: Date,
       default: null
     },
 
+    isorderdelivered: {
+      type: Boolean,
+      default: false
+    },
+
     deliveryDetails: {
+
       addressId: {
-        type: mongoose.Schema.Types.ObjectId,
+        type:
+          mongoose.Schema.Types.ObjectId,
         ref: "address"
       },
 
       addressLine1: String,
+
       addressLine2: String,
+
       city: String,
+
       state: String,
+
       zipCode: String,
+
       country: String,
 
       location: {
+
         lat: Number,
+
         lng: Number
       },
 
       phone: String,
+
       instructions: String
     },
 
     payment: {
+
       method: {
+
         type: String,
-        enum: ["cod", "online", "Pay Later"],
+
+        enum: [
+          "cod",
+          "online",
+          "Pay Later"
+        ],
+
         default: "cod"
       },
 
       status: {
+
         type: String,
-        enum: ["pending", "paid", "failed"],
+
+        enum: [
+          "pending",
+          "paid",
+          "failed"
+        ],
+
         default: "pending"
       }
     },
 
-
     deliveryAssignment: {
 
-  driverId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "employee",
-    default: null
+      driverId: {
+
+        type:
+          mongoose.Schema.Types.ObjectId,
+
+        ref: "employee",
+
+        default: null
+      },
+
+      batchId: {
+
+        type:
+          mongoose.Schema.Types.ObjectId,
+
+        ref: "deliverybatch",
+
+        default: null
+      },
+
+      deliverySequence: {
+
+        type: Number,
+
+        default: null
+      },
+
+      assignedAt: {
+
+        type: Date,
+
+        default: null
+      }
+    },
+
+    paymentRequested: {
+
+      type: Boolean,
+
+      default: false
+    }
   },
-
-  batchId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "deliverybatch",
-    default: null
-  },
-
-  deliverySequence: {
-    type: Number,
-    default: null
-  },
-
-  assignedAt: {
-    type: Date,
-    default: null
-  }
-},
-
- 
-  paymentRequested: {
-  type: Boolean,
-  default: false  
-  }
- 
-
-
-
-  },
-  
 
   {
     timestamps: true
   }
 );
 
-
-
-export const Order = mongoose.model("order", orderSchema);
+export const Order =
+  mongoose.model(
+    "order",
+    orderSchema
+  );

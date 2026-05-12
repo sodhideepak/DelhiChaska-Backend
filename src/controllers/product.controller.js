@@ -305,7 +305,7 @@ const createProduct = asynchandler(async (req, res) => {
         category: category.trim().toLowerCase(),
         product_type: product_type.trim().toLowerCase(),
         food_class: food_class.trim().toLowerCase(),
-        image: " ",
+        image: "https://res.cloudinary.com/ddvloqbxp/image/upload/v1777757830/y1xjxjzi1au1vsmqco6v.png",
         variants: formattedVariants,
         isAvailable: isAvailable !== undefined ? isAvailable : true
     });
@@ -1206,7 +1206,8 @@ const createCombo = asynchandler(async (req, res) => {
     description,
     price,
     size,
-    rules
+    rules,
+    image:"https://res.cloudinary.com/ddvloqbxp/image/upload/v1777757830/y1xjxjzi1au1vsmqco6v.png"
   });
 
   res.status(201).json({

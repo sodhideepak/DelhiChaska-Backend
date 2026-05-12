@@ -1477,7 +1477,7 @@ const updateUserEmail = asynchandler(async (req, res) => {
     {
       $set: {
         email,
-        isEmailVerified: false   // 🔥 KEY PART
+        is_email_verified: false   // 🔥 KEY PART
       }
     },
     {
@@ -1550,7 +1550,7 @@ const verifyEmail = asynchandler(async (req, res) => {
     User._id,
     {
       $set: {
-        isEmailVerified: true   // ✅ FIXED FIELD NAME
+        is_email_verified: true   // ✅ FIXED FIELD NAME
       }
     },
     {

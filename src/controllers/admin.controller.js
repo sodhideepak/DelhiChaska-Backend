@@ -1890,16 +1890,20 @@ const AREA_CITY_MAP = {
 
 const adminViewOrdersByArea = asynchandler(async (req, res) => {
 
+  // ─────────────────────────────────────────────
+  // AUTH
+  // ─────────────────────────────────────────────
   ensureSuperAdmin(req);
 
   const {
+
     area,
 
-    // ✅ OPTIONAL FILTERS
+    // OPTIONAL FILTERS
     status,
     paymentStatus,
 
-    // ✅ DATE FILTERS
+    // DATE FILTERS
     date,
     startDate,
     endDate,
@@ -1913,6 +1917,7 @@ const adminViewOrdersByArea = asynchandler(async (req, res) => {
   // AREA REQUIRED
   // ─────────────────────────────────────────────
   if (!area) {
+
     throw new ApiError(
       400,
       "Area is required"
@@ -1920,12 +1925,15 @@ const adminViewOrdersByArea = asynchandler(async (req, res) => {
   }
 
   // ─────────────────────────────────────────────
-  // GET CITIES
+  // GET AREA CITIES
   // ─────────────────────────────────────────────
   const cities =
-    AREA_CITY_MAP[area.toLowerCase()];
+    AREA_CITY_MAP[
+      area.toLowerCase()
+    ];
 
   if (!cities) {
+
     throw new ApiError(
       400,
       "Invalid area provided"
@@ -1936,30 +1944,37 @@ const adminViewOrdersByArea = asynchandler(async (req, res) => {
   // BASE FILTER
   // ─────────────────────────────────────────────
   const filter = {
+
     "deliveryDetails.city": {
+
       $in: cities
     }
   };
 
   // ─────────────────────────────────────────────
-  // APPLY FILTERS ONLY IF PRESENT
+  // STATUS FILTER
   // ─────────────────────────────────────────────
-
-  // ✅ ORDER STATUS
   if (status) {
+
     filter.status = status;
   }
 
-  // ✅ PAYMENT STATUS
+  // ─────────────────────────────────────────────
+  // PAYMENT STATUS
+  // ─────────────────────────────────────────────
   if (paymentStatus) {
+
     filter["payment.status"] =
       paymentStatus;
   }
 
-  // ✅ SINGLE DATE
+  // ─────────────────────────────────────────────
+  // SINGLE DATE FILTER
+  // ─────────────────────────────────────────────
   if (date) {
 
-    const selectedDate = new Date(date);
+    const selectedDate =
+      new Date(date);
 
     const startOfDay =
       new Date(selectedDate);
@@ -1982,24 +1997,30 @@ const adminViewOrdersByArea = asynchandler(async (req, res) => {
     );
 
     filter.createdAt = {
+
       $gte: startOfDay,
+
       $lte: endOfDay
     };
   }
 
-  // ✅ DATE RANGE
+  // ─────────────────────────────────────────────
+  // DATE RANGE FILTER
+  // ─────────────────────────────────────────────
   if (startDate || endDate) {
 
     filter.createdAt = {};
 
     if (startDate) {
+
       filter.createdAt.$gte =
         new Date(startDate);
     }
 
     if (endDate) {
 
-      const end = new Date(endDate);
+      const end =
+        new Date(endDate);
 
       end.setHours(
         23,
@@ -2008,7 +2029,8 @@ const adminViewOrdersByArea = asynchandler(async (req, res) => {
         999
       );
 
-      filter.createdAt.$lte = end;
+      filter.createdAt.$lte =
+        end;
     }
   }
 
@@ -2028,118 +2050,216 @@ const adminViewOrdersByArea = asynchandler(async (req, res) => {
   // FETCH ORDERS
   // ─────────────────────────────────────────────
   const [orders, totalOrders] =
+
     await Promise.all([
 
       Order.find(filter)
+
         .populate(
           "userId",
           "full_name email phone_number username"
         )
-        .sort({ createdAt: -1 })
+
+        .sort({
+          createdAt: -1
+        })
+
         .skip(skip)
+
         .limit(perPage)
+
         .lean(),
 
-      Order.countDocuments(filter)
+      Order.countDocuments(
+        filter
+      )
     ]);
 
   // ─────────────────────────────────────────────
   // FORMAT ORDERS
   // ─────────────────────────────────────────────
   const formattedOrders =
-    orders.map(order => ({
 
-      orderId: order._id,
+    orders.map(order => {
 
-      user: {
-        userId: order.userId?._id,
-        name: order.userId?.full_name,
-        username: order.userId.username || ""
-      },
+      // =====================================================
+      // FORMAT ITEMS
+      // =====================================================
+      const formattedItems =
 
-      status: order.status,
+        order.items.map(item => {
 
-      payment: {
-        method:
-          order.payment?.method || "",
+          const price =
+
+            item.selectedVariant?.price || 0;
+
+          const size =
+
+            item.selectedVariant?.size || "";
+
+          const subtotal =
+
+            item.subtotal ||
+
+            (
+              price *
+              item.quantity
+            );
+
+          return {
+
+            productId:
+              item.productId || null,
+
+            comboId:
+              item.comboId || null,
+
+            name:
+              item.name || "",
+
+            quantity:
+              item.quantity || 0,
+
+            type:
+              item.type || "",
+
+            // ✅ VARIANT
+            variant: {
+
+              size,
+
+              price
+            },
+
+            subtotal
+          };
+        });
+
+      // =====================================================
+      // RETURN ORDER
+      // =====================================================
+      return {
+
+        orderId:
+          order._id,
+
+        user: {
+
+          userId:
+            order.userId?._id,
+
+          name:
+            order.userId?.full_name || "",
+
+          username:
+            order.userId?.username || "",
+
+          email:
+            order.userId?.email || "",
+
+          phone:
+            order.userId?.phone_number || ""
+        },
+
         status:
-          order.payment?.status || ""
-      },
+          order.status,
 
-      paymentRequested:
-        order.paymentRequested || false,
+        payment: {
 
-      totalAmount:
-        order.totalAmount,
+          method:
+            order.payment?.method || "",
 
-      deliveryDate:
-        order.deliveryDate || null,
+          status:
+            order.payment?.status || ""
+        },
 
-      deliveredAt:
-        order.deliveredAt || null,
+        paymentRequested:
+          order.paymentRequested || false,
 
-      itemCount:
-        order.items.length,
+        totalAmount:
+          order.totalAmount || 0,
 
-      items: order.items.map(item => ({
-        productId: item.productId,
-        name: item.name,
-        quantity: item.quantity,
-        price: item.price,
-        type: item.type,
-        total:
-          item.price * item.quantity
-      })),
+        deliveryDate:
+          order.deliveryDate || null,
 
-      deliveryDetails:
-        order.deliveryDetails,
+        deliveredAt:
+          order.deliveredAt || null,
 
-      placedAt:
-        order.createdAt
+        isorderdelivered:
+          order.isorderdelivered || false,
 
-    }));
+        itemCount:
+          formattedItems.length,
+
+        items:
+          formattedItems,
+
+        deliveryDetails:
+          order.deliveryDetails || {},
+
+        placedAt:
+          order.createdAt
+      };
+    });
 
   // ─────────────────────────────────────────────
   // RESPONSE
   // ─────────────────────────────────────────────
   return res.status(200).json(
+
     new ApiResponse(
+
       200,
+
       {
+
         area,
 
-        citiesCovered: cities,
+        citiesCovered:
+          cities,
 
         filters: {
-          status: status || null,
+
+          status:
+            status || null,
+
           paymentStatus:
             paymentStatus || null,
-          date: date || null,
+
+          date:
+            date || null,
+
           startDate:
             startDate || null,
+
           endDate:
             endDate || null
         },
 
-        orders: formattedOrders,
+        orders:
+          formattedOrders,
 
         pagination: {
+
           totalOrders,
 
           currentPage,
 
-          totalPages: Math.ceil(
-            totalOrders / perPage
-          ),
+          totalPages:
+            Math.ceil(
+              totalOrders / perPage
+            ),
 
-          limit: perPage
+          limit:
+            perPage
         }
-
       },
+
       "Orders fetched successfully by area"
     )
   );
 });
+
 // ─────────────────────────────────────────────
 // 🔄 UPDATE ORDER STATUS (Admin)  → sends mail
 // ─────────────────────────────────────────────
@@ -2483,6 +2603,9 @@ export const ensureKitchen = (req) => {
 // kitchen routes 
 const kitchenViewOrdersByArea = asynchandler(async (req, res) => {
 
+  // ─────────────────────────────────────────────
+  // AUTH
+  // ─────────────────────────────────────────────
   ensureKitchen(req);
 
   // ─────────────────────────────────────────────
@@ -2498,6 +2621,7 @@ const kitchenViewOrdersByArea = asynchandler(async (req, res) => {
   // AREA REQUIRED
   // ─────────────────────────────────────────────
   if (!area) {
+
     throw new ApiError(
       400,
       "Area is required"
@@ -2508,9 +2632,12 @@ const kitchenViewOrdersByArea = asynchandler(async (req, res) => {
   // GET CITIES
   // ─────────────────────────────────────────────
   const cities =
-    AREA_CITY_MAP[area.toLowerCase()];
+    AREA_CITY_MAP[
+      area.toLowerCase()
+    ];
 
   if (!cities) {
+
     throw new ApiError(
       400,
       "Invalid area provided"
@@ -2519,12 +2646,17 @@ const kitchenViewOrdersByArea = asynchandler(async (req, res) => {
 
   // ─────────────────────────────────────────────
   // FILTER
-  // ONLY CONFIRMED ORDERS
+  // ONLY CONFIRMED + NOT DELIVERED
   // ─────────────────────────────────────────────
   const filter = {
+
     status: "confirmed",
 
+    // ✅ ONLY ACTIVE ORDERS
+    isorderdelivered: false,
+
     "deliveryDetails.city": {
+
       $in: cities
     }
   };
@@ -2545,13 +2677,14 @@ const kitchenViewOrdersByArea = asynchandler(async (req, res) => {
   // FETCH ORDERS
   // ─────────────────────────────────────────────
   const [orders, totalOrders] =
+
     await Promise.all([
 
       Order.find(filter)
 
         .populate(
           "userId",
-          "username"
+          "username full_name"
         )
 
         .sort({
@@ -2568,7 +2701,51 @@ const kitchenViewOrdersByArea = asynchandler(async (req, res) => {
     ]);
 
   // ─────────────────────────────────────────────
-  // AGGREGATED ITEM QUANTITY
+  // SIZE CONVERSION HELPER
+  // CONVERT ALL TO 16oz EQUIVALENT
+  // ─────────────────────────────────────────────
+  const convertTo16OzUnits = (
+    size,
+    quantity
+  ) => {
+
+    const normalizedSize =
+
+      size
+        ?.toString()
+        .toLowerCase()
+        .replace(/\s+/g, "");
+
+    // 32oz = 2x 16oz
+    if (
+      normalizedSize === "32oz"
+    ) {
+
+      return quantity * 2;
+    }
+
+    // 16oz = 1x
+    if (
+      normalizedSize === "16oz"
+    ) {
+
+      return quantity;
+    }
+
+    // 8oz = 0.5x
+    if (
+      normalizedSize === "8oz"
+    ) {
+
+      return quantity * 0.5;
+    }
+
+    // DEFAULT
+    return quantity;
+  };
+
+  // ─────────────────────────────────────────────
+  // AGGREGATED ITEMS
   // ─────────────────────────────────────────────
   const aggregatedItemsMap = {};
 
@@ -2576,25 +2753,92 @@ const kitchenViewOrdersByArea = asynchandler(async (req, res) => {
 
     order.items.forEach(item => {
 
+      const size =
+
+        item.selectedVariant?.size || "";
+
+      // =====================================================
+      // CONVERT TO 16oz EQUIVALENT
+      // =====================================================
+      const equivalent16ozQty =
+
+        convertTo16OzUnits(
+          size,
+          item.quantity
+        );
+
+      // =====================================================
+      // UNIQUE KEY
+      // =====================================================
       const key =
         `${item.name}_${item.type}`;
 
-      if (!aggregatedItemsMap[key]) {
+      // =====================================================
+      // CREATE IF NOT EXISTS
+      // =====================================================
+      if (
+        !aggregatedItemsMap[key]
+      ) {
 
         aggregatedItemsMap[key] = {
-          name: item.name,
-          type: item.type,
-          totalQuantity: 0
+
+          name:
+            item.name,
+
+          type:
+            item.type,
+
+          totalQuantity: 0,
+
+          // ✅ 16oz BASED COUNT
+          total16ozEquivalent: 0,
+
+          variants: {}
         };
+      }
+
+      // =====================================================
+      // ORIGINAL QUANTITY
+      // =====================================================
+      aggregatedItemsMap[
+        key
+      ].totalQuantity +=
+        item.quantity;
+
+      // =====================================================
+      // 16oz EQUIVALENT TOTAL
+      // =====================================================
+      aggregatedItemsMap[
+        key
+      ].total16ozEquivalent +=
+        equivalent16ozQty;
+
+      // =====================================================
+      // VARIANT WISE COUNT
+      // =====================================================
+      if (
+        !aggregatedItemsMap[
+          key
+        ].variants[size]
+      ) {
+
+        aggregatedItemsMap[
+          key
+        ].variants[size] = 0;
       }
 
       aggregatedItemsMap[
         key
-      ].totalQuantity += item.quantity;
+      ].variants[size] +=
+        item.quantity;
     });
   });
 
+  // ─────────────────────────────────────────────
+  // FINAL AGGREGATED ITEMS
+  // ─────────────────────────────────────────────
   const aggregatedItems =
+
     Object.values(
       aggregatedItemsMap
     );
@@ -2603,12 +2847,18 @@ const kitchenViewOrdersByArea = asynchandler(async (req, res) => {
   // FORMAT ORDERS
   // ─────────────────────────────────────────────
   const formattedOrders =
+
     orders.map(order => ({
 
-      orderId: order._id,
+      orderId:
+        order._id,
 
       username:
-        order.userId?.username || "",
+        order.userId?.username ||
+
+        order.userId?.full_name ||
+
+        "Unknown",
 
       status:
         order.status,
@@ -2626,8 +2876,19 @@ const kitchenViewOrdersByArea = asynchandler(async (req, res) => {
             item.quantity,
 
           type:
-            item.type
+            item.type,
 
+          variant: {
+
+            size:
+              item.selectedVariant?.size || "",
+
+            price:
+              item.selectedVariant?.price || 0
+          },
+
+          subtotal:
+            item.subtotal || 0
         })),
 
       placedAt:
@@ -2635,11 +2896,64 @@ const kitchenViewOrdersByArea = asynchandler(async (req, res) => {
     }));
 
   // ─────────────────────────────────────────────
+  // GROUP ORDERS BY USERNAME
+  // ─────────────────────────────────────────────
+  const groupedOrdersMap = {};
+
+  formattedOrders.forEach(order => {
+
+    const username =
+      order.username || "Unknown";
+
+    // =====================================================
+    // CREATE GROUP
+    // =====================================================
+    if (
+      !groupedOrdersMap[username]
+    ) {
+
+      groupedOrdersMap[
+        username
+      ] = {
+
+        username,
+
+        totalOrders: 0,
+
+        orders: []
+      };
+    }
+
+    // =====================================================
+    // PUSH ORDER
+    // =====================================================
+    groupedOrdersMap[
+      username
+    ].orders.push(order);
+
+    groupedOrdersMap[
+      username
+    ].totalOrders += 1;
+  });
+
+  // ─────────────────────────────────────────────
+  // FINAL GROUPED ORDERS
+  // ─────────────────────────────────────────────
+  const groupedOrders =
+
+    Object.values(
+      groupedOrdersMap
+    );
+
+  // ─────────────────────────────────────────────
   // RESPONSE
   // ─────────────────────────────────────────────
   return res.status(200).json(
+
     new ApiResponse(
+
       200,
+
       {
 
         area,
@@ -2647,10 +2961,11 @@ const kitchenViewOrdersByArea = asynchandler(async (req, res) => {
         citiesCovered:
           cities,
 
+        // ✅ USER GROUPED ORDERS
         orders:
-          formattedOrders,
+          groupedOrders,
 
-        // ✅ TOTAL ITEM REQUIREMENTS
+        // ✅ KITCHEN SUMMARY
         aggregatedItems,
 
         pagination: {
@@ -2667,13 +2982,12 @@ const kitchenViewOrdersByArea = asynchandler(async (req, res) => {
           limit:
             perPage
         }
-
       },
+
       "Kitchen orders fetched successfully"
     )
   );
 });
-
 
 
 
@@ -4100,8 +4414,7 @@ const deleteEmployee = asynchandler(async (req, res) => {
 
 
 
-const createDeliveryBatch =
-asynchandler(async (req, res) => {
+const createDeliveryBatch = asynchandler(async (req, res) => {
 
   ensureSuperAdmin(req);
 
@@ -4204,8 +4517,7 @@ asynchandler(async (req, res) => {
 
 
 
-const getDeliveryBatchDetails =
-asynchandler(async (req, res) => {
+const getDeliveryBatchDetails = asynchandler(async (req, res) => {
 
   ensureSuperAdmin(req);
 
@@ -4308,8 +4620,7 @@ asynchandler(async (req, res) => {
 
 
 
-const reorderDeliveryBatch =
-asynchandler(async (req, res) => {
+const reorderDeliveryBatch = asynchandler(async (req, res) => {
 
   ensureSuperAdmin(req);
 
@@ -4360,8 +4671,7 @@ asynchandler(async (req, res) => {
 
 
 
-const finalizeDeliveryBatch =
-asynchandler(async (req, res) => {
+const finalizeDeliveryBatch = asynchandler(async (req, res) => {
 
   ensureSuperAdmin(req);
 
@@ -4402,8 +4712,7 @@ asynchandler(async (req, res) => {
 
 
 
-const driverViewMyBatches =
-asynchandler(async (req, res) => {
+const driverViewMyBatches = asynchandler(async (req, res) => {
 
   const driverId =
     req.staff._id;
@@ -4442,8 +4751,7 @@ asynchandler(async (req, res) => {
 
 
 
-const getUnassignedConfirmedOrders =
-asynchandler(async (req, res) => {
+const getUnassignedConfirmedOrders = asynchandler(async (req, res) => {
 
   ensureSuperAdmin(req);
 
@@ -4845,8 +5153,7 @@ asynchandler(async (req, res) => {
 
 
 
-const resetConfirmedOrders =
-asynchandler(async (req, res) => {
+const resetConfirmedOrders = asynchandler(async (req, res) => {
 
   ensureSuperAdmin(req);
 
@@ -5867,7 +6174,7 @@ const sendBulkPaymentRemindersByArea = asynchandler(async (req, res) => {
           ${
             paymentDetails.venmo
             ? `<li><strong>Venmo:</strong> ${paymentDetails.venmo}</li>`
-            : ""
+            : "" 
           }
 
         </ul>
@@ -5879,7 +6186,7 @@ const sendBulkPaymentRemindersByArea = asynchandler(async (req, res) => {
         </p>
 
         <p>
-          Thank you ❤️
+          Thank you 
         </p>
 
       </div>

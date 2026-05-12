@@ -1,52 +1,168 @@
 import mongoose from "mongoose";
 
-const cartSchema = new mongoose.Schema({
-  user: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User"
+// ─────────────────────────────────────────────
+// CART ITEM SCHEMA
+// ─────────────────────────────────────────────
+const cartItemSchema = new mongoose.Schema(
+
+  {
+
+    itemId: {
+
+      type: mongoose.Schema.Types.ObjectId,
+
+      required: true
+    },
+
+    // =====================================================
+    // ITEM TYPE
+    // =====================================================
+    type: {
+
+      type: String,
+
+      enum: ["product", "combo"],
+
+      required: true
+    },
+
+    // =====================================================
+    // PRODUCT
+    // =====================================================
+    productId: {
+
+      type:
+        mongoose.Schema.Types.ObjectId,
+
+      ref: "Product",
+
+      default: null
+    },
+
+    // =====================================================
+    // COMBO
+    // =====================================================
+    comboId: {
+
+      type:
+        mongoose.Schema.Types.ObjectId,
+
+      ref: "Combo",
+
+      default: null
+    },
+
+    // =====================================================
+    // NAME
+    // =====================================================
+    name: {
+
+      type: String,
+
+      default: ""
+    },
+
+    // =====================================================
+    // QUANTITY
+    // =====================================================
+    quantity: {
+
+      type: Number,
+
+      default: 1
+    },
+
+    // =====================================================
+    // ✅ SELECTED VARIANT
+    // =====================================================
+    selectedVariant: {
+
+      size: {
+
+        type: String,
+
+        default: ""
+      },
+
+      price: {
+
+        type: Number,
+
+        default: 0
+      }
+    },
+
+    // =====================================================
+    // ✅ SUBTOTAL
+    // =====================================================
+    subtotal: {
+
+      type: Number,
+
+      default: 0
+    },
+
+    // =====================================================
+    // COMBO SELECTIONS
+    // =====================================================
+    selections: [
+
+      {
+
+        ruleId:
+          mongoose.Schema.Types.ObjectId,
+
+        products: [
+
+          {
+
+            productId:
+              mongoose.Schema.Types.ObjectId,
+
+            quantity: Number
+          }
+        ]
+      }
+    ]
   },
 
-  items: [
-    {
-       itemId: {
-        type: mongoose.Schema.Types.ObjectId, // or String if you prefer
-        required: true
-      },
-      type: {
-        type: String, // "product" or "combo"
-        enum: ["product", "combo"],
-        required: true
-      },
+  {
+    _id: false
+  }
+);
 
-      productId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Product"
-      },
+// ─────────────────────────────────────────────
+// CART SCHEMA
+// ─────────────────────────────────────────────
+const cartSchema = new mongoose.Schema(
 
-      comboId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Combo"
-      },
+  {
 
-      quantity: {
-        type: Number,
-        default: 1
-      },
+    user: {
 
-      // 🔥 For combos
-      selections: [
-        {
-          ruleId: mongoose.Schema.Types.ObjectId,
-          products: [
-            {
-              productId: mongoose.Schema.Types.ObjectId,
-              quantity: Number
-            }
-          ]
-        }
-      ]
+      type:
+        mongoose.Schema.Types.ObjectId,
+
+      ref: "User",
+
+      required: true
+    },
+
+    items: {
+
+      type: [cartItemSchema],
+
+      default: []
     }
-  ]
-}, { timestamps: true });
+  },
 
-export const Cart = mongoose.model("Cart", cartSchema);
+  {
+    timestamps: true
+  }
+);
+
+export const Cart =
+  mongoose.model(
+    "Cart",
+    cartSchema
+  );

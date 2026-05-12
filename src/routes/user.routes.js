@@ -64,6 +64,7 @@ router.route("/change-password" ).post(verifyJWT,changeCurrentPassword)
 
 router.route("/address/add").post(verifyJWT,addAddress)
 router.route("/address/:addressId").patch(verifyJWT,editAddress)
+
 router.route("/address/:addressId").delete(verifyJWT,deleteAddress)
 
 router.route("/current-user" ).get(verifyJWT,getCurrentuser)
