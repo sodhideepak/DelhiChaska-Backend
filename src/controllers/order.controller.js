@@ -1977,7 +1977,6 @@ console.log("Admin Email Content:", process.env.ADMIN_EMAIL);
 
 
 
-
 const viewMyOrders = asynchandler(async (req, res) => {
 
   const userId = req.user?._id;
@@ -1992,9 +1991,7 @@ const viewMyOrders = asynchandler(async (req, res) => {
   const {
     status,
     paymentStatus,
-    paymentMethod,
-    page = 1,
-    limit = 10
+    paymentMethod
   } = req.query;
 
   // ─────────────────────────────────────────────
@@ -2017,21 +2014,16 @@ const viewMyOrders = asynchandler(async (req, res) => {
   }
 
   // ─────────────────────────────────────────────
-  // PAGINATION
+  // FIXED LIMIT → LAST 16 ORDERS
   // ─────────────────────────────────────────────
-  const currentPage = Number(page) || 1;
-
-  const perPage = Number(limit) || 10;
-
-  const skip = (currentPage - 1) * perPage;
+  const LIMIT = 16;
 
   // ─────────────────────────────────────────────
   // FETCH ORDERS
   // ─────────────────────────────────────────────
   const orders = await Order.find(filter)
     .sort({ createdAt: -1 })
-    .skip(skip)
-    .limit(perPage)
+    .limit(LIMIT)
     .lean();
 
   // ─────────────────────────────────────────────
@@ -2049,12 +2041,7 @@ const viewMyOrders = asynchandler(async (req, res) => {
         200,
         {
           orders: [],
-          pagination: {
-            totalOrders: 0,
-            currentPage,
-            totalPages: 0,
-            limit: perPage
-          }
+          totalOrders: 0
         },
         "No orders found"
       )
@@ -2114,15 +2101,14 @@ const viewMyOrders = asynchandler(async (req, res) => {
       })
     };
   };
- 
-      
+
   // ─────────────────────────────────────────────
   // FORMAT ORDERS
   // ─────────────────────────────────────────────
   const formattedOrders = orders.map(order => {
 
     const deliveryDate = calculateDeliveryDate(order.createdAt);
-      
+
     return {
 
       orderId: order._id,
@@ -2160,8 +2146,6 @@ const viewMyOrders = asynchandler(async (req, res) => {
 
       paymentRequested: order.paymentRequested || false,
 
-    
-
       placedAt: order.createdAt
 
     };
@@ -2176,22 +2160,9 @@ const viewMyOrders = asynchandler(async (req, res) => {
       200,
       {
         orders: formattedOrders,
-
-        filters: {
-          status: status || null,
-          paymentStatus: paymentStatus || null,
-          paymentMethod: paymentMethod || null
-        },
-
-        pagination: {
-          totalOrders,
-          currentPage,
-          totalPages: Math.ceil(totalOrders / perPage),
-          limit: perPage
-        }
-
+        totalOrders
       },
-      "Orders fetched successfully"
+      "Last 16 orders fetched successfully"
     )
   );
 });

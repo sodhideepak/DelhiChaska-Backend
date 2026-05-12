@@ -527,37 +527,36 @@ const verifyEmail_registeruser = asynchandler(async (req, res) => {
 
 const generateCustomUsername = async (userModel, tempUser) => {
 
-    // 1. Take first 4 chars from name
+    // 1. Take first 4 readable chars from full name
     const namePart = tempUser.full_name
         .toLowerCase()
         .replace(/[^a-z0-9]/g, "")
         .slice(0, 4);
 
-    // fallback if name < 4 chars
+    // fallback if name has less than 4 chars
     const safeName = namePart.padEnd(4, "x");
-
-    // 2. Last 4 digits of phone
-    const phonePart = tempUser.phone_number.slice(-4);
 
     let username;
     let exists = true;
 
     while (exists) {
-        // 3. 2 random characters (letter + digit)
-        const randomChar = String.fromCharCode(97 + Math.floor(Math.random() * 26)); // a-z
-        const randomNum = Math.floor(Math.random() * 10); // 0-9
 
-        const randomPart = `${randomChar}${randomNum}`;
+        // 2. Generate random 2 digit number
+        const randomDigits = Math.floor(10 + Math.random() * 90); 
+        // gives number between 10-99
 
-        username = `${safeName}${phonePart}${randomPart}`;
+        // Final username = 4 chars from name + 2 random digits
+        username = `${safeName}${randomDigits}`;
 
         const userExists = await userModel.findOne({ username });
-        if (!userExists) exists = false;
+
+        if (!userExists) {
+            exists = false;
+        }
     }
 
     return username;
 };
-
 
 const registeruser = asynchandler(async (req, res) => {
 

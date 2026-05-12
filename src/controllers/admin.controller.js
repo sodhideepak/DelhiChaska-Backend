@@ -2033,7 +2033,7 @@ const adminViewOrdersByArea = asynchandler(async (req, res) => {
       Order.find(filter)
         .populate(
           "userId",
-          "full_name email phone_number"
+          "full_name email phone_number username"
         )
         .sort({ createdAt: -1 })
         .skip(skip)
@@ -2054,6 +2054,7 @@ const adminViewOrdersByArea = asynchandler(async (req, res) => {
       user: {
         userId: order.userId?._id,
         name: order.userId?.full_name,
+        username: order.userId.username || ""
       },
 
       status: order.status,
@@ -4843,6 +4844,1152 @@ asynchandler(async (req, res) => {
 
 
 
+
+const resetConfirmedOrders =
+asynchandler(async (req, res) => {
+
+  ensureSuperAdmin(req);
+
+  // ─────────────────────────────────────────────
+  // UPDATE ALL CONFIRMED ORDERS
+  // → pending
+  // ─────────────────────────────────────────────
+  const result =
+    await Order.updateMany(
+
+      {
+        status: "confirmed"
+      },
+
+      {
+        $set: {
+
+          // ✅ RESET STATUS
+          status: "pending"
+        },
+
+        // ✅ REMOVE DELIVERY ASSIGNMENT
+        $unset: {
+
+          deliveryAssignment: ""
+        }
+      }
+    );
+
+  // ─────────────────────────────────────────────
+  // OPTIONAL:
+  // DELETE DELIVERY BATCHES
+  // ─────────────────────────────────────────────
+  const deletedBatches =
+    await DeliveryBatch.deleteMany({});
+
+  // ─────────────────────────────────────────────
+  // RESPONSE
+  // ─────────────────────────────────────────────
+  return res.status(200).json(
+
+    new ApiResponse(
+      200,
+      {
+
+        matchedOrders:
+          result.matchedCount,
+
+        updatedOrders:
+          result.modifiedCount,
+
+        deletedBatches:
+          deletedBatches.deletedCount
+      },
+
+      "All confirmed orders reset to pending successfully"
+    )
+  );
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+const adminPaymentHistoryByArea = asynchandler(async (req, res) => {
+
+  ensureSuperAdmin(req);
+
+  const {
+    area,
+
+    // ✅ PAYMENT FILTER
+    paymentStatus,
+
+    // ✅ DATE FILTERS
+    date,
+    startDate,
+    endDate,
+
+    // ✅ PAGINATION
+    page = 1,
+    limit = 10
+
+  } = req.query;
+
+  // ─────────────────────────────────────────────
+  // AREA REQUIRED
+  // ─────────────────────────────────────────────
+  if (!area) {
+
+    throw new ApiError(
+      400,
+      "Area is required"
+    );
+  }
+
+  // ─────────────────────────────────────────────
+  // GET CITIES
+  // ─────────────────────────────────────────────
+  const cities =
+    AREA_CITY_MAP[area.toLowerCase()];
+
+  if (!cities) {
+
+    throw new ApiError(
+      400,
+      "Invalid area provided"
+    );
+  }
+
+  // ─────────────────────────────────────────────
+  // BASE FILTER
+  // ─────────────────────────────────────────────
+  const filter = {
+
+    "deliveryDetails.city": {
+      $in: cities
+    }
+
+  };
+
+  // ─────────────────────────────────────────────
+  // PAYMENT STATUS FILTER
+  // ─────────────────────────────────────────────
+  if (paymentStatus) {
+
+    filter["payment.status"] =
+      paymentStatus;
+  }
+
+  // ─────────────────────────────────────────────
+  // SINGLE DATE FILTER
+  // ─────────────────────────────────────────────
+  if (date) {
+
+    const selectedDate =
+      new Date(date);
+
+    const startOfDay =
+      new Date(selectedDate);
+
+    startOfDay.setHours(
+      0, 0, 0, 0
+    );
+
+    const endOfDay =
+      new Date(selectedDate);
+
+    endOfDay.setHours(
+      23, 59, 59, 999
+    );
+
+    filter.createdAt = {
+
+      $gte: startOfDay,
+      $lte: endOfDay
+
+    };
+  }
+
+  // ─────────────────────────────────────────────
+  // DATE RANGE FILTER
+  // ─────────────────────────────────────────────
+  if (startDate || endDate) {
+
+    filter.createdAt = {};
+
+    if (startDate) {
+
+      filter.createdAt.$gte =
+        new Date(startDate);
+    }
+
+    if (endDate) {
+
+      const end =
+        new Date(endDate);
+
+      end.setHours(
+        23, 59, 59, 999
+      );
+
+      filter.createdAt.$lte =
+        end;
+    }
+  }
+
+  // ─────────────────────────────────────────────
+  // PAGINATION
+  // ─────────────────────────────────────────────
+  const currentPage =
+    Number(page) || 1;
+
+  const perPage =
+    Number(limit) || 10;
+
+  const skip =
+    (currentPage - 1) * perPage;
+
+  // ─────────────────────────────────────────────
+  // FETCH ORDERS
+  // ─────────────────────────────────────────────
+  const [orders, totalOrders] =
+    await Promise.all([
+
+      Order.find(filter)
+
+        .populate(
+          "userId",
+          "full_name phone_number username"
+        )
+
+        .sort({
+          createdAt: -1
+        })
+
+        .skip(skip)
+
+        .limit(perPage)
+
+        .lean(),
+
+      Order.countDocuments(filter)
+
+    ]);
+
+  // ─────────────────────────────────────────────
+  // FORMAT PAYMENTS
+  // ─────────────────────────────────────────────
+  const formattedPayments =
+    orders.map(order => ({
+
+      orderId:
+        order._id,
+
+      user: {
+
+        userId:
+          order.userId?._id || null,
+
+        name:
+          order.userId?.full_name || "",
+
+        username:
+          order.userId?.username || "",
+
+        phone:
+          order.userId?.phone_number ||
+          order.deliveryDetails?.phone || "",
+
+        address: {
+
+          addressId:
+            order.deliveryDetails?.addressId || "",
+
+          addressLine1:
+            order.deliveryDetails?.addressLine1 || "",
+
+          addressLine2:
+            order.deliveryDetails?.addressLine2 || "",
+
+          city:
+            order.deliveryDetails?.city || "",
+
+          state:
+            order.deliveryDetails?.state || "",
+
+          zipCode:
+            order.deliveryDetails?.zipCode || "",
+
+          country:
+            order.deliveryDetails?.country || "",
+
+          location: {
+
+            lat:
+              order.deliveryDetails?.location?.lat || null,
+
+            lng:
+              order.deliveryDetails?.location?.lng || null
+
+          }
+
+        }
+
+      },
+
+      payment: {
+
+        method:
+          order.payment?.method || "",
+
+        status:
+          order.payment?.status || ""
+
+      },
+
+      totalAmount:
+        order.totalAmount || 0,
+
+      paymentRequested:
+        order.paymentRequested || false,
+
+      status:
+        order.status,
+
+      deliveryDate:
+        order.deliveryDate || null,
+
+      deliveredAt:
+        order.deliveredAt || null,
+
+      placedAt:
+        order.createdAt
+
+    }));
+
+  // ─────────────────────────────────────────────
+  // AREA SUMMARY REPORT
+  // ─────────────────────────────────────────────
+  const report = {
+
+    title:
+      `Total ${area} - Delivery Cycle Report`,
+
+    deliveryCycle:
+      date ||
+      `${startDate || "N/A"} to ${endDate || "N/A"}`,
+
+    totalConfirmedOrders: 0,
+
+    paid: 0,
+
+    unpaid: 0,
+
+    totalAmount: 0,
+
+    received: 0,
+
+    remaining: 0
+
+  };
+
+  // ─────────────────────────────────────────────
+  // CALCULATE REPORT
+  // ─────────────────────────────────────────────
+  orders.forEach(order => {
+
+    // ONLY CONFIRMED ORDERS
+    if (
+      order.status?.toLowerCase() !==
+      "confirmed"
+    ) {
+      return;
+    }
+
+    const amount =
+      Number(order.totalAmount || 0);
+
+    report.totalConfirmedOrders += 1;
+
+    report.totalAmount += amount;
+
+    // PAID
+    if (
+      order.payment?.status
+        ?.toLowerCase() === "paid"
+    ) {
+
+      report.paid += 1;
+
+      report.received += amount;
+
+    }
+
+    // UNPAID
+    else {
+
+      report.unpaid += 1;
+
+      report.remaining += amount;
+
+    }
+
+  });
+
+  // ─────────────────────────────────────────────
+  // RESPONSE
+  // ─────────────────────────────────────────────
+  return res.status(200).json(
+
+    new ApiResponse(
+
+      200,
+
+      {
+
+        area,
+
+        citiesCovered:
+          cities,
+
+        filters: {
+
+          paymentStatus:
+            paymentStatus || null,
+
+          date:
+            date || null,
+
+          startDate:
+            startDate || null,
+
+          endDate:
+            endDate || null
+
+        },
+
+        // ✅ SUMMARY REPORT
+        report,
+
+        // ✅ PAYMENT HISTORY
+        payments:
+          formattedPayments,
+
+        // ✅ PAGINATION
+        pagination: {
+
+          totalOrders,
+
+          currentPage,
+
+          totalPages: Math.ceil(
+            totalOrders / perPage
+          ),
+
+          limit:
+            perPage
+
+        }
+
+      },
+
+      "Payment history fetched successfully"
+
+    )
+
+  );
+
+});
+
+
+
+
+const sendPaymentReminder = asynchandler(async (req, res) => {
+
+  ensureSuperAdmin(req);
+
+  const { orderId } = req.params;
+  console.log(req.params);
+  
+
+  // ─────────────────────────────────────────────
+  // FETCH ORDER
+  // ─────────────────────────────────────────────
+  const order = await Order.findById(orderId)
+    .populate(
+      "userId",
+      "full_name email username phone_number"
+    );
+
+  if (!order) {
+
+    throw new ApiError(
+      404,
+      "Order not found"
+    );
+  }
+
+  // ─────────────────────────────────────────────
+  // CHECK USER EMAIL
+  // ─────────────────────────────────────────────
+  if (!order.userId?.email) {
+
+    throw new ApiError(
+      400,
+      "User email not found"
+    );
+  }
+
+  // ─────────────────────────────────────────────
+  // CHECK PAYMENT STATUS
+  // ─────────────────────────────────────────────
+  if (
+    order.payment?.status?.toLowerCase() ===
+    "paid"
+  ) {
+
+    throw new ApiError(
+      400,
+      "Payment already completed"
+    );
+  }
+
+  // ─────────────────────────────────────────────
+  // PAYMENT DETAILS
+  // ─────────────────────────────────────────────
+  const paymentDetails = {
+
+    accountName:
+      process.env.PAYMENT_ACCOUNT_NAME,
+
+    bankName:
+      process.env.PAYMENT_BANK_NAME,
+
+    accountNumber:
+      process.env.PAYMENT_ACCOUNT_NUMBER,
+
+    ifscCode:
+      process.env.PAYMENT_IFSC,
+
+    zelle:
+      process.env.PAYMENT_ZELLE,
+
+    venmo:
+      process.env.PAYMENT_VENMO
+
+  };
+
+  // ─────────────────────────────────────────────
+  // ITEMS HTML
+  // ─────────────────────────────────────────────
+  const itemsHtml = order.items.map(item => `
+      <tr>
+        <td style="padding:8px;border:1px solid #ddd;">
+          ${item.name}
+        </td>
+
+        <td style="padding:8px;border:1px solid #ddd;">
+          ${item.quantity}
+        </td>
+
+        <td style="padding:8px;border:1px solid #ddd;">
+          $${item.price}
+        </td>
+
+        <td style="padding:8px;border:1px solid #ddd;">
+          $${item.price * item.quantity}
+        </td>
+      </tr>
+  `).join("");
+
+  // ─────────────────────────────────────────────
+  // EMAIL HTML
+  // ─────────────────────────────────────────────
+  const html = `
+  
+  <div style="font-family: Arial, sans-serif; max-width: 700px; margin:auto;">
+
+    <h2>
+      Payment Reminder
+    </h2>
+
+    <p>
+      Hello ${order.userId.full_name},
+    </p>
+
+    <p>
+      This is a friendly reminder to clear your pending payment for your recent order.
+    </p>
+
+    <hr />
+
+    <h3>
+      Order Details
+    </h3>
+
+    <p>
+      <strong>Order ID:</strong>
+      ${order._id}
+    </p>
+
+    <p>
+      <strong>Order Date:</strong>
+      ${new Date(order.createdAt).toLocaleDateString()}
+    </p>
+
+    <p>
+      <strong>Total Amount:</strong>
+      $${order.totalAmount}
+    </p>
+
+    <p>
+      <strong>Payment Status:</strong>
+      ${order.payment?.status || "unpaid"}
+    </p>
+
+    <h3>
+      Ordered Items
+    </h3>
+
+    <table style="width:100%; border-collapse: collapse;">
+
+      <thead>
+
+        <tr style="background:#f5f5f5;">
+
+          <th style="padding:8px;border:1px solid #ddd;">
+            Product
+          </th>
+
+          <th style="padding:8px;border:1px solid #ddd;">
+            Qty
+          </th>
+
+          <th style="padding:8px;border:1px solid #ddd;">
+            Price
+          </th>
+
+          <th style="padding:8px;border:1px solid #ddd;">
+            Total
+          </th>
+
+        </tr>
+
+      </thead>
+
+      <tbody>
+        ${itemsHtml}
+      </tbody>
+
+    </table>
+
+    <hr />
+
+    <h3>
+      Payment Details
+    </h3>
+
+    <p>
+      Please complete your payment using any of the following methods:
+    </p>
+
+    <ul>
+
+      ${
+        paymentDetails.accountName
+        ? `<li><strong>Account Name:</strong> ${paymentDetails.accountName}</li>`
+        : ""
+      }
+
+      ${
+        paymentDetails.bankName
+        ? `<li><strong>Bank:</strong> ${paymentDetails.bankName}</li>`
+        : ""
+      }
+
+      ${
+        paymentDetails.accountNumber
+        ? `<li><strong>Account Number:</strong> ${paymentDetails.accountNumber}</li>`
+        : ""
+      }
+
+      ${
+        paymentDetails.ifscCode
+        ? `<li><strong>IFSC:</strong> ${paymentDetails.ifscCode}</li>`
+        : ""
+      }
+
+      ${
+        paymentDetails.zelle
+        ? `<li><strong>Zelle:</strong> ${paymentDetails.zelle}</li>`
+        : ""
+      }
+
+      ${
+        paymentDetails.venmo
+        ? `<li><strong>Venmo:</strong> ${paymentDetails.venmo}</li>`
+        : ""
+      }
+
+    </ul>
+
+    <hr />
+
+    <p>
+      Once payment is completed, kindly share payment confirmation with our support team.
+    </p>
+
+    <p>
+      Thank you for choosing us ❤️
+    </p>
+
+  </div>
+  `;
+
+  // ─────────────────────────────────────────────
+  // SEND EMAIL
+  // ─────────────────────────────────────────────
+  await sendEmail({
+
+    to: order.userId.email,
+
+    subject:
+      "Payment Reminder - Pending Payment",
+
+    html
+
+  });
+
+  // ─────────────────────────────────────────────
+  // RESPONSE
+  // ─────────────────────────────────────────────
+  return res.status(200).json(
+
+    new ApiResponse(
+
+      200,
+
+      {
+        orderId: order._id,
+        email: order.userId.email,
+        username: order.userId.username,
+        full_name: order.userId.full_name
+      },
+
+      "Payment reminder email sent successfully"
+
+    )
+
+  );
+
+});
+
+
+
+
+
+
+const sendBulkPaymentRemindersByArea = asynchandler(async (req, res) => {
+
+  ensureSuperAdmin(req);
+
+  const { area } = req.params;
+
+  // ─────────────────────────────────────────────
+  // AREA REQUIRED
+  // ─────────────────────────────────────────────
+  if (!area) {
+
+    throw new ApiError(
+      400,
+      "Area is required"
+    );
+  }
+
+  // ─────────────────────────────────────────────
+  // GET CITIES
+  // ─────────────────────────────────────────────
+  const cities =
+    AREA_CITY_MAP[area.toLowerCase()];
+
+  if (!cities) {
+
+    throw new ApiError(
+      400,
+      "Invalid area provided"
+    );
+  }
+
+  // ─────────────────────────────────────────────
+  // FETCH PENDING PAYMENT ORDERS
+  // ─────────────────────────────────────────────
+  const orders = await Order.find({
+
+    "deliveryDetails.city": {
+      $in: cities
+    },
+
+    "payment.status": {
+      $in: ["pending", "unpaid"]
+    }
+
+  })
+
+    .populate(
+      "userId",
+      "full_name email username phone_number"
+    )
+
+    .sort({
+      createdAt: -1
+    })
+
+    .lean();
+
+  // ─────────────────────────────────────────────
+  // NO ORDERS FOUND
+  // ─────────────────────────────────────────────
+  if (!orders.length) {
+
+    return res.status(200).json(
+
+      new ApiResponse(
+
+        200,
+
+        {
+          totalEmailsSent: 0
+        },
+
+        "No pending payments found"
+
+      )
+
+    );
+  }
+
+  // ─────────────────────────────────────────────
+  // PAYMENT DETAILS
+  // ─────────────────────────────────────────────
+  const paymentDetails = {
+
+    accountName:
+      process.env.PAYMENT_ACCOUNT_NAME,
+
+    bankName:
+      process.env.PAYMENT_BANK_NAME,
+
+    accountNumber:
+      process.env.PAYMENT_ACCOUNT_NUMBER,
+
+    ifscCode:
+      process.env.PAYMENT_IFSC,
+
+    zelle:
+      process.env.PAYMENT_ZELLE,
+
+    venmo:
+      process.env.PAYMENT_VENMO
+
+  };
+
+  // ─────────────────────────────────────────────
+  // SEND EMAILS
+  // ─────────────────────────────────────────────
+  const sentEmails = [];
+  const failedEmails = [];
+
+  for (const order of orders) {
+
+    try {
+
+      // SKIP IF EMAIL NOT FOUND
+      if (!order.userId?.email) {
+
+        failedEmails.push({
+
+          orderId: order._id,
+          reason: "User email missing"
+
+        });
+
+        continue;
+      }
+
+      // ITEMS HTML
+      const itemsHtml =
+        order.items.map(item => `
+
+        <tr>
+
+          <td style="padding:8px;border:1px solid #ddd;">
+            ${item.name}
+          </td>
+
+          <td style="padding:8px;border:1px solid #ddd;">
+            ${item.quantity}
+          </td>
+
+          <td style="padding:8px;border:1px solid #ddd;">
+            $${item.price}
+          </td>
+
+          <td style="padding:8px;border:1px solid #ddd;">
+            $${item.price * item.quantity}
+          </td>
+
+        </tr>
+
+      `).join("");
+
+      // EMAIL TEMPLATE
+      const html = `
+
+      <div style="font-family: Arial, sans-serif; max-width: 700px; margin:auto;">
+
+        <h2>
+          Payment Reminder
+        </h2>
+
+        <p>
+          Hello ${order.userId.full_name},
+        </p>
+
+        <p>
+          This is a friendly reminder to clear your pending payment for your recent order.
+        </p>
+
+        <hr />
+
+        <h3>
+          Order Details
+        </h3>
+
+        <p>
+          <strong>Order ID:</strong>
+          ${order._id}
+        </p>
+
+        <p>
+          <strong>Total Amount:</strong>
+          $${order.totalAmount}
+        </p>
+
+        <p>
+          <strong>Payment Status:</strong>
+          ${order.payment?.status || "pending"}
+        </p>
+
+        <h3>
+          Ordered Items
+        </h3>
+
+        <table style="width:100%; border-collapse: collapse;">
+
+          <thead>
+
+            <tr style="background:#f5f5f5;">
+
+              <th style="padding:8px;border:1px solid #ddd;">
+                Product
+              </th>
+
+              <th style="padding:8px;border:1px solid #ddd;">
+                Qty
+              </th>
+
+              <th style="padding:8px;border:1px solid #ddd;">
+                Price
+              </th>
+
+              <th style="padding:8px;border:1px solid #ddd;">
+                Total
+              </th>
+
+            </tr>
+
+          </thead>
+
+          <tbody>
+            ${itemsHtml}
+          </tbody>
+
+        </table>
+
+        <hr />
+
+        <h3>
+          Payment Methods
+        </h3>
+
+        <ul>
+
+          ${
+            paymentDetails.accountName
+            ? `<li><strong>Account Name:</strong> ${paymentDetails.accountName}</li>`
+            : ""
+          }
+
+          ${
+            paymentDetails.bankName
+            ? `<li><strong>Bank:</strong> ${paymentDetails.bankName}</li>`
+            : ""
+          }
+
+          ${
+            paymentDetails.accountNumber
+            ? `<li><strong>Account Number:</strong> ${paymentDetails.accountNumber}</li>`
+            : ""
+          }
+
+          ${
+            paymentDetails.ifscCode
+            ? `<li><strong>IFSC:</strong> ${paymentDetails.ifscCode}</li>`
+            : ""
+          }
+
+          ${
+            paymentDetails.zelle
+            ? `<li><strong>Zelle:</strong> ${paymentDetails.zelle}</li>`
+            : ""
+          }
+
+          ${
+            paymentDetails.venmo
+            ? `<li><strong>Venmo:</strong> ${paymentDetails.venmo}</li>`
+            : ""
+          }
+
+        </ul>
+
+        <hr />
+
+        <p>
+          Kindly complete your payment as soon as possible.
+        </p>
+
+        <p>
+          Thank you ❤️
+        </p>
+
+      </div>
+
+      `;
+
+      // SEND EMAIL
+      await sendEmail({
+
+        to: order.userId.email,
+
+        subject:
+          "Pending Payment Reminder",
+
+        html
+
+      });
+
+      sentEmails.push({
+
+        orderId: order._id,
+
+        email: order.userId.email
+
+      });
+
+    } catch (error) {
+
+      failedEmails.push({
+
+        orderId: order._id,
+
+        email: order.userId?.email || "",
+
+        reason: error.message
+
+      });
+
+    }
+
+  }
+
+  // ─────────────────────────────────────────────
+  // RESPONSE
+  // ─────────────────────────────────────────────
+  return res.status(200).json(
+
+    new ApiResponse(
+
+      200,
+
+      {
+
+        area,
+
+        citiesCovered: cities,
+
+        totalOrders:
+          orders.length,
+
+        totalEmailsSent:
+          sentEmails.length,
+
+        totalFailed:
+          failedEmails.length,
+
+        sentEmails,
+
+        failedEmails
+
+      },
+
+      "Bulk payment reminders processed successfully"
+
+    )
+
+  );
+
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 export {
         registeruser,
         startEmployeeRegistration,
@@ -4886,5 +6033,9 @@ export {
         reorderDeliveryBatch,
         finalizeDeliveryBatch,
         driverViewMyBatches,
-        getUnassignedConfirmedOrders
+        getUnassignedConfirmedOrders,
+        resetConfirmedOrders,
+        adminPaymentHistoryByArea,
+        sendPaymentReminder,
+        sendBulkPaymentRemindersByArea
     }

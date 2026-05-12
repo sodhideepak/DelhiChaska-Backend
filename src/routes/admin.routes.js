@@ -46,7 +46,11 @@ import {
         reorderDeliveryBatch,
         finalizeDeliveryBatch,
         driverViewMyBatches,
-        getUnassignedConfirmedOrders
+        getUnassignedConfirmedOrders,
+        resetConfirmedOrders,
+        adminPaymentHistoryByArea,
+        sendPaymentReminder,
+        sendBulkPaymentRemindersByArea
      } from "../controllers/admin.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
@@ -185,7 +189,7 @@ router.route("/employee/:employeeId").delete(verifyStaffJWT,deleteEmployee)
 
 
 
-
+router.route("/resetConfirmedOrders").post(verifyStaffJWT,resetConfirmedOrders)
 
 
 
@@ -200,6 +204,19 @@ router.route("/deliverybatch/:batchId").get(verifyStaffJWT,getDeliveryBatchDetai
 router.route("/deliverybatch/reorder/:batchId").patch(verifyStaffJWT,reorderDeliveryBatch)
 router.route("/deliverybatch/finalize/:batchId").patch(verifyStaffJWT,finalizeDeliveryBatch)
 router.route("/driver/batches").get(verifyStaffJWT,driverViewMyBatches)
+
+
+
+
+
+
+
+
+
+// Payment routes
+router.route("/paymenthistory/area").get(verifyStaffJWT,adminPaymentHistoryByArea)
+router.route("/paymentreminder/:orderId").post(verifyStaffJWT,sendPaymentReminder)
+router.route("/bulkpaymentreminders/area/:area").post(verifyStaffJWT,sendBulkPaymentRemindersByArea)
 export default router 
 
 
