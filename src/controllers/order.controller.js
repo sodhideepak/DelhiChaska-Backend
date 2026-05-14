@@ -523,7 +523,6 @@ const addToCart = asynchandler(async (req, res) => {
 
       // =====================================================
       // FIND EXISTING ITEM
-      // SAME PRODUCT + SAME SIZE
       // =====================================================
       const existingItem =
         cart.items.find(i =>
@@ -686,14 +685,14 @@ const addToCart = asynchandler(async (req, res) => {
       path: "items.productId",
 
       select:
-        "name image category"
+        "name category"
     },
 
     {
       path: "items.comboId",
 
       select:
-        "name image"
+        "name"
     }
   ]);
 
@@ -728,8 +727,7 @@ const addToCart = asynchandler(async (req, res) => {
         name:
           item.name,
 
-        image:
-          item.productId?.image || "",
+        // ❌ IMAGE REMOVED
 
         category:
           item.productId?.category || "",
@@ -756,6 +754,91 @@ const addToCart = asynchandler(async (req, res) => {
     // =====================================================
     else if (item.type === "combo") {
 
+      // ===============================================
+      // BUILD SELECTIONS
+      // ===============================================
+      const formattedSelections = [];
+
+      for (const sel of item.selections || []) {
+
+        // ===========================================
+        // PRODUCT IDS
+        // ===========================================
+        const productIds =
+
+          sel.products.map(
+            p => p.productId
+          );
+
+        // ===========================================
+        // FETCH PRODUCTS
+        // ===========================================
+        const products =
+          await Product.find({
+
+            _id: {
+              $in: productIds
+            }
+
+          }).select(
+
+            "name category"
+          );
+
+        // ===========================================
+        // PRODUCT MAP
+        // ===========================================
+        const productMap = {};
+
+        products.forEach(p => {
+
+          productMap[
+            p._id.toString()
+          ] = p;
+        });
+
+        // ===========================================
+        // FORMAT PRODUCTS
+        // ===========================================
+        const formattedProducts =
+
+          sel.products.map(p => {
+
+            const prod =
+
+              productMap[
+                p.productId.toString()
+              ];
+
+            return {
+
+              productId:
+                p.productId,
+
+              name:
+                prod?.name || "",
+
+              category:
+                prod?.category || "",
+
+              quantity:
+                p.quantity
+            };
+          });
+
+        formattedSelections.push({
+
+          ruleId:
+            sel.ruleId,
+
+          products:
+            formattedProducts
+        });
+      }
+
+      // ===============================================
+      // PUSH COMBO
+      // ===============================================
       formattedItems.push({
 
         itemId:
@@ -770,8 +853,7 @@ const addToCart = asynchandler(async (req, res) => {
         name:
           item.name,
 
-        image:
-          item.comboId?.image || "",
+        // ❌ IMAGE REMOVED
 
         quantity:
           item.quantity,
@@ -788,8 +870,9 @@ const addToCart = asynchandler(async (req, res) => {
         subtotal:
           item.subtotal || 0,
 
+        // ✅ FORMATTED SELECTIONS
         selections:
-          item.selections || []
+          formattedSelections
       });
     }
   }
@@ -1038,12 +1121,12 @@ const viewCart = asynchandler(async (req, res) => {
 
     .populate(
       "items.productId",
-      "name description category image variants isAvailable"
+      "name description category  variants isAvailable"
     )
 
     .populate(
       "items.comboId",
-      "name price size image isActive rules"
+      "name price size isActive rules"
     )
 
     .lean();
@@ -1139,9 +1222,6 @@ const viewCart = asynchandler(async (req, res) => {
         description:
           product.description || "",
 
-        image:
-          product.image || "",
-
         category:
           product.category || "",
 
@@ -1191,6 +1271,88 @@ const viewCart = asynchandler(async (req, res) => {
       totalAmount += subtotal;
 
       // =====================================================
+      // BUILD SELECTIONS WITH PRODUCT NAMES
+      // =====================================================
+      const formattedSelections = [];
+
+      for (const sel of item.selections || []) {
+
+        // ===============================================
+        // GET PRODUCT IDS
+        // ===============================================
+        const productIds =
+
+          sel.products.map(
+            p => p.productId
+          );
+
+        // ===============================================
+        // FETCH PRODUCTS
+        // ===============================================
+        const products =
+          await Product.find({
+
+            _id: {
+              $in: productIds
+            }
+
+          }).select(
+
+            "name category"
+          );
+
+        // ===============================================
+        // PRODUCT MAP
+        // ===============================================
+        const productMap = {};
+
+        products.forEach(p => {
+
+          productMap[
+            p._id.toString()
+          ] = p;
+        });
+
+        // ===============================================
+        // FORMAT PRODUCTS
+        // ===============================================
+        const formattedProducts =
+
+          sel.products.map(p => {
+
+            const prod =
+
+              productMap[
+                p.productId.toString()
+              ];
+
+            return {
+
+              productId:
+                p.productId,
+
+              name:
+                prod?.name || "",
+
+              category:
+                prod?.category || "",
+
+              quantity:
+                p.quantity
+            };
+          });
+
+        formattedSelections.push({
+
+          ruleId:
+            sel.ruleId,
+
+          products:
+            formattedProducts
+        });
+      }
+
+      // =====================================================
       // COMBO RESPONSE
       // =====================================================
       formattedItems.push({
@@ -1209,9 +1371,6 @@ const viewCart = asynchandler(async (req, res) => {
           combo.name ||
           "",
 
-        image:
-          combo.image || "",
-
         quantity:
           item.quantity,
 
@@ -1223,13 +1382,16 @@ const viewCart = asynchandler(async (req, res) => {
             "",
 
           price:
-            item.selectedVariant?.price || 0
+            item.selectedVariant?.price ||
+            combo.price ||
+            0
         },
 
         subtotal,
 
+        // ✅ FORMATTED SELECTIONS
         selections:
-          item.selections || []
+          formattedSelections
       });
     }
   }
@@ -1865,12 +2027,12 @@ const ProceedToOrder = asynchandler(async (req, res) => {
 
     .populate(
       "items.productId",
-      "name category image variants isAvailable"
+      "name category variants isAvailable"
     )
 
     .populate(
       "items.comboId",
-      "name price size image isActive rules"
+      "name price size isActive rules"
     )
 
     .lean();
@@ -2066,9 +2228,6 @@ else if (item.type === "combo") {
 
           name:
             prod?.name || "",
-
-          image:
-            prod?.image || "",
 
           category:
             prod?.category || "",
