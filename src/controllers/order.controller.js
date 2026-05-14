@@ -1324,53 +1324,299 @@ const viewCart = asynchandler(async (req, res) => {
 
 
 const removeFromCart = asynchandler(async (req, res) => {
-  const userId = req.user?._id;
+
+  // ─────────────────────────────────────────────
+  // AUTH CHECK
+  // ─────────────────────────────────────────────
+  const userId =
+    req.user?._id;
 
   if (!userId) {
-    throw new ApiError(401, "Unauthorized");
+
+    throw new ApiError(
+      401,
+      "Unauthorized"
+    );
   }
 
-  const { itemId, removeAll = false } = req.body;
+  // ─────────────────────────────────────────────
+  // BODY
+  // ─────────────────────────────────────────────
+  const {
 
+    itemId,
+
+    removeAll = false
+
+  } = req.body;
+
+  // ─────────────────────────────────────────────
+  // VALIDATION
+  // ─────────────────────────────────────────────
   if (!itemId) {
-    throw new ApiError(400, "itemId is required");
+
+    throw new ApiError(
+      400,
+      "itemId is required"
+    );
   }
 
-  const cart = await Cart.findOne({ user: userId });
+  // ─────────────────────────────────────────────
+  // FIND CART
+  // ─────────────────────────────────────────────
+  const cart =
+    await Cart.findOne({
 
-  if (!cart || !cart.items || cart.items.length === 0) {
-    throw new ApiError(404, "Cart is empty");
+      user: userId
+    })
+
+    .populate(
+      "items.productId",
+      "name image category"
+    )
+
+    .populate(
+      "items.comboId",
+      "name image"
+    );
+
+  // ─────────────────────────────────────────────
+  // EMPTY CART
+  // ─────────────────────────────────────────────
+  if (
+    !cart ||
+    !cart.items ||
+    cart.items.length === 0
+  ) {
+
+    throw new ApiError(
+      404,
+      "Cart is empty"
+    );
   }
 
-  // =========================
-  // 🔍 FIND ITEM (FIXED)
-  // =========================
-  const itemIndex = cart.items.findIndex(
-    item => item.itemId?.toString() === itemId
-  );
+  // ─────────────────────────────────────────────
+  // FIND ITEM
+  // ─────────────────────────────────────────────
+  const itemIndex =
 
+    cart.items.findIndex(
+
+      item =>
+
+        item.itemId
+          ?.toString() ===
+        itemId
+    );
+
+  // ITEM NOT FOUND
   if (itemIndex === -1) {
-    throw new ApiError(404, "Item not found in cart");
+
+    throw new ApiError(
+      404,
+      "Item not found in cart"
+    );
   }
 
-  const item = cart.items[itemIndex];
+  // ─────────────────────────────────────────────
+  // TARGET ITEM
+  // ─────────────────────────────────────────────
+  const item =
+    cart.items[itemIndex];
 
-  // =========================
-  // ❌ REMOVE LOGIC
-  // =========================
+  // ─────────────────────────────────────────────
+  // REMOVE LOGIC
+  // ─────────────────────────────────────────────
 
-  if (removeAll || item.quantity <= 1) {
-    // 👉 Remove entire item
-    cart.items.splice(itemIndex, 1);
-  } else {
-    // 👉 Decrease quantity
+  // =====================================================
+  // REMOVE COMPLETE ITEM
+  // =====================================================
+  if (
+    removeAll ||
+
+    item.quantity <= 1
+  ) {
+
+    cart.items.splice(
+      itemIndex,
+      1
+    );
+  }
+
+  // =====================================================
+  // DECREASE QUANTITY
+  // =====================================================
+  else {
+
     item.quantity -= 1;
+
+    // ✅ UPDATE SUBTOTAL
+    item.subtotal =
+
+      (
+        item.selectedVariant?.price || 0
+      ) *
+
+      item.quantity;
   }
 
+  // ─────────────────────────────────────────────
+  // SAVE CART
+  // ─────────────────────────────────────────────
   await cart.save();
 
+  // ─────────────────────────────────────────────
+  // CALCULATE TOTALS
+  // ─────────────────────────────────────────────
+  let totalAmount = 0;
+
+  const formattedItems = [];
+
+  // ─────────────────────────────────────────────
+  // FORMAT ITEMS
+  // ─────────────────────────────────────────────
+  for (const cartItem of cart.items) {
+
+    const subtotal =
+
+      cartItem.subtotal ||
+
+      (
+        (
+          cartItem.selectedVariant?.price || 0
+        ) *
+
+        cartItem.quantity
+      );
+
+    totalAmount += subtotal;
+
+    // =====================================================
+    // PRODUCT
+    // =====================================================
+    if (
+      cartItem.type === "product"
+    ) {
+
+      formattedItems.push({
+
+        itemId:
+          cartItem.itemId,
+
+        type:
+          cartItem.type,
+
+        productId:
+          cartItem.productId?._id,
+
+        name:
+          cartItem.name ||
+
+          cartItem.productId?.name ||
+
+          "",
+
+        image:
+          cartItem.productId?.image || "",
+
+        category:
+          cartItem.productId?.category || "",
+
+        quantity:
+          cartItem.quantity,
+
+        variant: {
+
+          size:
+            cartItem.selectedVariant?.size || "",
+
+          price:
+            cartItem.selectedVariant?.price || 0
+        },
+
+        subtotal
+      });
+    }
+
+    // =====================================================
+    // COMBO
+    // =====================================================
+    else if (
+      cartItem.type === "combo"
+    ) {
+
+      formattedItems.push({
+
+        itemId:
+          cartItem.itemId,
+
+        type:
+          cartItem.type,
+
+        comboId:
+          cartItem.comboId?._id,
+
+        name:
+          cartItem.name ||
+
+          cartItem.comboId?.name ||
+
+          "",
+
+        image:
+          cartItem.comboId?.image || "",
+
+        quantity:
+          cartItem.quantity,
+
+        variant: {
+
+          size:
+            cartItem.selectedVariant?.size || "",
+
+          price:
+            cartItem.selectedVariant?.price || 0
+        },
+
+        subtotal,
+
+        selections:
+          cartItem.selections || []
+      });
+    }
+  }
+
+  // ─────────────────────────────────────────────
+  // RESPONSE
+  // ─────────────────────────────────────────────
   return res.status(200).json(
-    new ApiResponse(200, cart, "Item removed from cart")
+
+    new ApiResponse(
+
+      200,
+
+      {
+
+        cartId:
+          cart._id,
+
+        totalItems:
+          formattedItems.length,
+
+        totalAmount,
+
+        items:
+          formattedItems,
+
+        createdAt:
+          cart.createdAt,
+
+        updatedAt:
+          cart.updatedAt
+      },
+
+      "Item removed from cart successfully"
+    )
   );
 });
 

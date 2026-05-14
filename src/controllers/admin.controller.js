@@ -4710,19 +4710,24 @@ const finalizeDeliveryBatch = asynchandler(async (req, res) => {
 
 
 
-
-
 const driverViewMyBatches = asynchandler(async (req, res) => {
 
+  // ─────────────────────────────────────────────
+  // DRIVER ID
+  // ─────────────────────────────────────────────
   const driverId =
     req.staff._id;
 
+  // ─────────────────────────────────────────────
+  // FETCH BATCHES
+  // ─────────────────────────────────────────────
   const batches =
     await DeliveryBatch.find({
 
       driverId,
 
       status: {
+
         $in: [
           "finalized",
           "in_delivery"
@@ -4730,21 +4735,276 @@ const driverViewMyBatches = asynchandler(async (req, res) => {
       }
     })
 
+    // ✅ POPULATE ORDERS
     .populate({
-      path: "orders.orderId"
+
+      path:
+        "orders.orderId",
+
+      populate: {
+
+        path:
+          "userId",
+
+        select:
+          "username full_name"
+      }
+    })
+
+    .sort({
+      createdAt: -1
     });
 
+  // ─────────────────────────────────────────────
+  // EMPTY RESPONSE
+  // ─────────────────────────────────────────────
+  if (
+    !batches ||
+    batches.length === 0
+  ) {
+
+    return res.status(200).json(
+
+      new ApiResponse(
+
+        200,
+
+        {
+
+          summary: {
+
+            totalBatches: 0,
+
+            totalOrders: 0,
+
+            totalDeliveries: 0
+          },
+
+          batches: []
+        },
+
+        "No delivery batches found"
+      )
+    );
+  }
+
+  // ─────────────────────────────────────────────
+  // SUMMARY
+  // ─────────────────────────────────────────────
+  let totalOrders = 0;
+
+  let totalDeliveries = 0;
+
+  // ─────────────────────────────────────────────
+  // FORMAT BATCHES
+  // ─────────────────────────────────────────────
+  const formattedBatches =
+
+    batches.map(batch => {
+
+      totalOrders +=
+        batch.orders.length;
+
+      totalDeliveries +=
+        batch.orders.length;
+
+      return {
+
+        batchId:
+          batch._id,
+
+        status:
+          batch.status,
+
+        createdAt:
+          batch.createdAt,
+
+        updatedAt:
+          batch.updatedAt,
+
+        totalOrders:
+          batch.orders.length,
+
+        // ===================================================
+        // ORDERS
+        // ===================================================
+        orders:
+          batch.orders.map(orderData => {
+
+            const order =
+              orderData.orderId;
+
+            return {
+
+              // ✅ SEQUENCE
+              sequence:
+                orderData?.deliverySequence || null,
+
+              deliverySequence:
+                orderData?.deliverySequence || null,
+
+              // ✅ ORDER DETAILS
+              orderId:
+                order?._id || null,
+
+              orderNumber:
+                order?._id
+                  ?.toString()
+                  ?.slice(-6)
+                  ?.toUpperCase(),
+
+              totalAmount:
+                order?.totalAmount || 0,
+
+              status:
+                order?.status || "",
+
+              deliveredAt:
+                order?.deliveredAt || null,
+
+              isorderdelivered:
+                order?.isorderdelivered || false,
+
+              paymentRequested:
+                order?.paymentRequested || false,
+
+              deliveryDate:
+                order?.deliveryDate || null,
+
+              paymentStatus:
+                order?.payment?.status || "",
+
+              paymentMethod:
+                order?.payment?.method || "",
+
+              // ✅ USER DETAILS
+              user: {
+
+                userId:
+                  order?.userId?._id || null,
+
+                username:
+                  order?.userId?.username || "",
+
+                full_name:
+                  order?.userId?.full_name || ""
+              },
+
+              // ✅ DELIVERY DETAILS
+              deliveryDetails: {
+
+                addressId:
+                  order?.deliveryDetails?.addressId || null,
+
+                addressLine1:
+                  order?.deliveryDetails?.addressLine1 || "",
+
+                addressLine2:
+                  order?.deliveryDetails?.addressLine2 || "",
+
+                city:
+                  order?.deliveryDetails?.city || "",
+
+                state:
+                  order?.deliveryDetails?.state || "",
+
+                zipCode:
+                  order?.deliveryDetails?.zipCode || "",
+
+                country:
+                  order?.deliveryDetails?.country || "",
+
+                phone:
+                  order?.deliveryDetails?.phone || "",
+
+                instructions:
+                  order?.deliveryDetails?.instructions || "",
+
+                location: {
+
+                  lat:
+                    order?.deliveryDetails?.location?.lat || null,
+
+                  lng:
+                    order?.deliveryDetails?.location?.lng || null
+                }
+              },
+
+              // ✅ ITEMS
+              items:
+                order?.items?.map(item => ({
+
+                  name:
+                    item.name || "",
+
+                  quantity:
+                    item.quantity || 0,
+
+                  type:
+                    item.type || "",
+
+                  variant: {
+
+                    size:
+                      item.selectedVariant?.size || "",
+
+                    price:
+                      item.selectedVariant?.price || 0
+                  },
+
+                  subtotal:
+                    item.subtotal || 0
+                })) || [],
+
+              itemCount:
+                order?.items?.length || 0,
+
+              placedAt:
+                order?.createdAt || null
+            };
+          })
+
+          // ✅ SORT BY SEQUENCE
+          .sort(
+            (a, b) =>
+
+              (a.sequence || 0) -
+              (b.sequence || 0)
+          )
+      };
+    });
+
+  // ─────────────────────────────────────────────
+  // RESPONSE
+  // ─────────────────────────────────────────────
   return res.status(200).json(
+
     new ApiResponse(
+
       200,
-      batches,
-      "Driver batches fetched"
+
+      {
+
+        // ✅ SUMMARY
+        summary: {
+
+          totalBatches:
+            formattedBatches.length,
+
+          totalOrders,
+
+          totalDeliveries
+        },
+
+        // ✅ BATCHES
+        batches:
+          formattedBatches
+      },
+
+      "Driver batches fetched successfully"
     )
   );
 });
-
-
-
 
 
 
