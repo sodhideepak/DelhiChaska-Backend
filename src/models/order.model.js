@@ -12,7 +12,7 @@ const orderItemSchema = new mongoose.Schema({
 
   type: {
     type: String,
-    enum: ["product", "combo"],
+    enum: ["product", "combo","addon"],
     required: true
   },
 
@@ -158,7 +158,7 @@ const orderSchema = new mongoose.Schema(
 
     isorderdelivered: {
       type: Boolean,
-      default: false
+      default: true
     },
 
     deliveryDetails: {

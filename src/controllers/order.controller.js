@@ -1965,140 +1965,161 @@ const ProceedToOrder = asynchandler(async (req, res) => {
     // =====================================================
     // COMBO
     // =====================================================
-    else if (item.type === "combo") {
+    // =====================================================
+// COMBO
+// =====================================================
+else if (item.type === "combo") {
 
-      const combo =
-        item.comboId;
+  const combo =
+    item.comboId;
 
-      // SKIP INVALID COMBO
-      if (
-        !combo ||
-        !combo.isActive
-      ) continue;
+  // SKIP INVALID COMBO
+  if (
+    !combo ||
+    !combo.isActive
+  ) continue;
 
-      const price =
+  const price =
 
-        item.selectedVariant?.price ||
+    item.selectedVariant?.price ||
 
-        combo.price ||
+    combo.price ||
 
-        0;
+    0;
 
-      const size =
+  const size =
 
-        item.selectedVariant?.size ||
+    item.selectedVariant?.size ||
 
-        combo.size ||
+    combo.size ||
 
-        "";
+    "";
 
-      const subtotal =
+  const subtotal =
 
-        item.subtotal ||
+    item.subtotal ||
 
-        (
-          price *
-          item.quantity
-        );
+    (
+      price *
+      item.quantity
+    );
 
-      totalAmount += subtotal;
+  totalAmount += subtotal;
 
-      // =====================================================
-      // PUSH COMBO
-      // =====================================================
-      orderItems.push({
+  // =====================================================
+  // BUILD SELECTIONS WITH PRODUCT DETAILS
+  // =====================================================
+  const formattedSelections = [];
 
-        comboId:
-          combo._id,
+  for (const sel of item.selections || []) {
 
-        name:
-          item.name ||
-          combo.name,
+    // ===============================================
+    // FETCH PRODUCTS
+    // ===============================================
+    const productIds =
 
-        quantity:
-          item.quantity,
+      sel.products.map(
+        p => p.productId
+      );
 
-        selectedVariant: {
+    const products =
+      await Product.find({
 
-          size,
+        _id: {
+          $in: productIds
+        }
 
-          price
-        },
+      }).select(
 
-        subtotal,
+        "name category variants"
+      );
 
-        type:
-          "combo"
-      });
+    // ===============================================
+    // PRODUCT MAP
+    // ===============================================
+    const productMap = {};
 
-      // =====================================================
-      // ADD COMBO PRODUCTS
-      // =====================================================
-      for (const sel of item.selections || []) {
+    products.forEach(p => {
 
-        const productIds =
+      productMap[
+        p._id.toString()
+      ] = p;
+    });
 
-          sel.products.map(
-            p => p.productId
-          );
+    // ===============================================
+    // FORMAT PRODUCTS
+    // ===============================================
+    const formattedProducts =
 
-        const products =
-          await Product.find({
+      sel.products.map(p => {
 
-            _id: {
-              $in: productIds
-            }
-
-          }).select(
-            "name category image"
-          );
-
-        const productMap = {};
-
-        products.forEach(p => {
+        const prod =
 
           productMap[
-            p._id.toString()
-          ] = p;
-        });
+            p.productId.toString()
+          ];
 
-        for (const p of sel.products) {
+        return {
 
-          const prod =
+          productId:
+            p.productId,
 
-            productMap[
-              p.productId.toString()
-            ];
+          name:
+            prod?.name || "",
 
-          if (!prod) continue;
+          image:
+            prod?.image || "",
 
-          orderItems.push({
+          category:
+            prod?.category || "",
 
-            productId:
-              prod._id,
+          quantity:
+            p.quantity
+        };
+      });
 
-            name:
-              prod.name,
+    formattedSelections.push({
 
-            quantity:
-              p.quantity *
-              item.quantity,
+      ruleId:
+        sel.ruleId,
 
-            selectedVariant: {
+      products:
+        formattedProducts
+    });
+  }
 
-              size: "",
+  // =====================================================
+  // PUSH COMBO
+  // =====================================================
+  orderItems.push({
 
-              price: 0
-            },
+    comboId:
+      combo._id,
 
-            subtotal: 0,
+    name:
+      item.name ||
+      combo.name,
 
-            type:
-              "addon"
-          });
-        }
-      }
-    }
+    quantity:
+      item.quantity,
+
+    selectedVariant: {
+
+      size,
+
+      price
+    },
+
+    subtotal,
+
+    type:
+      "combo",
+
+    // ✅ IMPORTANT
+    selections:
+      formattedSelections
+  });
+}
   }
 
   // ─────────────────────────────────────────────
@@ -2485,7 +2506,6 @@ const ProceedToOrder = asynchandler(async (req, res) => {
 
 
 
-
 const viewMyOrders = asynchandler(async (req, res) => {
 
   // ─────────────────────────────────────────────
@@ -2652,13 +2672,96 @@ const viewMyOrders = asynchandler(async (req, res) => {
               item.quantity
             );
 
+          // =================================================
+          // PRODUCT
+          // =================================================
+          if (item.type === "product") {
+
+            return {
+
+              productId:
+                item.productId || null,
+
+              name:
+                item.name || "",
+
+              quantity:
+                item.quantity || 0,
+
+              type:
+                item.type || "",
+
+              variant: {
+
+                size,
+
+                price
+              },
+
+              subtotal
+            };
+          }
+
+          // =================================================
+          // COMBO
+          // =================================================
+          else if (item.type === "combo") {
+
+            return {
+
+              comboId:
+                item.comboId || null,
+
+              name:
+                item.name || "",
+
+              quantity:
+                item.quantity || 0,
+
+              type:
+                item.type || "",
+
+              variant: {
+
+                size,
+
+                price
+              },
+
+              subtotal,
+
+              // ✅ COMBO SELECTIONS
+              selections:
+
+                item.selections?.map(sel => ({
+
+                  ruleId:
+                    sel.ruleId,
+
+                  products:
+
+                    sel.products?.map(prod => ({
+
+                      productId:
+                        prod.productId || null,
+
+                      name:
+                        prod.name || "",
+
+                      category:
+                        prod.category || "",
+
+                      quantity:
+                        prod.quantity || 0
+                    }))
+                })) || []
+            };
+          }
+
+          // =================================================
+          // FALLBACK
+          // =================================================
           return {
-
-            productId:
-              item.productId || null,
-
-            comboId:
-              item.comboId || null,
 
             name:
               item.name || "",
@@ -2668,14 +2771,6 @@ const viewMyOrders = asynchandler(async (req, res) => {
 
             type:
               item.type || "",
-
-            // ✅ VARIANT
-            variant: {
-
-              size,
-
-              price
-            },
 
             subtotal
           };
