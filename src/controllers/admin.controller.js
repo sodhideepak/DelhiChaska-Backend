@@ -2726,18 +2726,23 @@ const kitchenViewOrdersByArea = asynchandler(async (req, res) => {
   // FILTER
   // ONLY CONFIRMED + NOT DELIVERED
   // ─────────────────────────────────────────────
-  const filter = {
+const filter = {
 
-    status: "confirmed",
+  status: "confirmed",
 
-    // ✅ ONLY ACTIVE ORDERS
-    isorderdelivered: false,
+  // ✅ ONLY ACTIVE ORDERS
+  isorderdelivered: false,
 
-    "deliveryDetails.city": {
+  $expr: {
+    $in: [
+      {
+        $toLower: "$deliveryDetails.city"
+      },
+      cities.map(city => city.toLowerCase())
+    ]
+  }
 
-      $in: cities
-    }
-  };
+};
 
   // ─────────────────────────────────────────────
   // PAGINATION
