@@ -1372,9 +1372,6 @@ const updateAccountDetails = asynchandler(async (req, res) => {
 })
 
 
-
-
-
 const updateUserDetails = asynchandler(async (req, res) => {
   const userId = req.user?._id;
 
@@ -1386,25 +1383,27 @@ const updateUserDetails = asynchandler(async (req, res) => {
   // 📥 INPUT FIELDS
   // =========================
   const {
-    name,
-    phone,
-    avatar
+    full_name,
+    phone_number,
+    avatar,
+    gender,
+    DOB
   } = req.body;
 
   // =========================
-  // 🚫 REMOVE RESTRICTED FIELDS
+  // ✅ ALLOWED UPDATE FIELDS
   // =========================
   const updateData = {};
 
-  if (name) updateData.name = name;
-  if (phone) updateData.phone = phone;
+  if (full_name) updateData.full_name = full_name;
+  if (phone_number) updateData.phone_number = phone_number;
   if (avatar) updateData.avatar = avatar;
+  if (gender) updateData.gender = gender;
+  if (DOB) updateData.DOB = DOB;
 
-  // ❌ explicitly ignore address / sensitive fields
-  delete req.body.addresses;
-  delete req.body.password;
-  delete req.body.refreshToken;
-
+  // =========================
+  // 🚫 NO VALID DATA
+  // =========================
   if (Object.keys(updateData).length === 0) {
     throw new ApiError(400, "No valid fields provided for update");
   }
@@ -1412,16 +1411,17 @@ const updateUserDetails = asynchandler(async (req, res) => {
   // =========================
   // 🔁 UPDATE USER
   // =========================
-  const updatedUser = await user.findByIdAndUpdate(
-    userId,
-    {
-      $set: updateData
-    },
-    {
-      new: true,
-      runValidators: true
-    }
-  )
+  const updatedUser = await user
+    .findByIdAndUpdate(
+      userId,
+      {
+        $set: updateData,
+      },
+      {
+        new: true,
+        runValidators: true,
+      }
+    )
     .select("-password -refreshToken -token")
     .populate("addresses")
     .lean();
@@ -1430,8 +1430,15 @@ const updateUserDetails = asynchandler(async (req, res) => {
     throw new ApiError(404, "User not found");
   }
 
+  // =========================
+  // ✅ RESPONSE
+  // =========================
   return res.status(200).json(
-    new ApiResponse(200, updatedUser, "User updated successfully")
+    new ApiResponse(
+      200,
+      updatedUser,
+      "User updated successfully"
+    )
   );
 });
 
