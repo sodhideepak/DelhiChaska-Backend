@@ -7,6 +7,8 @@ import { ZipCode } from "../models/zipcode.model.js";
 import { Address } from "../models/address.model.js";
 import { uploadoncloudinary, deleteFromCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
+import { TempEmailUpdate } from "../models/tempmail.model.js";
+import { sendEmail } from "../utils/sendutilmail.js";
 import jwt from "jsonwebtoken"
 import * as nodemailer from "nodemailer"
 import Randomstring from "randomstring";
@@ -1443,9 +1445,8 @@ const updateUserDetails = asynchandler(async (req, res) => {
 });
 
 
-
-
 const updateUserEmail = asynchandler(async (req, res) => {
+
   const userId = req.user?._id;
 
   if (!userId) {
@@ -1459,7 +1460,7 @@ const updateUserEmail = asynchandler(async (req, res) => {
   }
 
   // =========================
-  // 📧 BASIC VALIDATION
+  // 📧 EMAIL VALIDATION
   // =========================
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -1468,43 +1469,100 @@ const updateUserEmail = asynchandler(async (req, res) => {
   }
 
   // =========================
+  // 🔍 FIND USER
+  // =========================
+  const User = await user.findById(userId);
+
+  if (!User) {
+    throw new ApiError(404, "User not found");
+  }
+
+  // =========================
+  // ❌ SAME EMAIL CHECK
+  // =========================
+  if (User.email === email.toLowerCase()) {
+    throw new ApiError(
+      400,
+      "New email cannot be same as current email"
+    );
+  }
+
+  // =========================
   // 🔍 CHECK DUPLICATE EMAIL
   // =========================
-  const existingUser = await user.findOne({ email });
+  const existingUser = await user.findOne({
+    email: email.toLowerCase()
+  });
 
-  if (existingUser && existingUser._id.toString() !== userId.toString()) {
+  if (existingUser) {
     throw new ApiError(400, "Email already in use");
   }
 
   // =========================
-  // 🔁 UPDATE EMAIL + RESET VERIFICATION
+  // 🧹 DELETE OLD REQUEST
   // =========================
-  const updatedUser = await user.findByIdAndUpdate(
-    userId,
-    {
-      $set: {
-        email,
-        is_email_verified: false   // 🔥 KEY PART
-      }
-    },
-    {
-      new: true,
-      runValidators: true
-    }
-  )
-    .select("-password -refreshToken -token")
-    .populate("addresses")
-    .lean();
+  await TempEmailUpdate.deleteMany({ userId });
 
-  if (!updatedUser) {
-    throw new ApiError(404, "User not found");
-  }
+  // =========================
+  // 🔐 GENERATE OTP
+  // =========================
+  const generatedOtp = Math.floor(
+    100000 + Math.random() * 900000
+  ).toString();
+
+  // =========================
+  // 💾 SAVE TEMP EMAIL
+  // =========================
+  await TempEmailUpdate.create({
+    userId,
+    oldEmail: User.email,
+    newEmail: email.toLowerCase(),
+    otp: generatedOtp,
+    expiresAt: new Date(
+      Date.now() + 10 * 60 * 1000
+    ) // 10 mins
+  });
+
+  // =========================
+  // 📩 SEND OTP
+  // =========================
+await sendEmail({
+  to: email,
+  subject: "Verify Your New Email",
+  html: `
+    <div style="font-family: Arial, sans-serif; padding: 20px;">
+      
+      <h2>Email Verification</h2>
+
+      <p>
+        Your OTP for updating email is:
+      </p>
+
+      <h1 style="
+        letter-spacing: 5px;
+        color: #2563eb;
+      ">
+        ${generatedOtp}
+      </h1>
+
+      <p>
+        This OTP will expire in 10 minutes.
+      </p>
+
+      <p>
+        If you did not request this change,
+        please ignore this email.
+      </p>
+
+    </div>
+  `
+});
 
   return res.status(200).json(
     new ApiResponse(
       200,
-      updatedUser,
-      "Email updated successfully. Please verify your new email."
+      {},
+      "OTP sent to new email"
     )
   );
 });
@@ -1512,76 +1570,107 @@ const updateUserEmail = asynchandler(async (req, res) => {
 
 
 const verifyEmail = asynchandler(async (req, res) => {
+
+  const userId = req.user?._id;
+
+  if (!userId) {
+    throw new ApiError(401, "Unauthorized");
+  }
+
   const { email, otp: inputOtp } = req.body;
 
   if (!email || !inputOtp) {
-    throw new ApiError(400, "Email and OTP are required");
+    throw new ApiError(
+      400,
+      "Email and OTP are required"
+    );
+  }
+
+  // =========================
+  // 🔍 FIND TEMP EMAIL RECORD
+  // =========================
+  const tempEmailRecord =
+    await TempEmailUpdate.findOne({
+      userId,
+      newEmail: email.toLowerCase(),
+      otp: inputOtp
+    });
+
+  if (!tempEmailRecord) {
+    throw new ApiError(
+      400,
+      "Invalid or expired OTP"
+    );
+  }
+
+  // =========================
+  // ⏰ CHECK OTP EXPIRY
+  // =========================
+  if (
+    tempEmailRecord.expiresAt <
+    new Date()
+  ) {
+
+    await TempEmailUpdate.deleteOne({
+      _id: tempEmailRecord._id
+    });
+
+    throw new ApiError(
+      400,
+      "OTP expired"
+    );
   }
 
   // =========================
   // 🔍 FIND USER
   // =========================
-  const User = await user.findOne({ email });
+  const User = await user.findById(userId);
 
   if (!User) {
-    throw new ApiError(404, "User not found");
+    throw new ApiError(
+      404,
+      "User not found"
+    );
   }
 
   // =========================
-  // 🔐 VERIFY OTP
+  // 🔁 UPDATE EMAIL
   // =========================
-  const verifyOtpDoc = await otp.findOne({
-    email,
-    Otp: inputOtp
-  });
-
-  if (!verifyOtpDoc) {
-    throw new ApiError(400, "Invalid or expired OTP");
-  }
-
-  // (optional) check expiry if you store it
-  if (verifyOtpDoc.expiresAt && verifyOtpDoc.expiresAt < new Date()) {
-    await otp.deleteOne({ _id: verifyOtpDoc._id });
-    throw new ApiError(400, "OTP expired");
-  }
-
-  // =========================
-  // 🧹 DELETE OTP (one-time use)
-  // =========================
-  await otp.deleteOne({ _id: verifyOtpDoc._id });
-
-  // =========================
-  // ✅ UPDATE USER
-  // =========================
-  const updatedUser = await user.findByIdAndUpdate(
-    User._id,
-    {
-      $set: {
-        is_email_verified: true   // ✅ FIXED FIELD NAME
+  const updatedUser =
+    await user.findByIdAndUpdate(
+      userId,
+      {
+        $set: {
+          email: tempEmailRecord.newEmail,
+          is_email_verified: true
+        }
+      },
+      {
+        new: true,
+        runValidators: true
       }
-    },
-    {
-      new: true
-    }
-  )
-    .select("-password -refreshToken -token")
-    .populate("addresses")
-    .lean();
+    )
+      .select(
+        "-password -refreshToken -token"
+      )
+      .populate("addresses")
+      .lean();
 
-  if (!updatedUser) {
-    throw new ApiError(500, "Failed to verify email");
-  }
+  // =========================
+  // 🧹 DELETE TEMP RECORD
+  // =========================
+  await TempEmailUpdate.deleteOne({
+    _id: tempEmailRecord._id
+  });
 
   return res.status(200).json(
     new ApiResponse(
       200,
       updatedUser,
-      "Email verified successfully"
+      "Email updated successfully"
     )
   );
 });
-
-
 
 
 const updateUserAvatar = asynchandler(async (req, res) => {

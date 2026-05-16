@@ -1,39 +1,51 @@
+// models/tempEmailUpdate.model.js
+
 import mongoose from "mongoose";
 
-const tempEmailSchema = new mongoose.Schema(
+const tempEmailUpdateSchema = new mongoose.Schema(
   {
-    user: {
+    userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "user",
-      required: true,
+      required: true
     },
 
-    new_email: {
+    oldEmail: {
       type: String,
       required: true,
-      lowercase: true,
       trim: true,
+      lowercase: true
+    },
+
+    newEmail: {
+      type: String,
+      required: true,
+      trim: true,
+      lowercase: true
     },
 
     otp: {
       type: String,
-      required: true,
+      required: true
     },
 
-    otp_expiry: {
+    expiresAt: {
       type: Date,
-      required: true,
-    },
-
-    is_verified: {
-      type: Boolean,
-      default: false,
-    },
+      required: true
+    }
   },
-  { timestamps: true }
+  {
+    timestamps: true
+  }
 );
 
-export const TempEmail = mongoose.model(
-  "TempEmail",
-  tempEmailSchema
+// auto delete after expiry
+tempEmailUpdateSchema.index(
+  { expiresAt: 1 },
+  { expireAfterSeconds: 0 }
+);
+
+export const TempEmailUpdate = mongoose.model(
+  "TempEmailUpdate",
+  tempEmailUpdateSchema
 );
