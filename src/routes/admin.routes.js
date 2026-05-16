@@ -51,7 +51,8 @@ import {
         adminPaymentHistoryByArea,
         sendPaymentReminder,
         sendBulkPaymentRemindersByArea,
-        deleteAllOrders
+        deleteAllOrders,
+        getOrderUserDetailsForAdmin
      } from "../controllers/admin.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
@@ -147,6 +148,7 @@ router.route("/orders/area").get(verifyStaffJWT,adminViewOrdersByArea);
 
 // kitchen routes
 router.route("/orders/kitchen/area").get(verifyStaffJWT,kitchenViewOrdersByArea)
+router.route("/orders/getuserdetails/:orderId").get(verifyStaffJWT,getOrderUserDetailsForAdmin)
     
 
 

@@ -4830,7 +4830,7 @@ const driverViewMyBatches = asynchandler(async (req, res) => {
           "userId",
 
         select:
-          "username full_name"
+          "username full_name phone_number"
       }
     })
 
@@ -4921,10 +4921,10 @@ const driverViewMyBatches = asynchandler(async (req, res) => {
 
               // ✅ SEQUENCE
               sequence:
-                orderData?.deliverySequence || null,
+                orderData?.sequence || null,
 
               deliverySequence:
-                orderData?.deliverySequence || null,
+                orderData?.sequence || null,
 
               // ✅ ORDER DETAILS
               orderId:
@@ -4970,7 +4970,9 @@ const driverViewMyBatches = asynchandler(async (req, res) => {
                   order?.userId?.username || "",
 
                 full_name:
-                  order?.userId?.full_name || ""
+                  order?.userId?.full_name || "",
+                phone_number:
+                  order?.userId?.phone_number || ""
               },
 
               // ✅ DELIVERY DETAILS
@@ -6627,7 +6629,72 @@ const sendBulkPaymentRemindersByArea = asynchandler(async (req, res) => {
 
 
 
+const getOrderUserDetailsForAdmin = asynchandler(async (req, res) => {
 
+  ensureSuperAdmin(req);
+  // get order id
+  const { orderId } = req.params;
+
+  // validate order id
+  if (!orderId) {
+
+    throw new ApiError(
+      400,
+      "Order id is required"
+    );
+
+  }
+
+  // find order
+  const order = await Order.findById(orderId)
+    .populate({
+      path: "userId",
+      select:
+        "full_name fullname username email phone_number gender DOB avatar is_email_verified createdAt"
+    });
+
+  // check order
+  if (!order) {
+
+    throw new ApiError(
+      404,
+      "Order not found"
+    );
+
+  }
+
+  // prepare response
+  const responseData = {
+
+    orderId: order._id,
+
+    orderStatus: order.status,
+
+    totalAmount: order.totalAmount,
+
+    deliveryDate: order.deliveryDate,
+
+    payment: order.payment,
+
+    // user details
+    user: order.userId,
+
+    // address details
+    deliveryDetails: order.deliveryDetails
+
+  };
+
+  return res.status(200).json(
+
+    new ApiResponse(
+      200,
+      responseData,
+      "Order user details fetched successfully"
+    )
+
+  );
+
+});
 
 
 
@@ -6688,5 +6755,6 @@ export {
         adminPaymentHistoryByArea,
         sendPaymentReminder,
         sendBulkPaymentRemindersByArea,
-        deleteAllOrders
+        deleteAllOrders,
+        getOrderUserDetailsForAdmin
     }
