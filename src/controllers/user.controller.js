@@ -457,6 +457,9 @@ const verifyEmail_registeruser = asynchandler(async (req, res) => {
     }
 
     // ❌ WRONG OTP → DELETE ALL RECORDS WITH THIS EMAIL
+    if (tempUser.otp !== otp) {
+        throw new ApiError(400, "Invalid OTP.");
+    }
 
     // ❌ OTP EXPIRED → ALSO DELETE (recommended)
     if (tempUser.otp_expires < Date.now()) {
