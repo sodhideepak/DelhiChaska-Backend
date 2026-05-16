@@ -1131,6 +1131,22 @@ const getEmployeesByRole = asynchandler(async (req, res) => {
 
 
 
+const deleteAllOrders = asynchandler(async (req, res) => {
+ensureSuperAdmin(req);
+  // delete all orders
+  const deletedOrders = await Order.deleteMany({});
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        deletedCount: deletedOrders.deletedCount
+      },
+      "All orders deleted successfully"
+    )
+  );
+
+});
 
 
 
@@ -6604,5 +6620,6 @@ export {
         resetConfirmedOrders,
         adminPaymentHistoryByArea,
         sendPaymentReminder,
-        sendBulkPaymentRemindersByArea
+        sendBulkPaymentRemindersByArea,
+        deleteAllOrders
     }

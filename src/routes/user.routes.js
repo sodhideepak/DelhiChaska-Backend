@@ -29,7 +29,8 @@ import {
     verifyEmail,
     updateUserEmail,
     updateUserDetails,
-    forgotPassword
+    forgotPassword,
+    resetPassword
     
      } from "../controllers/user.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
@@ -83,7 +84,7 @@ router.route("/removeavatar" ).patch(verifyJWT,removeUserAvatar)
 // router.route("/history").get(verifyJWT,getWatchHistory)
 
 
-router.route("/resetpassword").post(resetpassword)
+// router.route("/resetpassword").post(resetpassword)
 
 
 
@@ -119,6 +120,9 @@ router.route("/deletealladdress").delete(verifyJWT, deleteAllAddresses);
 
 
 router.route("/forgotpassword").post(forgotPassword)
+
+
+router.route("/reset-password/:token").post(resetPassword)
 
 
 

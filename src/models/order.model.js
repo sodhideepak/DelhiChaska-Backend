@@ -158,7 +158,7 @@ const orderSchema = new mongoose.Schema(
 
     isorderdelivered: {
       type: Boolean,
-      default: true
+      default: false
     },
 
     deliveryDetails: {

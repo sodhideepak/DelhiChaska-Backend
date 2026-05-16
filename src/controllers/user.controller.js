@@ -467,7 +467,7 @@ const verifyEmail_registeruser = asynchandler(async (req, res) => {
         throw new ApiError(400, "OTP expired. Registration data cleared, please register again.");
     }
 
-    console.log(tempUser);
+    // console.log(tempUser);
 
     const username = await generateCustomUsername(user, tempUser);
 
@@ -2034,12 +2034,11 @@ const bookingformenquiry = asynchandler(async (req, res) => {
 
 
 
-
-
 const forgotPassword = asynchandler(async (req, res) => {
 
   const { email } = req.body;
 
+  // check email
   if (!email) {
     throw new ApiError(
       400,
@@ -2047,12 +2046,9 @@ const forgotPassword = asynchandler(async (req, res) => {
     );
   }
 
-  // =========================
-  // 🔍 FIND USER
-  // =========================
-  const User = await user.findOne({
-    email: email.toLowerCase()
-  });
+  // find user
+  const User = await user.findOne({ email });
+
 
   if (!User) {
     throw new ApiError(
@@ -2060,79 +2056,91 @@ const forgotPassword = asynchandler(async (req, res) => {
       "User not found"
     );
   }
-console.log("chvefhvcfehvuvrvycfry");
 
-  // =========================
-  // 🔐 GENERATE RESET TOKEN
-  // =========================
+  // generate token
   const resetToken = jwt.sign(
     {
-      _id: User._id
+      _id: User._id,
+      email: User.email
     },
-    process.env.RESET_PASSWORD_SECRET,
+    process.env.resetToken,
     {
-      expiresIn: "10m"
+      expiresIn: "15m"
     }
   );
 
-  // =========================
-  // 🔗 RESET URL
-  // =========================
+  // reset url
   const resetUrl =
-    `${process.env.FRONTEND_URL}/reset-password/${process.env.RESET_PASSWORD_SECRET}`;
+    `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
 
-console.log("resetUrl : ", resetUrl);
+  console.log("Reset URL :", resetUrl);
 
-  // =========================
-  // 📩 SEND MAIL
-  // =========================
-  await sendMail({
-    to: User.email,
-    subject: "Reset Your Password",
-    html: `
-      <div style="font-family: Arial, sans-serif; padding: 20px;">
+  // send email here
 
-        <h2>Password Reset Request</h2>
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        resetUrl
+      },
+      "Password reset link sent successfully"
+    )
+  );
 
-        <p>
-          Click the button below to reset your password.
-        </p>
+});
 
-        <a 
-          href="${resetUrl}"
-          style="
-            display: inline-block;
-            padding: 12px 20px;
-            background-color: #2563eb;
-            color: white;
-            text-decoration: none;
-            border-radius: 5px;
-            margin-top: 10px;
-          "
-        >
-          Reset Password
-        </a>
 
-        <p style="margin-top:20px;">
-          This link will expire in 10 minutes.
-        </p>
 
-        <p>
-          If you did not request this,
-          please ignore this email.
-        </p>
+const resetPassword = asynchandler(async (req, res) => {
 
-      </div>
-    `
-  });
+  // get token
+  const token = req.params.token;
+
+  // get new password
+  const { newPassword } = req.body;
+
+  // validate password
+  if (!newPassword) {
+    throw new ApiError(
+      400,
+      "New password is required"
+    );
+  }
+
+  // verify token
+  const decoded = jwt.verify(
+    token,
+    process.env.resetToken
+  );
+
+  // find user
+  const User = await user.findById(decoded._id);
+
+  if (!User) {
+    throw new ApiError(
+      404,
+      "User not found"
+    );
+  }
+
+  // hash password
+  const hashedPassword =
+    await bcrypt.hash(newPassword, 10);
+
+  // update password
+  User.password = hashedPassword;
+
+  // save user
+  await User.save();
 
   return res.status(200).json(
     new ApiResponse(
       200,
       {},
-      "Password reset link sent successfully"
+      "Password reset successful"
     )
   );
+
 });
 
 
@@ -2275,7 +2283,8 @@ export {
     verifyEmail,
     updateUserEmail,
     updateUserDetails,
-    forgotPassword
+    forgotPassword,
+    resetPassword
 
     
 
