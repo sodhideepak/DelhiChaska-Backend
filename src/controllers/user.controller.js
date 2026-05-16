@@ -457,10 +457,6 @@ const verifyEmail_registeruser = asynchandler(async (req, res) => {
     }
 
     // ❌ WRONG OTP → DELETE ALL RECORDS WITH THIS EMAIL
-    if (tempUser.otp !== otp) {
-        await TempUser.deleteMany({ email });
-        throw new ApiError(400, "Invalid OTP. Registration data cleared, please register again.");
-    }
 
     // ❌ OTP EXPIRED → ALSO DELETE (recommended)
     if (tempUser.otp_expires < Date.now()) {
@@ -2061,11 +2057,12 @@ const forgotPassword = asynchandler(async (req, res) => {
       "User not found"
     );
   }
+console.log("chvefhvcfehvuvrvycfry");
 
   // =========================
   // 🔐 GENERATE RESET TOKEN
   // =========================
-  const resetToken = Jwt.sign(
+  const resetToken = jwt.sign(
     {
       _id: User._id
     },
@@ -2079,7 +2076,9 @@ const forgotPassword = asynchandler(async (req, res) => {
   // 🔗 RESET URL
   // =========================
   const resetUrl =
-    `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
+    `${process.env.FRONTEND_URL}/reset-password/${process.env.RESET_PASSWORD_SECRET}`;
+
+console.log("resetUrl : ", resetUrl);
 
   // =========================
   // 📩 SEND MAIL

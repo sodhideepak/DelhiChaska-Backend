@@ -82,7 +82,6 @@ router.route("/removeavatar" ).patch(verifyJWT,removeUserAvatar)
 
 // router.route("/history").get(verifyJWT,getWatchHistory)
 
-router.route("/forgotpassword").post(forgotpassword)
 
 router.route("/resetpassword").post(resetpassword)
 
