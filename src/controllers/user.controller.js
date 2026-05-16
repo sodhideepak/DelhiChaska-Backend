@@ -2037,30 +2037,176 @@ const bookingformenquiry = asynchandler(async (req, res) => {
 
 
 
+const forgotPassword = asynchandler(async (req, res) => {
+
+  const { email } = req.body;
+
+  if (!email) {
+    throw new ApiError(
+      400,
+      "Email is required"
+    );
+  }
+
+  // =========================
+  // 🔍 FIND USER
+  // =========================
+  const User = await user.findOne({
+    email: email.toLowerCase()
+  });
+
+  if (!User) {
+    throw new ApiError(
+      404,
+      "User not found"
+    );
+  }
+
+  // =========================
+  // 🔐 GENERATE RESET TOKEN
+  // =========================
+  const resetToken = Jwt.sign(
+    {
+      _id: User._id
+    },
+    process.env.RESET_PASSWORD_SECRET,
+    {
+      expiresIn: "10m"
+    }
+  );
+
+  // =========================
+  // 🔗 RESET URL
+  // =========================
+  const resetUrl =
+    `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
+
+  // =========================
+  // 📩 SEND MAIL
+  // =========================
+  await sendMail({
+    to: User.email,
+    subject: "Reset Your Password",
+    html: `
+      <div style="font-family: Arial, sans-serif; padding: 20px;">
+
+        <h2>Password Reset Request</h2>
+
+        <p>
+          Click the button below to reset your password.
+        </p>
+
+        <a 
+          href="${resetUrl}"
+          style="
+            display: inline-block;
+            padding: 12px 20px;
+            background-color: #2563eb;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin-top: 10px;
+          "
+        >
+          Reset Password
+        </a>
+
+        <p style="margin-top:20px;">
+          This link will expire in 10 minutes.
+        </p>
+
+        <p>
+          If you did not request this,
+          please ignore this email.
+        </p>
+
+      </div>
+    `
+  });
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {},
+      "Password reset link sent successfully"
+    )
+  );
+});
+
+
+
+// =========================
+// RESET PASSWORD
+// =========================
 
 const resetpassword = asynchandler(async (req, res) => {
 
-    // before production just change the link address to render addresss of which the email is send to user
-    // change the address of mail in mail optins in the send password reset mail
-    const token = req.query.token
+  const { token, newPassword } = req.body;
 
-    const User = await user.findOne({ token: token })
+  if (!token || !newPassword) {
+    throw new ApiError(
+      400,
+      "Token and new password are required"
+    );
+  }
 
-    if (User) {
-        const newpassword = req.body.password
-        User.password = newpassword
-        await User.save({ validateBeforeSave: false })
-        await user.findByIdAndUpdate({ _id: User._id }, { $set: { token: '' } }, { new: true })
+  // =========================
+  // 🔐 VERIFY TOKEN
+  // =========================
+  let decodedToken;
 
-    } else {
-        throw new ApiError(400, "link has been expired")
-    }
+  try {
 
+    decodedToken = Jwt.verify(
+      token,
+      process.env.RESET_PASSWORD_SECRET
+    );
 
-    return res
-        .status(200)
-        .json(new ApiResponse(200, {}, "password changed sucessfully"))
-})
+  } catch (error) {
+
+    throw new ApiError(
+      400,
+      "Invalid or expired token"
+    );
+  }
+
+  // =========================
+  // 🔍 FIND USER
+  // =========================
+  const User = await user.findById(
+    decodedToken._id
+  );
+
+  if (!User) {
+    throw new ApiError(
+      404,
+      "User not found"
+    );
+  }
+
+  // =========================
+  // 🔒 HASH PASSWORD
+  // =========================
+  const hashedPassword =
+    await bcrypt.hash(newPassword, 10);
+
+  // =========================
+  // 🔁 UPDATE PASSWORD
+  // =========================
+  User.password = hashedPassword;
+
+  await User.save({
+    validateBeforeSave: false
+  });
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {},
+      "Password reset successfully"
+    )
+  );
+});
 
 
 
@@ -2127,7 +2273,7 @@ export {
     verifyEmail,
     updateUserEmail,
     updateUserDetails,
-    
+    forgotPassword
 
     
 

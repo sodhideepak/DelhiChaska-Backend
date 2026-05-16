@@ -29,6 +29,7 @@ import {
     verifyEmail,
     updateUserEmail,
     updateUserDetails,
+    forgotPassword
     
      } from "../controllers/user.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
@@ -116,6 +117,10 @@ router.route("/bookingenquiry").post(bookingformenquiry)
 
 
 router.route("/deletealladdress").delete(verifyJWT, deleteAllAddresses);
+
+
+router.route("/forgotpassword").post(forgotPassword)
+
 
 
 
