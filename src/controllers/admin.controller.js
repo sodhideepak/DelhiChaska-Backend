@@ -1880,28 +1880,87 @@ const adminViewAllOrders = asynchandler(async (req, res) => {
 
 const AREA_CITY_MAP = {
   bay_area: [
-    "San Francisco",
-    "San Jose",
-    "Oakland",
-    "Berkeley",
-    "Palo Alto",
-    "Fremont",
-    "Santa Clara",
-    "California"
-  ],
-  seattle: [
-    "Seattle",
-    "Bellevue",
-    "Redmond",
-    "Tacoma",
-    "Everett"
-  ],
-  new_york_area: [
-    "New York",
-    "Brooklyn",
-    "Queens",
-    "Manhattan"
-  ]
+
+  // San Francisco Bay Area
+  "San Francisco",
+  "San Jose",
+  "Oakland",
+  "Berkeley",
+  "Palo Alto",
+  "Fremont",
+  "Santa Clara",
+  "Sunnyvale",
+  "Mountain View",
+  "Cupertino",
+  "Milpitas",
+  "Hayward",
+  "Union City",
+  "Daly City",
+  "San Mateo",
+  "Redwood City",
+  "South San Francisco",
+  "Menlo Park",
+  "Los Altos",
+  "Campbell",
+  "Saratoga",
+  "Morgan Hill",
+  "Gilroy",
+  "Pleasanton",
+  "Livermore",
+  "Walnut Creek",
+  "Concord",
+  "Richmond",
+  "Alameda",
+  "San Leandro",
+  "Pittsburg",
+  "Antioch",
+  "Novato",
+  "Napa",
+  "Sonoma",
+  "Vallejo",
+  "Fairfield",
+  "Vacaville",
+  "Benicia",
+  "Martinez",
+  "California"
+
+],
+
+seattle: [
+
+  // Greater Seattle Area
+  "Seattle",
+  "Bellevue",
+  "Redmond",
+  "Tacoma",
+  "Everett",
+  "Kirkland",
+  "Renton",
+  "Kent",
+  "Auburn",
+  "Federal Way",
+  "Shoreline",
+  "Bothell",
+  "Issaquah",
+  "Sammamish",
+  "Lynnwood",
+  "Edmonds",
+  "Mukilteo",
+  "Bremerton",
+  "Lakewood",
+  "Puyallup",
+  "Marysville",
+  "Monroe",
+  "Woodinville",
+  "Mercer Island",
+  "Burien",
+  "Des Moines",
+  "SeaTac",
+  "Tukwila",
+  "Olympia",
+  "Washington"
+
+],
 };
 
 const adminViewOrdersByArea = asynchandler(async (req, res) => {
@@ -1959,13 +2018,16 @@ const adminViewOrdersByArea = asynchandler(async (req, res) => {
   // ─────────────────────────────────────────────
   // BASE FILTER
   // ─────────────────────────────────────────────
-  const filter = {
-
-    "deliveryDetails.city": {
-
-      $in: cities
-    }
-  };
+const filter = {
+  $expr: {
+    $in: [
+      {
+        $toLower: "$deliveryDetails.city"
+      },
+      cities.map(city => city.toLowerCase())
+    ]
+  }
+};
 
   // ─────────────────────────────────────────────
   // STATUS FILTER
