@@ -53,7 +53,8 @@ import {
         sendBulkPaymentRemindersByArea,
         deleteAllOrders,
         getOrderUserDetailsForAdmin,
-        markOrderAsDelivered
+        markOrderAsDelivered,
+        getAllDeliveryBatches
      } from "../controllers/admin.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
@@ -184,6 +185,11 @@ router.route("/unverifieddrivers").get(verifyStaffJWT,getUnverifiedDrivers)
 
 
 router.route("/alldriversfull").get(verifyStaffJWT,getAllDriversfull)
+
+
+
+
+router.route('/getallbatches').get(verifyStaffJWT,getAllDeliveryBatches)
 
 
 router.route("/employee/:employeeId").delete(verifyStaffJWT,deleteEmployee)

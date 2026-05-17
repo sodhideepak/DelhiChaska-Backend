@@ -7206,6 +7206,337 @@ const markOrderAsDelivered = asynchandler(async (req, res) => {
 
 
 
+const getAllDeliveryBatches = asynchandler(async (req, res) => {
+
+    // ─────────────────────────────────────────────
+    // AUTH
+    // ─────────────────────────────────────────────
+    ensureSuperAdmin(req);
+
+    // ─────────────────────────────────────────────
+    // QUERY PARAMS
+    // ─────────────────────────────────────────────
+    const {
+
+        status,
+        area,
+        driverId,
+
+        // DATE FILTERS
+        startDate,
+        endDate,
+
+        // PAGINATION
+        page = 1,
+        limit = 10
+
+    } = req.query;
+
+    // ─────────────────────────────────────────────
+    // FILTER
+    // ─────────────────────────────────────────────
+    const filter = {};
+
+    // =====================================================
+    // STATUS
+    // =====================================================
+    if (status) {
+
+        filter.status = status;
+    }
+
+    // =====================================================
+    // AREA
+    // =====================================================
+    if (area) {
+
+        filter.area =
+            area
+                .toLowerCase()
+                .trim();
+    }
+
+    // =====================================================
+    // DRIVER
+    // =====================================================
+    if (driverId) {
+
+        filter.driverId =
+            driverId;
+    }
+
+    // =====================================================
+    // DATE RANGE
+    // =====================================================
+    if (
+        startDate ||
+        endDate
+    ) {
+
+        filter.createdAt = {};
+
+        if (startDate) {
+
+            filter.createdAt.$gte =
+                new Date(startDate);
+        }
+
+        if (endDate) {
+
+            const end =
+                new Date(endDate);
+
+            end.setHours(
+                23,
+                59,
+                59,
+                999
+            );
+
+            filter.createdAt.$lte =
+                end;
+        }
+    }
+
+    // ─────────────────────────────────────────────
+    // PAGINATION
+    // ─────────────────────────────────────────────
+    const currentPage =
+        Number(page) || 1;
+
+    const perPage =
+        Number(limit) || 10;
+
+    const skip =
+        (currentPage - 1) * perPage;
+
+    // ─────────────────────────────────────────────
+    // FETCH BATCHES
+    // ─────────────────────────────────────────────
+    const [batches, totalBatches] =
+
+        await Promise.all([
+
+            DeliveryBatch.find(filter)
+
+                .populate({
+
+                    path: "driverId",
+
+                    select:
+                        "name email phone role assignedArea profile_image"
+                })
+
+                .populate({
+
+                    path: "orders.orderId",
+
+                    populate: {
+
+                        path: "userId",
+
+                        select:
+                            "full_name username email phone_number"
+                    }
+                })
+
+                .sort({
+                    createdAt: -1
+                })
+
+                .skip(skip)
+
+                .limit(perPage)
+
+                .lean(),
+
+            DeliveryBatch.countDocuments(
+                filter
+            )
+        ]);
+
+    // ─────────────────────────────────────────────
+    // FORMAT RESPONSE
+    // ─────────────────────────────────────────────
+    const formattedBatches =
+
+        batches.map(batch => ({
+
+            batchId:
+                batch._id,
+
+            area:
+                batch.area,
+
+            status:
+                batch.status,
+
+            finalizedAt:
+                batch.finalizedAt,
+
+            createdAt:
+                batch.createdAt,
+
+            updatedAt:
+                batch.updatedAt,
+
+            // =====================================================
+            // DRIVER DETAILS
+            // =====================================================
+            driver:
+
+                batch.driverId
+
+                    ? {
+
+                        driverId:
+                            batch.driverId._id,
+
+                        name:
+                            batch.driverId.name,
+
+                        email:
+                            batch.driverId.email,
+
+                        phone:
+                            batch.driverId.phone,
+
+                        role:
+                            batch.driverId.role,
+
+                        assignedArea:
+                            batch.driverId.assignedArea,
+
+                        profile_image:
+                            batch.driverId.profile_image
+                    }
+
+                    : null,
+
+            // =====================================================
+            // ORDERS
+            // =====================================================
+            totalOrders:
+                batch.orders.length,
+
+            orders:
+
+                batch.orders.map(
+                    item => ({
+
+                        sequence:
+                            item.sequence,
+
+                        order:
+
+                            item.orderId
+
+                                ? {
+
+                                    orderId:
+                                        item.orderId._id,
+
+                                    status:
+                                        item.orderId.status,
+
+                                    totalAmount:
+                                        item.orderId.totalAmount,
+
+                                    deliveryDate:
+                                        item.orderId.deliveryDate,
+
+                                    isorderdelivered:
+                                        item.orderId.isorderdelivered,
+
+                                    payment:
+                                        item.orderId.payment,
+
+                                    customer: {
+
+                                        userId:
+                                            item.orderId.userId?._id,
+
+                                        name:
+                                            item.orderId.userId?.full_name,
+
+                                        username:
+                                            item.orderId.userId?.username,
+
+                                        email:
+                                            item.orderId.userId?.email,
+
+                                        phone:
+                                            item.orderId.userId?.phone_number
+                                    },
+
+                                    deliveryDetails:
+                                        item.orderId.deliveryDetails,
+
+                                    placedAt:
+                                        item.orderId.createdAt
+                                }
+
+                                : null
+                    }))
+        }));
+
+    // ─────────────────────────────────────────────
+    // RESPONSE
+    // ─────────────────────────────────────────────
+    return res.status(200).json(
+
+        new ApiResponse(
+
+            200,
+
+            {
+
+                filters: {
+
+                    status:
+                        status || null,
+
+                    area:
+                        area || null,
+
+                    driverId:
+                        driverId || null,
+
+                    startDate:
+                        startDate || null,
+
+                    endDate:
+                        endDate || null
+                },
+
+                batches:
+                    formattedBatches,
+
+                pagination: {
+
+                    totalBatches,
+
+                    currentPage,
+
+                    totalPages:
+                        Math.ceil(
+                            totalBatches / perPage
+                        ),
+
+                    limit:
+                        perPage
+                }
+            },
+
+            "Delivery batches fetched successfully"
+        )
+    );
+});
+
+
+
+
+
 
 
 export {
@@ -7259,4 +7590,5 @@ export {
         deleteAllOrders,
         getOrderUserDetailsForAdmin,
         markOrderAsDelivered,
+        getAllDeliveryBatches
     }
