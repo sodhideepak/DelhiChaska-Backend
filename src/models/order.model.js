@@ -160,6 +160,12 @@ const orderSchema = new mongoose.Schema(
       type: Boolean,
       default: false
     },
+    deliveryProofImage: {
+
+     type: String,
+
+  default: null
+},
 
     deliveryDetails: {
 

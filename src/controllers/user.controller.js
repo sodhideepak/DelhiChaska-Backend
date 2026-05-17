@@ -206,6 +206,7 @@ const startRegistration = asynchandler(async (req, res) => {
         DOB,
         password
     } = req.body;
+console.log("gdhtdhtdt");
 
     // ─────────────────────────────────────────────
     // VALIDATION
@@ -349,6 +350,8 @@ const startRegistration = asynchandler(async (req, res) => {
     // ─────────────────────────────────────────────
     // SEND OTP MAIL
     // ─────────────────────────────────────────────
+    console.log("here is is code");
+    
     await send_register_otp(
         email,
         otp,
@@ -372,159 +375,181 @@ const startRegistration = asynchandler(async (req, res) => {
 
 
 
-// const verifyEmail_registeruser = asynchandler(async (req, res) => {
-
-//     const { email, otp } = req.body;
-
-//     const tempUser = await TempUser.findOne({ email });
-
-//     if (!tempUser) {
-//         throw new ApiError(400, "Registration session expired");
-//     }
-
-//     if (tempUser.otp !== otp) {
-//         throw new ApiError(400, "Invalid OTP");
-//     }
-
-//     if (tempUser.otp_expires < Date.now()) {
-//         throw new ApiError(400, "OTP expired");
-//     }
-// console.log(tempUser);
-
-//     // create real user
-//     const newUser = new user({
-//         full_name: tempUser.full_name,
-//         email: tempUser.email,
-//         phone_number: tempUser.phone_number,
-//         gender: tempUser.gender,
-//         DOB: tempUser.DOB,
-//         is_email_verified: true,
-//         avatar: ""
-//     });
-
-//     newUser.password = tempUser.password;
-
-//     // skip hashing again
-//     newUser.$__.activePaths.clear("modify");
-
-//     await newUser.save();
-
-//     // delete temp user
-//     await TempUser.deleteOne({ email });
-
-//     // ===== LOGIN LOGIC START =====
-//     const { accesstoken, refreshtoken } = await generateAccessAndRefreshTokens(newUser._id);
-
-//     const loggedinuser = await user
-//         .findById(newUser._id)
-//         .select("-password -refreshToken -token")
-//         .lean();
-
-//     const options = {
-//         httpOnly: true,
-//         secure: true
-//     };
-
-//     return res
-//         .status(201)
-//         .cookie("accesstoken", accesstoken, options)
-//         .cookie("refreshtoken", refreshtoken, options)
-//         .json(
-//             new ApiResponse(
-//                 201,
-//                 {
-//                     user: loggedinuser,
-//                     accesstoken,
-//                     refreshtoken
-//                 },
-//                 "User registered and logged in successfully"
-//             )
-//         );
-// });
-
-
-
 
 
 const verifyEmail_registeruser = asynchandler(async (req, res) => {
 
     const { email, otp } = req.body;
 
-    const tempUser = await TempUser.findOne({ email });
+    // ✅ FIND ALL RECORDS WITH SAME EMAIL
+    const tempUsers =
+        await TempUser.find({ email });
 
-    if (!tempUser) {
-        throw new ApiError(400, "Registration session expired");
+    if (!tempUsers || tempUsers.length === 0) {
+
+        throw new ApiError(
+            400,
+            "Registration session expired"
+        );
     }
 
-    // ❌ WRONG OTP → DELETE ALL RECORDS WITH THIS EMAIL
-    if (tempUser.otp !== otp) {
-        throw new ApiError(400, "Invalid OTP.");
+    // ✅ FIND MATCHING OTP RECORD
+    const matchedTempUser =
+        tempUsers.find(
+
+            item => item.otp === otp
+        );
+
+    // ❌ OTP NOT MATCHED
+    if (!matchedTempUser) {
+
+        throw new ApiError(
+            400,
+            "Invalid OTP."
+        );
     }
 
-    // ❌ OTP EXPIRED → ALSO DELETE (recommended)
-    if (tempUser.otp_expires < Date.now()) {
-        await TempUser.deleteMany({ email });
-        throw new ApiError(400, "OTP expired. Registration data cleared, please register again.");
+    // ❌ OTP EXPIRED
+    if (
+        matchedTempUser.otp_expires <
+        Date.now()
+    ) {
+
+        // delete all records of same email
+        await TempUser.deleteMany({
+            email
+        });
+
+        throw new ApiError(
+            400,
+            "OTP expired. Registration data cleared, please register again."
+        );
     }
 
-    // console.log(tempUser);
+    // ✅ GENERATE USERNAME
+    const username =
+        await generateCustomUsername(
+            user,
+            matchedTempUser
+        );
 
-    const username = await generateCustomUsername(user, tempUser);
-
-    // create real user
+    // ✅ CREATE REAL USER
     const newUser = new user({
+
         username,
-        full_name: tempUser.full_name,
-        email: tempUser.email,
-        phone_number: tempUser.phone_number,
-        gender: tempUser.gender,
-        DOB: tempUser.DOB,
-        is_email_verified: true,
+
+        full_name:
+            matchedTempUser.full_name,
+
+        email:
+            matchedTempUser.email,
+
+        phone_number:
+            matchedTempUser.phone_number,
+
+        gender:
+            matchedTempUser.gender,
+
+        DOB:
+            matchedTempUser.DOB,
+
+        is_email_verified:
+            true,
+
         avatar: ""
     });
 
-    newUser.password = tempUser.password;
+    newUser.password =
+        matchedTempUser.password;
 
-    // skip hashing again
-    newUser.$__.activePaths.clear("modify");
+    // ✅ SKIP HASH AGAIN
+    newUser.$__.activePaths.clear(
+        "modify"
+    );
 
     await newUser.save();
 
-    // delete temp user
-    await TempUser.deleteMany({ email });
+    // ✅ DELETE ALL RECORDS
+    // WITH SAME EMAIL
+    await TempUser.deleteMany({
+        email
+    });
 
     // ===== LOGIN LOGIC START =====
-    const { accesstoken, refreshtoken } = await generateAccessAndRefreshTokens(newUser._id);
+    const {
+        accesstoken,
+        refreshtoken
 
-    const loggedinuser = await user
-        .findById(newUser._id)
-        .select("-password -refreshToken -token")
-        .lean();
+    } =
+        await generateAccessAndRefreshTokens(
+            newUser._id
+        );
+
+    const loggedinuser =
+        await user
+
+            .findById(newUser._id)
+
+            .select(
+                "-password -refreshToken -token"
+            )
+
+            .lean();
 
     const options = {
+
         httpOnly: true,
+
         secure: true,
+
         sameSite: "none",
+
         path: "/",
-        maxAge: 7 * 24 * 60 * 60 * 1000
+
+        maxAge:
+            7 * 24 * 60 * 60 * 1000
     };
 
     return res
+
         .status(201)
-        .cookie("accesstoken", accesstoken, options)
-        .cookie("refreshtoken", refreshtoken, options)
+
+        .cookie(
+            "accesstoken",
+            accesstoken,
+            options
+        )
+
+        .cookie(
+            "refreshtoken",
+            refreshtoken,
+            options
+        )
+
         .json(
+
             new ApiResponse(
+
                 201,
+
                 {
                     user: loggedinuser,
+
                     accesstoken,
+
                     refreshtoken
                 },
+
                 "User registered and logged in successfully"
             )
         );
 });
+
+
+
+
+
+
 
 const generateCustomUsername = async (userModel, tempUser) => {
 
@@ -558,6 +583,13 @@ const generateCustomUsername = async (userModel, tempUser) => {
 
     return username;
 };
+
+
+
+
+
+
+
 
 const registeruser = asynchandler(async (req, res) => {
 
@@ -647,102 +679,6 @@ const send_otp = asynchandler(async (req, res) => {
 
 
 
-
-// const loginuser = asynchandler(async (req,res)=>{
-
-
-//     const {email,password}= req.body
-
-//     // const api=req.headers.api_key;
-//     const api=req.headers.apikey;
-//     console.log(api);
-
-
-//     if (!email ) {
-//         throw new ApiError(400,"username or email is required")     
-//     }
-
-//     const User = await user.findOne({
-//         $or:[ {email}]
-//     })
-
-//     if (!User) {
-//         throw new ApiError(400, "user does not exist")
-
-//     }
-
-
-
-//     const ispasswordvalid= await User.isPasswordcorrect(password)
-
-//     if (!ispasswordvalid) {
-
-//         throw new ApiError(400,"invlid user credientials")
-
-//     } 
-
-//     const {accesstoken,refreshtoken} = await generateAccessAndRefreshTokens(User._id)
-
-//     const [loggedinuser] = await user.aggregate([
-//         {
-//             $match: {
-//                 _id: User._id
-//             }
-//         },
-//         {
-//             $lookup: {
-//                 from: "addresses",
-//                 let: {
-//                     addressIds: "$addresses",
-//                     userId: "$_id"
-//                 },
-//                 pipeline: [
-//                     {
-//                         $match: {
-//                             $expr: {
-//                                 $and: [
-//                                     { $in: ["$_id", { $ifNull: ["$$addressIds", []] }] },
-//                                     { $eq: ["$user", "$$userId"] }
-//                                 ]
-//                             }
-//                         }
-//                     }
-//                 ],
-//                 as: "addresses"
-//             }
-//         },
-//         {
-//             $project: {
-//                 password: 0,
-//                 refreshToken: 0,
-//                 token: 0
-//             }
-//         }
-//     ]);
-
-//     if (!loggedinuser) {
-//         throw new ApiError(500,"something went wrong while fetching logged in user")
-//     }
-
-//     const options={
-//         httpOnly:true,
-//         secure:false,
-//     }
-
-//     return res
-//     .status(200)
-//     .cookie("accesstoken",accesstoken,options)
-//     .cookie("refreshtoken",refreshtoken,options)
-//     .json(
-//         new ApiResponse(
-//             200,
-//             {
-//                 user:loggedinuser,accesstoken,refreshtoken
-//             },
-//             "user logged in sucessfully")
-//     )
-
-// })
 
 
 
@@ -1041,45 +977,7 @@ const changeCurrentPassword = asynchandler(async (req, res) => {
 
 
 
-// const addAddress = asynchandler(async (req, res) => {
-//     const {
-//         addressLine1,
-//         addressLine2,
-//         city,
-//         state,
-//         zipCode,
-//         country,
-//         location
-//     } = req.body
 
-//     if ([addressLine1, city, state, zipCode].some((field) => !field || field.toString().trim() === "")) {
-//         throw new ApiError(400, "addressLine1, city, state and zipCode are required")
-//     }
-
-//     const createdAddress = await Address.create({
-//         user: req.user._id,
-//         addressLine1,
-//         addressLine2,
-//         city,
-//         state,
-//         zipCode,
-//         country,
-//         location
-//     })
-
-//     await user.findByIdAndUpdate(
-//         req.user._id,
-//         {
-//             $addToSet: {
-//                 addresses: createdAddress._id
-//             }
-//         }
-//     )
-
-//     return res
-//         .status(201)
-//         .json(new ApiResponse(201, createdAddress, "address added successfully"))
-// })
 
 
 
@@ -1151,6 +1049,10 @@ const addAddress = asynchandler(async (req, res) => {
         new ApiResponse(201, createdAddress, "Address added successfully")
     );
 });
+
+
+
+
 
 
 
@@ -1303,6 +1205,11 @@ const deleteAllAddresses = asynchandler(async (req, res) => {
 });
 
 
+
+
+
+
+
 const getCurrentuser = asynchandler(async (req, res) => {
 
 
@@ -1371,6 +1278,13 @@ const updateAccountDetails = asynchandler(async (req, res) => {
         .json(new ApiResponse(200, userdata, "user account details updated sucessfully"))
 
 })
+
+
+
+
+
+
+
 
 
 const updateUserDetails = asynchandler(async (req, res) => {
@@ -1442,6 +1356,10 @@ const updateUserDetails = asynchandler(async (req, res) => {
     )
   );
 });
+
+
+
+
 
 
 const updateUserEmail = asynchandler(async (req, res) => {
@@ -1568,6 +1486,10 @@ await sendEmail({
 
 
 
+
+
+
+
 const verifyEmail = asynchandler(async (req, res) => {
 
   const userId = req.user?._id;
@@ -1672,6 +1594,11 @@ const verifyEmail = asynchandler(async (req, res) => {
 });
 
 
+
+
+
+
+
 const updateUserAvatar = asynchandler(async (req, res) => {
 
     const avatarlocalpath = req.file?.path
@@ -1719,6 +1646,10 @@ const updateUserAvatar = asynchandler(async (req, res) => {
         .json(new ApiResponse(200, response, "coverimage updated sucessfully"))
 
 })
+
+
+
+
 
 
 
@@ -1800,12 +1731,6 @@ const forgotpassword = asynchandler(async (req, res) => {
 
 
 
-
-
-
-
-
-
 const sendenquirymail = asynchandler(async (fullname, email, token) => {
 
     try {
@@ -1863,12 +1788,6 @@ const sendenquirymail = asynchandler(async (fullname, email, token) => {
         throw new ApiError(400, error.message)
     }
 })
-
-
-
-
-
-
 const sendbookingsessionmail = asynchandler(async (fullname, email, token) => {
 
     try {
@@ -1924,13 +1843,6 @@ const sendbookingsessionmail = asynchandler(async (fullname, email, token) => {
         throw new ApiError(400, error.message)
     }
 })
-
-
-
-
-
-
-
 const sendContactFormMail = async (name, email, subject, message) => {
     try {
         const transporter = nodemailer.createTransport({
@@ -1985,7 +1897,6 @@ const sendContactFormMail = async (name, email, subject, message) => {
         throw new ApiError(400, error.message);
     }
 };
-
 const contactformenquiry = asynchandler(async (req, res) => {
 
     // before production just change the link address to render addresss of which the email is send to user
@@ -2005,9 +1916,6 @@ const contactformenquiry = asynchandler(async (req, res) => {
 
 
 })
-
-
-
 const bookingformenquiry = asynchandler(async (req, res) => {
 
     // before production just change the link address to render addresss of which the email is send to user
@@ -2031,6 +1939,12 @@ const bookingformenquiry = asynchandler(async (req, res) => {
 
 
 })
+
+
+
+
+
+
 
 
 
@@ -2088,6 +2002,11 @@ const forgotPassword = asynchandler(async (req, res) => {
   );
 
 });
+
+
+
+
+
 
 
 

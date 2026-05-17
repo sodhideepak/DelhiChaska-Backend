@@ -52,7 +52,8 @@ import {
         sendPaymentReminder,
         sendBulkPaymentRemindersByArea,
         deleteAllOrders,
-        getOrderUserDetailsForAdmin
+        getOrderUserDetailsForAdmin,
+        markOrderAsDelivered
      } from "../controllers/admin.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
@@ -207,6 +208,7 @@ router.route("/deliverybatch/:batchId").get(verifyStaffJWT,getDeliveryBatchDetai
 router.route("/deliverybatch/reorder/:batchId").patch(verifyStaffJWT,reorderDeliveryBatch)
 router.route("/deliverybatch/finalize/:batchId").patch(verifyStaffJWT,finalizeDeliveryBatch)
 router.route("/driver/batches").get(verifyStaffJWT,driverViewMyBatches)
+router.route("/driver/markorderdelivered/:orderId").post(verifyStaffJWT,upload.single("deliveryImage"),markOrderAsDelivered)  
 
 
 

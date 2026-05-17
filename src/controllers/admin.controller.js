@@ -642,7 +642,7 @@ const sendEmployeeApprovalNotification = async(employeeName, employeeEmail, role
                 </div>
                 <div style="margin-top: 30px; text-align: center; color: #aaa; font-size: 12px;">
                     <p>If you need any help getting started, please contact your supervisor.</p>
-                    <p>&copy; 2024 DelhiChaska. All rights reserved.</p>
+                    <p>&copy; 2026 DelhiChaska. All rights reserved.</p>
                 </div>
             </div>
         `
@@ -2265,6 +2265,9 @@ const filter = {
 
         isorderdelivered:
           order.isorderdelivered || false,
+
+        deliveryProofImage:
+          order.deliveryProofImage || null,
 
         itemCount:
           formattedItems.length,
@@ -4948,6 +4951,9 @@ const driverViewMyBatches = asynchandler(async (req, res) => {
               isorderdelivered:
                 order?.isorderdelivered || false,
 
+              deliveryProofImage:
+                order?.deliveryProofImage || null,
+
               paymentRequested:
                 order?.paymentRequested || false,
 
@@ -6705,6 +6711,296 @@ const getOrderUserDetailsForAdmin = asynchandler(async (req, res) => {
 
 
 
+const markOrderAsDelivered = asynchandler(async (req, res) => {
+
+  // ─────────────────────────────────────────────
+  // ORDER ID
+  // ─────────────────────────────────────────────
+  const { orderId } = req.params;
+
+  // ─────────────────────────────────────────────
+  // DRIVER
+  // ─────────────────────────────────────────────
+  const driverId =
+    req.staff._id;
+
+  // ─────────────────────────────────────────────
+  // VALIDATIONS
+  // ─────────────────────────────────────────────
+  if (!orderId) {
+
+    throw new ApiError(
+      400,
+      "Order id is required"
+    );
+  }
+
+  // ─────────────────────────────────────────────
+  // DELIVERY IMAGE LOCAL PATH
+  // ─────────────────────────────────────────────
+  const deliveryImageLocalPath =
+    req.file?.path;
+
+  if (!deliveryImageLocalPath) {
+
+    throw new ApiError(
+      400,
+      "Delivery image is required"
+    );
+  }
+
+  // ─────────────────────────────────────────────
+  // FIND ORDER
+  // ─────────────────────────────────────────────
+  const order =
+    await Order.findById(orderId)
+
+    .populate({
+
+      path: "userId",
+
+      select:
+        "full_name username email phone_number"
+    });
+
+  if (!order) {
+
+    throw new ApiError(
+      404,
+      "Order not found"
+    );
+  }
+
+  // ─────────────────────────────────────────────
+  // CHECK ASSIGNED DRIVER
+  // ─────────────────────────────────────────────
+  if (
+
+    order?.deliveryAssignment?.driverId
+      ?.toString() !==
+    driverId.toString()
+
+  ) {
+
+    throw new ApiError(
+      403,
+      "You are not assigned to this order"
+    );
+  }
+
+  // ─────────────────────────────────────────────
+  // UPLOAD IMAGE TO CLOUDINARY
+  // ─────────────────────────────────────────────
+  const uploadedImage =
+    await uploadoncloudinary(
+      deliveryImageLocalPath
+    );
+
+  if (!uploadedImage?.url) {
+
+    throw new ApiError(
+      400,
+      "Error while uploading delivery image"
+    );
+  }
+
+  uploadedImage.url =
+    uploadedImage.url.replace(
+      /^http:/,
+      "https:"
+    );
+
+  // ─────────────────────────────────────────────
+  // UPDATE ORDER
+  // ─────────────────────────────────────────────
+  order.status =
+    "delivered";
+
+  order.isorderdelivered =
+    true;
+
+  order.deliveredAt =
+    new Date();
+
+  // ✅ SAVE CLOUDINARY URL
+  order.deliveryProofImage =
+    uploadedImage.url;
+
+  await order.save();
+
+  // ─────────────────────────────────────────────
+  // FIND DELIVERY BATCH
+  // ─────────────────────────────────────────────
+  const batch =
+    await DeliveryBatch.findOne({
+
+      driverId,
+
+      "orders.orderId":
+        order._id
+    });
+
+  // ─────────────────────────────────────────────
+  // FIND SEQUENCE
+  // ─────────────────────────────────────────────
+  const batchOrder =
+    batch?.orders?.find(
+
+      item =>
+
+        item.orderId.toString() ===
+        order._id.toString()
+    );
+
+  const sequenceNumber =
+    batchOrder?.sequence || null;
+
+  // ─────────────────────────────────────────────
+  // AREA
+  // ─────────────────────────────────────────────
+  const area =
+    order?.deliveryDetails?.area ||
+    order?.deliveryDetails?.city ||
+    "Unknown Area";
+
+  // ─────────────────────────────────────────────
+  // SEND MAIL TO USER
+  // ─────────────────────────────────────────────
+  await sendmail({
+
+    email:
+      order?.userId?.email,
+
+    subject:
+      "Your Order Has Been Delivered",
+
+    html: `
+
+      <div style="font-family: Arial, sans-serif; padding: 20px;">
+
+        <h2>
+          Order Delivered Successfully
+        </h2>
+
+        <p>
+          Hello
+          ${order?.userId?.full_name || "User"},
+        </p>
+
+        <p>
+          Your order has been delivered successfully.
+        </p>
+
+        <p>
+          <strong>Order Id:</strong>
+          ${order?._id}
+        </p>
+
+        <p>
+          <strong>Delivered At:</strong>
+          ${order?.deliveredAt}
+        </p>
+
+        <p>
+          Thank you for ordering with us.
+        </p>
+
+      </div>
+    `
+  });
+
+  // ─────────────────────────────────────────────
+  // SEND MAIL TO ADMIN
+  // ─────────────────────────────────────────────
+  await sendmail({
+
+    email:
+      process.env.ADMIN_EMAIL,
+
+    subject:
+      "Order Delivered Update",
+
+    html: `
+
+      <div style="font-family: Arial, sans-serif; padding: 20px;">
+
+        <h2>
+          Order Delivered
+        </h2>
+
+        <p>
+          <strong>Order Id:</strong>
+          ${order?._id}
+        </p>
+
+        <p>
+          <strong>Area:</strong>
+          ${area}
+        </p>
+
+        <p>
+          <strong>Sequence Number:</strong>
+          ${sequenceNumber}
+        </p>
+
+        <p>
+          <strong>Customer:</strong>
+          ${order?.userId?.full_name}
+        </p>
+
+        <p>
+          <strong>Customer Phone:</strong>
+          ${order?.userId?.phone_number}
+        </p>
+
+        <p>
+          Driver completed the delivery successfully.
+        </p>
+
+      </div>
+    `
+  });
+
+  // ─────────────────────────────────────────────
+  // RESPONSE
+  // ─────────────────────────────────────────────
+  return res.status(200).json(
+
+    new ApiResponse(
+
+      200,
+
+      {
+
+        orderId:
+          order._id,
+
+        status:
+          order.status,
+
+        deliveredAt:
+          order.deliveredAt,
+
+        deliveryProofImage:
+          order.deliveryProofImage,
+
+        sequenceNumber,
+
+        area
+      },
+
+      "Order marked as delivered successfully"
+    )
+  );
+});
+
+
+
+
+
+
+
+
 
 
 export {
@@ -6756,5 +7052,6 @@ export {
         sendPaymentReminder,
         sendBulkPaymentRemindersByArea,
         deleteAllOrders,
-        getOrderUserDetailsForAdmin
+        getOrderUserDetailsForAdmin,
+        markOrderAsDelivered
     }
