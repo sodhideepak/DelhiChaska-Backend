@@ -671,7 +671,8 @@ const startEmployeeRegistration = asynchandler(async (req, res) => {
     phone,
     password,
     role,
-    profile_image
+    profile_image,
+    assignedArea
   } = req.body;
 
   // ✅ Validation
@@ -681,7 +682,8 @@ const startEmployeeRegistration = asynchandler(async (req, res) => {
       email,
       phone,
       password,
-      role
+      role,
+      assignedArea
     ].some(
       (field) =>
         !field || field.toString().trim() === ""
@@ -725,6 +727,7 @@ const startEmployeeRegistration = asynchandler(async (req, res) => {
     password: hashedPassword,
     role,
     status: "not_verified",
+    assignedArea: assignedArea.trim().toLowerCase(),
     profile_image: profile_image || ""
   });
 
@@ -770,6 +773,7 @@ const startEmployeeRegistration = asynchandler(async (req, res) => {
         email: tempEmployee.email,
         role: tempEmployee.role,
         status: tempEmployee.status,
+        assignedArea: tempEmployee.assignedArea,
         createdAt: tempEmployee.createdAt
       },
       `employee registration submitted successfully! ${emailStatus}`
@@ -998,6 +1002,7 @@ const verifyEmployeeRegistration = asynchandler(async(req,res)=>{
     if (existingEmployee) {
         throw new ApiError(409, "employee already exists");
     }
+console.log(tempEmployee.assignedArea);
 
     const employee = new Employee({
         name: tempEmployee.name,
@@ -1043,6 +1048,13 @@ const verifyEmployeeRegistration = asynchandler(async(req,res)=>{
         )
     );
 });
+
+
+
+
+
+
+
 
 
 
@@ -4560,10 +4572,7 @@ const resetAllDrivers = asynchandler(async (req, res) => {
         $set: {
 
           // ✅ DRIVER AVAILABLE AGAIN
-          isDriverAvailable: true,
-
-          // ✅ REMOVE ASSIGNED AREA
-          assignedArea: ""
+          isDriverAvailable: true
         }
       }
     );
@@ -7249,5 +7258,5 @@ export {
         sendBulkPaymentRemindersByArea,
         deleteAllOrders,
         getOrderUserDetailsForAdmin,
-        markOrderAsDelivered
+        markOrderAsDelivered,
     }
