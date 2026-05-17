@@ -2018,16 +2018,21 @@ const adminViewOrdersByArea = asynchandler(async (req, res) => {
   // ─────────────────────────────────────────────
   // BASE FILTER
   // ─────────────────────────────────────────────
-const filter = {
-  $expr: {
-    $in: [
-      {
-        $toLower: "$deliveryDetails.city"
-      },
-      cities.map(city => city.toLowerCase())
-    ]
-  }
-};
+  const filter = {
+
+    $expr: {
+      $in: [
+        {
+          $toLower:
+            "$deliveryDetails.city"
+        },
+        cities.map(
+          city =>
+            city.toLowerCase()
+        )
+      ]
+    }
+  };
 
   // ─────────────────────────────────────────────
   // STATUS FILTER
@@ -2184,6 +2189,69 @@ const filter = {
               item.quantity
             );
 
+          // =================================================
+          // COMBO ITEM
+          // =================================================
+          if (
+            item.type === "combo"
+          ) {
+
+            return {
+
+              comboId:
+                item.comboId || null,
+
+              name:
+                item.name || "",
+
+              quantity:
+                item.quantity || 0,
+
+              type:
+                item.type || "",
+
+              // ✅ VARIANT
+              variant: {
+
+                size,
+
+                price
+              },
+
+              // ✅ COMBO SELECTIONS
+              selections:
+
+                item.selections?.map(sel => ({
+
+                  ruleId:
+                    sel.ruleId || null,
+
+                  products:
+
+                    sel.products?.map(prod => ({
+
+                      productId:
+                        prod.productId || null,
+
+                      name:
+                        prod.name || "",
+
+                      category:
+                        prod.category || "",
+
+                      quantity:
+                        prod.quantity || 0
+                    })) || []
+
+                })) || [],
+
+              subtotal
+            };
+          }
+
+          // =================================================
+          // NORMAL PRODUCT
+          // =================================================
           return {
 
             productId:
