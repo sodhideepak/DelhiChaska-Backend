@@ -2681,7 +2681,10 @@ export const ensureKitchen = (req) => {
 
 
 
-// kitchen routes 
+// kitchen routes \   thisi th eprevious one 
+
+
+
 const kitchenViewOrdersByArea = asynchandler(async (req, res) => {
 
   // ─────────────────────────────────────────────
@@ -2727,25 +2730,26 @@ const kitchenViewOrdersByArea = asynchandler(async (req, res) => {
 
   // ─────────────────────────────────────────────
   // FILTER
-  // ONLY CONFIRMED + NOT DELIVERED
   // ─────────────────────────────────────────────
-const filter = {
+  const filter = {
 
-  status: "confirmed",
+    status: "confirmed",
 
-  // ✅ ONLY ACTIVE ORDERS
-  isorderdelivered: false,
+    isorderdelivered: false,
 
-  $expr: {
-    $in: [
-      {
-        $toLower: "$deliveryDetails.city"
-      },
-      cities.map(city => city.toLowerCase())
-    ]
-  }
-
-};
+    $expr: {
+      $in: [
+        {
+          $toLower:
+            "$deliveryDetails.city"
+        },
+        cities.map(
+          city =>
+            city.toLowerCase()
+        )
+      ]
+    }
+  };
 
   // ─────────────────────────────────────────────
   // PAGINATION
@@ -2788,7 +2792,6 @@ const filter = {
 
   // ─────────────────────────────────────────────
   // SIZE CONVERSION HELPER
-  // CONVERT ALL TO 16oz EQUIVALENT
   // ─────────────────────────────────────────────
   const convertTo16OzUnits = (
     size,
@@ -2826,7 +2829,6 @@ const filter = {
       return quantity * 0.5;
     }
 
-    // DEFAULT
     return quantity;
   };
 
@@ -2841,26 +2843,159 @@ const filter = {
 
       const size =
 
-        item.selectedVariant?.size || "";
+        item.selectedVariant?.size ||
+        "default";
 
       // =====================================================
-      // CONVERT TO 16oz EQUIVALENT
+      // COMBO ITEMS → USE SELECTIONS
       // =====================================================
+      if (
+        item.type === "combo" &&
+        item.selections?.length > 0
+      ) {
+
+        item.selections.forEach(selection => {
+
+          selection.products?.forEach(product => {
+
+            const productName =
+              product.name || "Unknown";
+
+            const category =
+              product.category || "Others";
+
+            const quantity =
+
+              (
+                product.quantity || 1
+              ) *
+              (
+                item.quantity || 1
+              );
+
+            // =====================================================
+            // CONVERT TO 16oz
+            // =====================================================
+            const equivalent16ozQty =
+
+              convertTo16OzUnits(
+                size,
+                quantity
+              );
+
+            // =====================================================
+            // UNIQUE KEY
+            // =====================================================
+            const key =
+              productName
+                .trim()
+                .toLowerCase();
+
+            // =====================================================
+            // CREATE
+            // =====================================================
+            if (
+              !aggregatedItemsMap[key]
+            ) {
+
+              aggregatedItemsMap[key] = {
+
+                name:
+                  productName,
+
+                category,
+
+                totalQuantity: 0,
+
+                total16ozEquivalent: 0,
+
+                variants: {}
+              };
+            }
+
+            // =====================================================
+            // TOTALS
+            // =====================================================
+            aggregatedItemsMap[
+              key
+            ].totalQuantity +=
+              quantity;
+
+            aggregatedItemsMap[
+              key
+            ].total16ozEquivalent +=
+              equivalent16ozQty;
+
+            // =====================================================
+            // BREADS → NO VARIANTS
+            // =====================================================
+            if (
+              category
+                ?.toLowerCase() ===
+              "breads"
+            ) {
+
+              return;
+            }
+
+            // =====================================================
+            // VARIANTS
+            // =====================================================
+            if (
+              !aggregatedItemsMap[
+                key
+              ].variants[size]
+            ) {
+
+              aggregatedItemsMap[
+                key
+              ].variants[size] = 0;
+            }
+
+            aggregatedItemsMap[
+              key
+            ].variants[size] +=
+              quantity;
+
+          });
+
+        });
+
+        return;
+      }
+
+      // =====================================================
+      // NORMAL PRODUCTS
+      // =====================================================
+      const quantity =
+        item.quantity || 0;
+
       const equivalent16ozQty =
 
         convertTo16OzUnits(
           size,
-          item.quantity
+          quantity
         );
+
+      // =====================================================
+      // CATEGORY
+      // =====================================================
+      const category =
+
+        item.category ||
+
+        "Others";
 
       // =====================================================
       // UNIQUE KEY
       // =====================================================
       const key =
-        `${item.name}_${item.type}`;
+        item.name
+          ?.trim()
+          ?.toLowerCase();
 
       // =====================================================
-      // CREATE IF NOT EXISTS
+      // CREATE
       // =====================================================
       if (
         !aggregatedItemsMap[key]
@@ -2871,12 +3006,10 @@ const filter = {
           name:
             item.name,
 
-          type:
-            item.type,
+          category,
 
           totalQuantity: 0,
 
-          // ✅ 16oz BASED COUNT
           total16ozEquivalent: 0,
 
           variants: {}
@@ -2884,23 +3017,32 @@ const filter = {
       }
 
       // =====================================================
-      // ORIGINAL QUANTITY
+      // TOTALS
       // =====================================================
       aggregatedItemsMap[
         key
       ].totalQuantity +=
-        item.quantity;
+        quantity;
 
-      // =====================================================
-      // 16oz EQUIVALENT TOTAL
-      // =====================================================
       aggregatedItemsMap[
         key
       ].total16ozEquivalent +=
         equivalent16ozQty;
 
       // =====================================================
-      // VARIANT WISE COUNT
+      // BREADS → NO VARIANTS
+      // =====================================================
+      if (
+        category
+          ?.toLowerCase() ===
+        "breads"
+      ) {
+
+        return;
+      }
+
+      // =====================================================
+      // VARIANTS
       // =====================================================
       if (
         !aggregatedItemsMap[
@@ -2916,8 +3058,10 @@ const filter = {
       aggregatedItemsMap[
         key
       ].variants[size] +=
-        item.quantity;
+        quantity;
+
     });
+
   });
 
   // ─────────────────────────────────────────────
@@ -2972,6 +3116,39 @@ const filter = {
             price:
               item.selectedVariant?.price || 0
           },
+
+          // ✅ COMBO SELECTIONS
+          selections:
+
+            item.type === "combo"
+
+              ?
+
+              item.selections?.map(sel => ({
+
+                ruleId:
+                  sel.ruleId || null,
+
+                products:
+
+                  sel.products?.map(prod => ({
+
+                    productId:
+                      prod.productId || null,
+
+                    name:
+                      prod.name || "",
+
+                    category:
+                      prod.category || "",
+
+                    quantity:
+                      prod.quantity || 0
+                  })) || []
+
+              })) || []
+
+              : [],
 
           subtotal:
             item.subtotal || 0
@@ -3051,7 +3228,7 @@ const filter = {
         orders:
           groupedOrders,
 
-        // ✅ KITCHEN SUMMARY
+        // ✅ CONSOLIDATED KITCHEN SUMMARY
         aggregatedItems,
 
         pagination: {
@@ -6711,6 +6888,7 @@ const getOrderUserDetailsForAdmin = asynchandler(async (req, res) => {
 
 
 
+
 const markOrderAsDelivered = asynchandler(async (req, res) => {
 
   // ─────────────────────────────────────────────
@@ -6866,100 +7044,50 @@ const markOrderAsDelivered = asynchandler(async (req, res) => {
   // ─────────────────────────────────────────────
   // SEND MAIL TO USER
   // ─────────────────────────────────────────────
-  await sendmail({
+  /*
+  await sendEmail({
 
-    email:
-      order?.userId?.email,
+    to: order?.userId?.email,
 
-    subject:
-      "Your Order Has Been Delivered",
+    subject: "Your Order Has Been Delivered",
 
     html: `
+      <h2>Order Delivered Successfully</h2>
 
-      <div style="font-family: Arial, sans-serif; padding: 20px;">
+      <p>Hello ${order?.userId?.full_name},</p>
 
-        <h2>
-          Order Delivered Successfully
-        </h2>
+      <p>Your order has been delivered successfully.</p>
 
-        <p>
-          Hello
-          ${order?.userId?.full_name || "User"},
-        </p>
+      <p>Order Id: ${order?._id}</p>
 
-        <p>
-          Your order has been delivered successfully.
-        </p>
-
-        <p>
-          <strong>Order Id:</strong>
-          ${order?._id}
-        </p>
-
-        <p>
-          <strong>Delivered At:</strong>
-          ${order?.deliveredAt}
-        </p>
-
-        <p>
-          Thank you for ordering with us.
-        </p>
-
-      </div>
+      <p>Thank you for ordering with us.</p>
     `
   });
+  */
 
   // ─────────────────────────────────────────────
   // SEND MAIL TO ADMIN
   // ─────────────────────────────────────────────
-  await sendmail({
+  /*
+  await sendEmail({
 
-    email:
-      process.env.ADMIN_EMAIL,
+    to: process.env.ADMIN_EMAIL,
 
-    subject:
-      "Order Delivered Update",
+    subject: "Order Delivered Update",
 
     html: `
+      <h2>Order Delivered</h2>
 
-      <div style="font-family: Arial, sans-serif; padding: 20px;">
+      <p>Order Id: ${order?._id}</p>
 
-        <h2>
-          Order Delivered
-        </h2>
+      <p>Area: ${area}</p>
 
-        <p>
-          <strong>Order Id:</strong>
-          ${order?._id}
-        </p>
+      <p>Sequence Number: ${sequenceNumber}</p>
 
-        <p>
-          <strong>Area:</strong>
-          ${area}
-        </p>
-
-        <p>
-          <strong>Sequence Number:</strong>
-          ${sequenceNumber}
-        </p>
-
-        <p>
-          <strong>Customer:</strong>
-          ${order?.userId?.full_name}
-        </p>
-
-        <p>
-          <strong>Customer Phone:</strong>
-          ${order?.userId?.phone_number}
-        </p>
-
-        <p>
-          Driver completed the delivery successfully.
-        </p>
-
-      </div>
+      <p>Driver completed the delivery successfully.</p>
     `
   });
+  */
 
   // ─────────────────────────────────────────────
   // RESPONSE
