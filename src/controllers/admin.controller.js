@@ -52,21 +52,45 @@ const calculate_age = function calculateAge(dob) {
 }
 
 const ensureSuperAdmin = (req) => {
-    const isSuperAdmin = req.staff?.email?.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
-console.log(req.staff?.email?.toLowerCase());
-console.log(SUPER_ADMIN_EMAIL.toLowerCase());
 
+    // convert env string into array
+    const superAdminEmails =
+        process.env.SUPER_ADMIN_EMAILS
+            ?.split(",")
+            .map(email =>
+                email.trim().toLowerCase()
+            ) || [];
+
+    const currentUserEmail =
+        req.staff?.email
+            ?.trim()
+            ?.toLowerCase();
+
+    console.log(currentUserEmail);
+    console.log(superAdminEmails);
+
+    const isSuperAdmin =
+        superAdminEmails.includes(
+            currentUserEmail
+        );
 
     if (!isSuperAdmin) {
-        throw new ApiError(403, "only super admin can perform this action");
+
+        throw new ApiError(
+            403,
+            "only super admin can perform this action"
+        );
     }
 
     return {
-        role: HARD_CODED_SUPER_ADMIN_ROLE,
-        email: req.staff.email
+
+        role:
+            HARD_CODED_SUPER_ADMIN_ROLE,
+
+        email:
+            req.staff.email
     };
 };
-
 
 
 const sendresetpasswordmail=asynchandler(async(fullname,email,token)=>{
@@ -683,7 +707,7 @@ const startEmployeeRegistration = asynchandler(async (req, res) => {
       phone,
       password,
       role,
-      assignedArea
+      // assignedArea
     ].some(
       (field) =>
         !field || field.toString().trim() === ""
@@ -727,7 +751,7 @@ const startEmployeeRegistration = asynchandler(async (req, res) => {
     password: hashedPassword,
     role,
     status: "not_verified",
-    assignedArea: assignedArea.trim().toLowerCase(),
+    // assignedArea: assignedArea.trim().toLowerCase(),
     profile_image: profile_image || ""
   });
 
@@ -788,7 +812,7 @@ const loginStaff = asynchandler(async (req, res) => {
     const { email, password } = req.body;
 
     const api = req.headers.apikey;
-    console.log(api);
+    // console.log(api);
 
     // ==========================
     // 🔒 Validation
@@ -1054,7 +1078,153 @@ console.log(tempEmployee.assignedArea);
 
 
 
+const editEmployeeDetails = asynchandler(async (req, res) => {
 
+    // ─────────────────────────────────────────────
+    // ONLY SUPER ADMIN
+    // ─────────────────────────────────────────────
+    ensureSuperAdmin(req);
+
+    // ─────────────────────────────────────────────
+    // PARAMS
+    // ─────────────────────────────────────────────
+    const { employeeId } = req.params;
+
+    // ─────────────────────────────────────────────
+    // BODY
+    // ─────────────────────────────────────────────
+    const {
+        name,
+        email,
+        password
+    } = req.body;
+
+    if (!employeeId) {
+
+        throw new ApiError(
+            400,
+            "Employee ID is required"
+        );
+    }
+
+    // ─────────────────────────────────────────────
+    // FIND EMPLOYEE
+    // ─────────────────────────────────────────────
+    const employee =
+        await Employee.findById(employeeId);
+
+    console.log(employee);
+
+    if (!employee) {
+
+        throw new ApiError(
+            404,
+            "Employee not found"
+        );
+    }
+
+    // ─────────────────────────────────────────────
+    // CHECK EMAIL DUPLICATE
+    // ─────────────────────────────────────────────
+    if (
+        email &&
+        email.toLowerCase() !==
+        employee.email.toLowerCase()
+    ) {
+
+        const existingEmployee =
+            await Employee.findOne({
+                email: email.toLowerCase()
+            });
+
+        if (existingEmployee) {
+
+            throw new ApiError(
+                409,
+                "Email already in use"
+            );
+        }
+    }
+
+    // ─────────────────────────────────────────────
+    // UPDATE NAME
+    // ─────────────────────────────────────────────
+    if (name) {
+
+        employee.name = name;
+    }
+
+    // ─────────────────────────────────────────────
+    // UPDATE EMAIL
+    // ─────────────────────────────────────────────
+    if (email) {
+
+        employee.email =
+            email.toLowerCase();
+    }
+
+    // ─────────────────────────────────────────────
+    // UPDATE PASSWORD
+    // HASH + COMPARE
+    // ─────────────────────────────────────────────
+    if (password) {
+
+        // // compare old password with new password
+        // const isSamePassword =
+        //     await bcrypt.compare(
+        //         password,
+        //         employee.password
+        //     );
+
+        // if (isSamePassword) {
+
+        //     throw new ApiError(
+        //         400,
+        //         "New password cannot be same as old password"
+        //     );
+        // }
+
+        // hash new password
+        const hashedPassword =
+            await bcrypt.hash(
+                password,
+                10
+            );
+
+        employee.password =
+            hashedPassword;
+    }
+
+    // ─────────────────────────────────────────────
+    // SAVE
+    // ─────────────────────────────────────────────
+    await employee.save();
+
+    // ─────────────────────────────────────────────
+    // RESPONSE
+    // ─────────────────────────────────────────────
+    return res.status(200).json(
+
+        new ApiResponse(
+            200,
+            {
+                employeeId:
+                    employee._id,
+
+                name:
+                    employee.name,
+
+                email:
+                    employee.email,
+
+                role:
+                    employee.role
+            },
+
+            "Employee details updated successfully"
+        )
+    );
+});
 
 
 
@@ -3564,6 +3734,7 @@ const getAllDrivers = asynchandler(async (req, res) => {
     assignedArea,
     isDriverAvailable,
     search,
+    upForNextDelivery,
     page = 1,
     limit = 10
   } = req.query;
@@ -3587,6 +3758,30 @@ const getAllDrivers = asynchandler(async (req, res) => {
 
     filter.status =
       status.trim().toLowerCase();
+  }
+
+  // ─────────────────────────────────────────────
+  // UP FOR NEXT DELIVERY FILTER
+  // Example:
+  // ?upForNextDelivery=true
+  // ─────────────────────────────────────────────
+  if (
+    typeof upForNextDelivery === "string"
+  ) {
+
+    const upForNextDeliveryValue =
+      upForNextDelivery
+        .trim()
+        .toLowerCase();
+
+    if (
+      upForNextDeliveryValue === "true" ||
+      upForNextDeliveryValue === "false"
+    ) {
+
+      filter.upForNextDelivery =
+        upForNextDeliveryValue === "true";
+    }
   }
 
   // ─────────────────────────────────────────────
@@ -3674,6 +3869,8 @@ const getAllDrivers = asynchandler(async (req, res) => {
 
     ];
   }
+
+
 
   // ✅ DEBUG
   console.log(filter);
@@ -4510,6 +4707,9 @@ const getAllDriversfull = asynchandler(async (req, res) => {
       status:
         driver.status,
 
+      upForNextDelivery:
+        driver.upForNextDelivery || false,
+
       profile_image:
         driver.profile_image || "",
 
@@ -4572,7 +4772,16 @@ const resetAllDrivers = asynchandler(async (req, res) => {
         $set: {
 
           // ✅ DRIVER AVAILABLE AGAIN
-          isDriverAvailable: true
+          isDriverAvailable: true,
+
+          // ✅ REMOVE NEXT DELIVERY STATUS
+          upForNextDelivery: false,
+
+          // ✅ CLEAR NEXT DELIVERY DATE
+          nextDeliveryDate: null,
+
+          // ✅ CLEAR NOTES
+          nextDeliveryNotes: ""
         }
       }
     );
@@ -4638,11 +4847,10 @@ const resetAllDrivers = asynchandler(async (req, res) => {
 
       },
 
-      "All drivers, confirmed orders, and delivery batches reset successfully"
+      "All drivers, orders, and delivery scheduling reset successfully"
     )
   );
 });
-
 
 
 
@@ -4662,6 +4870,7 @@ const deleteEmployee = asynchandler(async (req, res) => {
   const { employeeId } = req.params;
 
   if (!employeeId) {
+
     throw new ApiError(
       400,
       "Employee ID is required"
@@ -4675,6 +4884,7 @@ const deleteEmployee = asynchandler(async (req, res) => {
     await Employee.findById(employeeId);
 
   if (!employee) {
+
     throw new ApiError(
       404,
       "Employee not found"
@@ -4688,11 +4898,31 @@ const deleteEmployee = asynchandler(async (req, res) => {
     req.staff?._id?.toString() ===
     employee._id.toString()
   ) {
+
     throw new ApiError(
       400,
       "You cannot delete yourself"
     );
   }
+
+  // ─────────────────────────────────────────────
+  // UNASSIGN DRIVER ORDERS
+  // ─────────────────────────────────────────────
+  await Order.updateMany(
+    {
+      "deliveryAssignment.driverId":
+        employeeId
+    },
+    {
+      $set: {
+        "deliveryAssignment.batchId":
+          null,
+
+        "deliveryAssignment.driverId":
+          null
+      }
+    }
+  );
 
   // ─────────────────────────────────────────────
   // DELETE EMPLOYEE
@@ -4705,6 +4935,7 @@ const deleteEmployee = asynchandler(async (req, res) => {
   // RESPONSE
   // ─────────────────────────────────────────────
   return res.status(200).json(
+
     new ApiResponse(
       200,
       {
@@ -4717,24 +4948,11 @@ const deleteEmployee = asynchandler(async (req, res) => {
         role:
           employee.role
       },
-      "Employee deleted successfully"
+
+      "Employee deleted and orders unassigned successfully"
     )
   );
 });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -5753,7 +5971,6 @@ const getUnassignedConfirmedOrders = asynchandler(async (req, res) => {
     )
   );
 });
-
 
 
 
@@ -7539,6 +7756,151 @@ const getAllDeliveryBatches = asynchandler(async (req, res) => {
 
 
 
+const setDriverForNextDelivery = asynchandler(async (req, res) => {
+
+    // ─────────────────────────────────────────────
+    // ONLY SUPER ADMIN
+    // ─────────────────────────────────────────────
+    ensureSuperAdmin(req);
+
+    // ─────────────────────────────────────────────
+    // PARAMS
+    // ─────────────────────────────────────────────
+    const { driverId } = req.query;
+    console.log(req.query);
+    
+
+    // ─────────────────────────────────────────────
+    // BODY
+    // ─────────────────────────────────────────────
+    const {
+        upForNextDelivery,
+        nextDeliveryDate,
+        nextDeliveryNotes
+    } = req.body;
+
+    // ─────────────────────────────────────────────
+    // VALIDATION
+    // ─────────────────────────────────────────────
+    if (!driverId) {
+
+        throw new ApiError(
+            400,
+            "Driver ID is required"
+        );
+    }
+
+    // ─────────────────────────────────────────────
+    // FIND DRIVER
+    // ─────────────────────────────────────────────
+    const driver =
+        await Employee.findById(driverId);
+
+    if (!driver) {
+
+        throw new ApiError(
+            404,
+            "Driver not found"
+        );
+    }
+
+    // ─────────────────────────────────────────────
+    // CHECK ROLE
+    // ─────────────────────────────────────────────
+    if (driver.role !== "driver") {
+
+        throw new ApiError(
+            400,
+            "Selected employee is not a driver"
+        );
+    }
+
+    // ─────────────────────────────────────────────
+    // UPDATE DRIVER STATUS
+    // ─────────────────────────────────────────────
+    if (
+        typeof upForNextDelivery ===
+        "boolean"
+    ) {
+
+        driver.upForNextDelivery =
+            upForNextDelivery;
+    }
+
+    // ─────────────────────────────────────────────
+    // SET DELIVERY DATE
+    // ─────────────────────────────────────────────
+    if (nextDeliveryDate) {
+
+        driver.nextDeliveryDate =
+            new Date(nextDeliveryDate);
+    }
+
+    // ─────────────────────────────────────────────
+    // SET NOTES
+    // ─────────────────────────────────────────────
+    if (nextDeliveryNotes) {
+
+        driver.nextDeliveryNotes =
+            nextDeliveryNotes;
+    }
+
+    // ─────────────────────────────────────────────
+    // IF REMOVED FROM NEXT DELIVERY
+    // RESET DATE + NOTES
+    // ─────────────────────────────────────────────
+    if (
+        upForNextDelivery === false
+    ) {
+
+        driver.nextDeliveryDate =
+            null;
+
+        driver.nextDeliveryNotes =
+            "";
+    }
+
+    // ─────────────────────────────────────────────
+    // SAVE
+    // ─────────────────────────────────────────────
+    await driver.save();
+
+    // ─────────────────────────────────────────────
+    // RESPONSE
+    // ─────────────────────────────────────────────
+    return res.status(200).json(
+
+        new ApiResponse(
+            200,
+            {
+                driverId:
+                    driver._id,
+
+                name:
+                    driver.name,
+
+                email:
+                    driver.email,
+
+                upForNextDelivery:
+                    driver.upForNextDelivery,
+
+                nextDeliveryDate:
+                    driver.nextDeliveryDate,
+
+                nextDeliveryNotes:
+                    driver.nextDeliveryNotes
+            },
+
+            "Driver next delivery status updated successfully"
+        )
+    );
+});
+
+
+
+
+
 export {
         registeruser,
         startEmployeeRegistration,
@@ -7590,5 +7952,7 @@ export {
         deleteAllOrders,
         getOrderUserDetailsForAdmin,
         markOrderAsDelivered,
-        getAllDeliveryBatches
+        getAllDeliveryBatches,
+        editEmployeeDetails,
+        setDriverForNextDelivery
     }

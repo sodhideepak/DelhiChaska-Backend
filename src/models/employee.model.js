@@ -62,6 +62,34 @@ const employeeSchema = new mongoose.Schema(
     },
 
     // ─────────────────────────────────────────────
+    // NEXT DELIVERY CONFIG
+    // if admin selects this driver
+    // for upcoming delivery scheduling
+    // ─────────────────────────────────────────────
+    upForNextDelivery: {
+      type: Boolean,
+      default: false
+    },
+
+    // ─────────────────────────────────────────────
+    // NEXT DELIVERY DATE
+    // admin assigned delivery date
+    // ─────────────────────────────────────────────
+    nextDeliveryDate: {
+      type: Date,
+      default: null
+    },
+
+    // ─────────────────────────────────────────────
+    // OPTIONAL NOTES
+    // ─────────────────────────────────────────────
+    nextDeliveryNotes: {
+      type: String,
+      trim: true,
+      default: ""
+    },
+
+    // ─────────────────────────────────────────────
     // EMPLOYEE STATUS
     // ─────────────────────────────────────────────
     status: {
@@ -120,7 +148,14 @@ employeeSchema.methods.generateAccessToken =
           this.assignedArea,
 
         isDriverAvailable:
-          this.isDriverAvailable
+          this.isDriverAvailable,
+
+        // ✅ NEW FIELDS
+        upForNextDelivery:
+          this.upForNextDelivery,
+
+        nextDeliveryDate:
+          this.nextDeliveryDate
       },
 
       process.env.Access_Token_Secret,

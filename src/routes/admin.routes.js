@@ -54,7 +54,9 @@ import {
         deleteAllOrders,
         getOrderUserDetailsForAdmin,
         markOrderAsDelivered,
-        getAllDeliveryBatches
+        getAllDeliveryBatches,
+        editEmployeeDetails,
+        setDriverForNextDelivery
      } from "../controllers/admin.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
@@ -76,7 +78,7 @@ router.route("/employees/all").get(verifyStaffJWT,getAllEmployeesByStatus)
 router.route("/employee/verify/:tempEmployeeId").post(verifyStaffJWT,verifyEmployeeRegistration)
 router.route("/employee/login").post(loginStaff)
 router.route("/employee/logout").post(verifyStaffJWT,logoutStaff)
-
+router.route("/employee/edit/:employeeId").patch(verifyStaffJWT,editEmployeeDetails)
 
 router.route("/sendotp").post(send_otp)
 
@@ -215,7 +217,7 @@ router.route("/deliverybatch/reorder/:batchId").patch(verifyStaffJWT,reorderDeli
 router.route("/deliverybatch/finalize/:batchId").patch(verifyStaffJWT,finalizeDeliveryBatch)
 router.route("/driver/batches").get(verifyStaffJWT,driverViewMyBatches)
 router.route("/driver/markorderdelivered/:orderId").post(verifyStaffJWT,upload.single("deliveryImage"),markOrderAsDelivered)  
-
+router.route("/setdriverfornextdelivery").post(verifyStaffJWT,setDriverForNextDelivery)
 
 
 
