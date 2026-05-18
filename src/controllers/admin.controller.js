@@ -6684,6 +6684,203 @@ const getUnassignedConfirmedOrders = asynchandler(async (req, res) => {
 
 
 
+
+const unassignSingleOrder = asynchandler(async (req, res) => {
+
+  ensureSuperAdmin(req);
+
+  // ─────────────────────────────────────────────
+  // PARAMS
+  // ─────────────────────────────────────────────
+  const { orderId } =
+    req.params;
+
+  if (!orderId) {
+
+    throw new ApiError(
+      400,
+      "Order ID is required"
+    );
+  }
+
+  // ─────────────────────────────────────────────
+  // FIND ORDER
+  // ─────────────────────────────────────────────
+  const order =
+    await Order.findById(orderId)
+
+      .populate(
+        "userId",
+        `
+        username
+        full_name
+        email
+        phone_number
+        `
+      );
+
+  if (!order) {
+
+    throw new ApiError(
+      404,
+      "Order not found"
+    );
+  }
+
+  // ─────────────────────────────────────────────
+  // CHECK ASSIGNMENT
+  // ─────────────────────────────────────────────
+  if (
+    !order.deliveryAssignment ||
+    !order.deliveryAssignment.batchId
+  ) {
+
+    throw new ApiError(
+      400,
+      "Order is already unassigned"
+    );
+  }
+
+  // ─────────────────────────────────────────────
+  // REMOVE ORDER FROM BATCH
+  // ─────────────────────────────────────────────
+  const batchId =
+    order.deliveryAssignment.batchId;
+
+  await DeliveryBatch.findByIdAndUpdate(
+
+    batchId,
+
+    {
+      $pull: {
+
+        orders: {
+          orderId:
+            order._id
+        }
+      }
+    }
+  );
+
+  // ─────────────────────────────────────────────
+  // REMOVE DELIVERY ASSIGNMENT
+  // ─────────────────────────────────────────────
+  order.deliveryAssignment = {
+    batchId: null,
+    driverId: null,
+    deliverySequence: null,
+    assignedAt: null
+  };
+
+  await order.save();
+
+  // ─────────────────────────────────────────────
+  // RESPONSE
+  // ─────────────────────────────────────────────
+  return res.status(200).json(
+
+    new ApiResponse(
+      200,
+      {
+
+        orderId:
+          order._id,
+
+        user: {
+
+          userId:
+            order.userId?._id,
+
+          username:
+            order.userId?.username || "",
+
+          full_name:
+            order.userId?.full_name || "",
+
+          email:
+            order.userId?.email || "",
+
+          phone:
+            order.userId?.phone_number || ""
+        },
+
+        status:
+          order.status,
+
+        totalAmount:
+          order.totalAmount,
+
+        payment:
+          order.payment || {},
+
+        deliveryDetails: {
+
+          addressLine1:
+            order.deliveryDetails
+              ?.addressLine1 || "",
+
+          addressLine2:
+            order.deliveryDetails
+              ?.addressLine2 || "",
+
+          city:
+            order.deliveryDetails
+              ?.city || "",
+
+          state:
+            order.deliveryDetails
+              ?.state || "",
+
+          zipCode:
+            order.deliveryDetails
+              ?.zipCode || "",
+
+          country:
+            order.deliveryDetails
+              ?.country || ""
+        },
+
+        itemCount:
+          order.items?.length || 0,
+
+        items:
+          order.items?.map(item => ({
+
+            productId:
+              item.productId,
+
+            name:
+              item.name,
+
+            quantity:
+              item.quantity,
+
+            price:
+              item.price,
+
+            type:
+              item.type,
+
+            total:
+              item.price *
+              item.quantity
+          })) || [],
+
+        deliveryAssignment:
+          order.deliveryAssignment,
+
+        placedAt:
+          order.createdAt
+      },
+
+      "Order unassigned successfully"
+    )
+  );
+});
+
+
+
+
 const resetConfirmedOrders = asynchandler(async (req, res) => {
 
   ensureSuperAdmin(req);
@@ -8669,5 +8866,6 @@ export {
         getAllDeliveryBatches,
         editEmployeeDetails,
         setDriverForNextDelivery,
-        adminViewDriverBatches
+        adminViewDriverBatches,
+        unassignSingleOrder
     }

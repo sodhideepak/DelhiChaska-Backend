@@ -57,7 +57,8 @@ import {
         getAllDeliveryBatches,
         editEmployeeDetails,
         setDriverForNextDelivery,
-        adminViewDriverBatches
+        adminViewDriverBatches,
+        unassignSingleOrder
      } from "../controllers/admin.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
@@ -156,6 +157,7 @@ router.route("/orders/kitchen/area").get(verifyStaffJWT,kitchenViewOrdersByArea)
 router.route("/orders/getuserdetails/:orderId").get(verifyStaffJWT,getOrderUserDetailsForAdmin)
     
 
+router.route("/unassignSingleOrder/:orderId").post(verifyStaffJWT,unassignSingleOrder)
 
 router.route("/orders/unassigned-confirmed").get(verifyStaffJWT,getUnassignedConfirmedOrders)
 
