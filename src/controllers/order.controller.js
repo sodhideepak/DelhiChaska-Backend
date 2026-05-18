@@ -2376,19 +2376,14 @@ else if (item.type === "combo") {
     paymentDetails = {
 
       venmoId:
-        "@north-store",
+        "https://venmo.com/u/Delhi-Chaska",
+      
+      Zelle_name:
+        "Neelam Gogna",
 
-      bankName:
-        "bay area Chase Bank",
+      zell_number:
+        "3176032757",
 
-      accountName:
-        "North Foods LLC",
-
-      accountNumber:
-        "XXXXXX1234",
-
-      routingNumber:
-        "021000021"
     };
   }
 
@@ -2397,19 +2392,13 @@ else if (item.type === "combo") {
     paymentDetails = {
 
       venmoId:
-        "@south-store",
+        "https://venmo.com/u/Delhi-Chaska",
 
-      bankName:
-        "Seattle Bank of America",
+      Zelle_name:
+        "Parminder singh",
 
-      accountName:
-        "South Foods LLC",
-
-      accountNumber:
-        "XXXXXX5678",
-
-      routingNumber:
-        "026009593"
+      zell_number:
+        "+1 (206) 913-9361"
     };
   }
 
@@ -2577,23 +2566,17 @@ else if (item.type === "combo") {
 
     <p>
 
-      <strong>Bank Name:</strong>
-      ${paymentDetails.bankName}
+      <strong>Zelle Name:</strong>
+      ${paymentDetails.Zelle_name}
 
       <br/>
 
-      <strong>Account Name:</strong>
-      ${paymentDetails.accountName}
+      <strong>Zelle Number:</strong>
+      ${paymentDetails.zell_number}
 
       <br/>
 
-      <strong>Account Number:</strong>
-      ${paymentDetails.accountNumber}
-
-      <br/>
-
-      <strong>Routing Number:</strong>
-      ${paymentDetails.routingNumber}
+      Please complete the payment at your earliest convenience. Your order will got mail after admin confirms order and payment.
 
     </p>
   `;

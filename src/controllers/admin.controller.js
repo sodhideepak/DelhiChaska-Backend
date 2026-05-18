@@ -707,7 +707,7 @@ const startEmployeeRegistration = asynchandler(async (req, res) => {
       phone,
       password,
       role,
-      // assignedArea
+      assignedArea
     ].some(
       (field) =>
         !field || field.toString().trim() === ""
@@ -751,7 +751,7 @@ const startEmployeeRegistration = asynchandler(async (req, res) => {
     password: hashedPassword,
     role,
     status: "not_verified",
-    // assignedArea: assignedArea.trim().toLowerCase(),
+    assignedArea: assignedArea.trim().toLowerCase(),
     profile_image: profile_image || ""
   });
 
@@ -7921,6 +7921,11 @@ const markOrderAsDelivered = asynchandler(async (req, res) => {
   // ─────────────────────────────────────────────
   const deliveryImageLocalPath =
     req.file?.path;
+
+    console.log(req.file);
+    
+  console.log(deliveryImageLocalPath);
+  
 
   if (!deliveryImageLocalPath) {
 
