@@ -3942,6 +3942,10 @@ const getAllDrivers = asynchandler(async (req, res) => {
       isDriverAvailable:
         driver.isDriverAvailable,
 
+      upForNextDelivery:
+        driver.upForNextDelivery || false,
+      nextDeliveryDate:
+        driver.nextDeliveryDate || null,
       status:
         driver.status,
 
@@ -4982,7 +4986,11 @@ const createDeliveryBatch = asynchandler(async (req, res) => {
     area
   } = req.body;
 
+  // ─────────────────────────────────────────────
+  // VALIDATION
+  // ─────────────────────────────────────────────
   if (!driverId) {
+
     throw new ApiError(
       400,
       "Driver ID required"
@@ -4994,13 +5002,16 @@ const createDeliveryBatch = asynchandler(async (req, res) => {
     !Array.isArray(orderIds) ||
     orderIds.length === 0
   ) {
+
     throw new ApiError(
       400,
       "Orders required"
     );
   }
 
+  // ─────────────────────────────────────────────
   // DRIVER
+  // ─────────────────────────────────────────────
   const driver =
     await Employee.findById(driverId);
 
@@ -5008,13 +5019,16 @@ const createDeliveryBatch = asynchandler(async (req, res) => {
     !driver ||
     driver.role !== "driver"
   ) {
+
     throw new ApiError(
       404,
       "Driver not found"
     );
   }
 
+  // ─────────────────────────────────────────────
   // CREATE BATCH
+  // ─────────────────────────────────────────────
   const batch =
     await DeliveryBatch.create({
 
@@ -5034,7 +5048,9 @@ const createDeliveryBatch = asynchandler(async (req, res) => {
         )
     });
 
+  // ─────────────────────────────────────────────
   // UPDATE ORDERS
+  // ─────────────────────────────────────────────
   for (
     let i = 0;
     i < orderIds.length;
@@ -5061,10 +5077,96 @@ const createDeliveryBatch = asynchandler(async (req, res) => {
     );
   }
 
+  // ─────────────────────────────────────────────
+  // FETCH UPDATED ORDERS
+  // WITH USER DETAILS
+  // ─────────────────────────────────────────────
+  const updatedOrders =
+    await Order.find({
+
+      _id: {
+        $in: orderIds
+      }
+
+    })
+
+      .populate(
+        "userId",
+        `
+        username
+        full_name
+        email
+        phone_number
+        `
+      )
+
+      .lean();
+
+  // ─────────────────────────────────────────────
+  // FORMAT RESPONSE
+  // ─────────────────────────────────────────────
+  const formattedOrders =
+    updatedOrders.map(order => ({
+
+      orderId:
+        order._id,
+
+      user: {
+
+        userId:
+          order.userId?._id,
+
+        username:
+          order.userId?.username || "",
+
+        full_name:
+          order.userId?.full_name || "",
+
+        email:
+          order.userId?.email || "",
+
+        phone:
+          order.userId?.phone_number || ""
+      },
+
+      deliverySequence:
+        order.deliveryAssignment
+          ?.deliverySequence || null
+    }));
+
+  // ─────────────────────────────────────────────
+  // RESPONSE
+  // ─────────────────────────────────────────────
   return res.status(200).json(
+
     new ApiResponse(
       200,
-      batch,
+      {
+        batchId:
+          batch._id,
+
+        driver: {
+
+          driverId:
+            driver._id,
+
+          name:
+            driver.name,
+
+          email:
+            driver.email
+        },
+
+        area:
+          batch.area,
+
+        totalOrders:
+          formattedOrders.length,
+
+        orders:
+          formattedOrders
+      },
+
       "Orders assigned successfully"
     )
   );
@@ -5098,7 +5200,7 @@ const getDeliveryBatchDetails = asynchandler(async (req, res) => {
       populate: {
         path: "userId",
         select:
-          "full_name phone_number"
+          "full_name phone_number username"
       }
     });
 
@@ -5129,7 +5231,10 @@ const getDeliveryBatchDetails = asynchandler(async (req, res) => {
             order.userId?.full_name,
 
           phone:
-            order.userId?.phone_number
+            order.userId?.phone_number,
+
+          username:
+            order.userId?.username
         },
 
         address:
@@ -5182,29 +5287,56 @@ const reorderDeliveryBatch = asynchandler(async (req, res) => {
 
   ensureSuperAdmin(req);
 
+  // ─────────────────────────────────────────────
+  // PARAMS & BODY
+  // ─────────────────────────────────────────────
   const { batchId } =
     req.params;
 
   const { orders } =
     req.body;
 
+  // ─────────────────────────────────────────────
+  // VALIDATION
+  // ─────────────────────────────────────────────
+  if (
+    !orders ||
+    !Array.isArray(orders) ||
+    orders.length === 0
+  ) {
+
+    throw new ApiError(
+      400,
+      "Orders array is required"
+    );
+  }
+
+  // ─────────────────────────────────────────────
+  // FIND BATCH
+  // ─────────────────────────────────────────────
   const batch =
     await DeliveryBatch.findById(
       batchId
     );
 
   if (!batch) {
+
     throw new ApiError(
       404,
       "Batch not found"
     );
   }
 
+  // ─────────────────────────────────────────────
+  // UPDATE BATCH ORDER
+  // ─────────────────────────────────────────────
   batch.orders = orders;
 
   await batch.save();
 
-  // UPDATE ORDERS
+  // ─────────────────────────────────────────────
+  // UPDATE ORDER SEQUENCES
+  // ─────────────────────────────────────────────
   for (const item of orders) {
 
     await Order.findByIdAndUpdate(
@@ -5218,36 +5350,131 @@ const reorderDeliveryBatch = asynchandler(async (req, res) => {
     );
   }
 
+  // ─────────────────────────────────────────────
+  // FETCH UPDATED ORDERS
+  // WITH USER DETAILS
+  // ─────────────────────────────────────────────
+  const updatedOrders =
+    await Order.find({
+
+      _id: {
+        $in: orders.map(
+          item => item.orderId
+        )
+      }
+
+    })
+
+      .populate(
+        "userId",
+        `
+        username
+        full_name
+        email
+        phone_number
+        `
+      )
+
+      .lean();
+
+  // ─────────────────────────────────────────────
+  // FORMAT RESPONSE
+  // ─────────────────────────────────────────────
+  const formattedOrders =
+    updatedOrders.map(order => ({
+
+      orderId:
+        order._id,
+
+      user: {
+
+        userId:
+          order.userId?._id,
+
+        username:
+          order.userId?.username || "",
+
+        full_name:
+          order.userId?.full_name || "",
+
+        email:
+          order.userId?.email || "",
+
+        phone:
+          order.userId?.phone_number || ""
+      },
+
+      deliverySequence:
+        order.deliveryAssignment
+          ?.deliverySequence || null
+    }))
+
+    // sort according to sequence
+    .sort(
+      (a, b) =>
+        a.deliverySequence -
+        b.deliverySequence
+    );
+
+  // ─────────────────────────────────────────────
+  // RESPONSE
+  // ─────────────────────────────────────────────
   return res.status(200).json(
+
     new ApiResponse(
       200,
-      batch,
+      {
+        batchId:
+          batch._id,
+
+        driverId:
+          batch.driverId,
+
+        area:
+          batch.area,
+
+        totalOrders:
+          formattedOrders.length,
+
+        orders:
+          formattedOrders
+      },
+
       "Batch reordered successfully"
     )
   );
 });
 
 
-
 const finalizeDeliveryBatch = asynchandler(async (req, res) => {
 
   ensureSuperAdmin(req);
 
+  // ─────────────────────────────────────────────
+  // PARAMS
+  // ─────────────────────────────────────────────
   const { batchId } =
     req.params;
 
+  // ─────────────────────────────────────────────
+  // FIND BATCH
+  // ─────────────────────────────────────────────
   const batch =
     await DeliveryBatch.findById(
       batchId
     );
 
   if (!batch) {
+
     throw new ApiError(
       404,
       "Batch not found"
     );
   }
 
+  // ─────────────────────────────────────────────
+  // FINALIZE BATCH
+  // ─────────────────────────────────────────────
   batch.status =
     "finalized";
 
@@ -5256,10 +5483,107 @@ const finalizeDeliveryBatch = asynchandler(async (req, res) => {
 
   await batch.save();
 
+  // ─────────────────────────────────────────────
+  // FETCH ORDERS
+  // WITH USER DETAILS
+  // ─────────────────────────────────────────────
+  const batchOrderIds =
+    batch.orders.map(
+      item => item.orderId
+    );
+
+  const orders =
+    await Order.find({
+
+      _id: {
+        $in: batchOrderIds
+      }
+
+    })
+
+      .populate(
+        "userId",
+        `
+        username
+        full_name
+        email
+        phone_number
+        `
+      )
+
+      .lean();
+
+  // ─────────────────────────────────────────────
+  // FORMAT ORDERS
+  // ─────────────────────────────────────────────
+  const formattedOrders =
+    batch.orders.map(batchOrder => {
+
+      const order =
+        orders.find(
+          o =>
+            o._id.toString() ===
+            batchOrder.orderId.toString()
+        );
+
+      return {
+
+        orderId:
+          order?._id,
+
+        user: {
+
+          userId:
+            order?.userId?._id,
+
+          username:
+            order?.userId?.username || "",
+
+          full_name:
+            order?.userId?.full_name || "",
+
+          email:
+            order?.userId?.email || "",
+
+          phone:
+            order?.userId?.phone_number || ""
+        },
+
+        deliverySequence:
+          batchOrder.sequence
+      };
+    });
+
+  // ─────────────────────────────────────────────
+  // RESPONSE
+  // ─────────────────────────────────────────────
   return res.status(200).json(
+
     new ApiResponse(
       200,
-      batch,
+      {
+        batchId:
+          batch._id,
+
+        driverId:
+          batch.driverId,
+
+        area:
+          batch.area,
+
+        status:
+          batch.status,
+
+        finalizedAt:
+          batch.finalizedAt,
+
+        totalOrders:
+          formattedOrders.length,
+
+        orders:
+          formattedOrders
+      },
+
       "Batch finalized successfully"
     )
   );
@@ -5570,6 +5894,391 @@ const driverViewMyBatches = asynchandler(async (req, res) => {
 });
 
 
+
+
+
+const adminViewDriverBatches = asynchandler(async (req, res) => {
+
+  // ─────────────────────────────────────────────
+  // ONLY SUPER ADMIN
+  // ─────────────────────────────────────────────
+  ensureSuperAdmin(req);
+
+  // ─────────────────────────────────────────────
+  // PARAMS
+  // ─────────────────────────────────────────────
+  const { driverId } =
+    req.params;
+
+  if (!driverId) {
+
+    throw new ApiError(
+      400,
+      "Driver ID is required"
+    );
+  }
+
+  // ─────────────────────────────────────────────
+  // CHECK DRIVER
+  // ─────────────────────────────────────────────
+  const driver =
+    await Employee.findById(driverId);
+
+  if (
+    !driver ||
+    driver.role !== "driver"
+  ) {
+
+    throw new ApiError(
+      404,
+      "Driver not found"
+    );
+  }
+
+  // ─────────────────────────────────────────────
+  // FETCH BATCHES
+  // ─────────────────────────────────────────────
+  const batches =
+    await DeliveryBatch.find({
+
+      driverId,
+
+      status: {
+
+        $in: [
+          "finalized",
+          "in_delivery"
+        ]
+      }
+    })
+
+    // ✅ POPULATE ORDERS
+    .populate({
+
+      path:
+        "orders.orderId",
+
+      populate: {
+
+        path:
+          "userId",
+
+        select:
+          `
+          username
+          full_name
+          email
+          phone_number
+          `
+      }
+    })
+
+    .sort({
+      createdAt: -1
+    });
+
+  // ─────────────────────────────────────────────
+  // EMPTY RESPONSE
+  // ─────────────────────────────────────────────
+  if (
+    !batches ||
+    batches.length === 0
+  ) {
+
+    return res.status(200).json(
+
+      new ApiResponse(
+
+        200,
+
+        {
+
+          driver: {
+
+            driverId:
+              driver._id,
+
+            name:
+              driver.name,
+
+            email:
+              driver.email
+          },
+
+          summary: {
+
+            totalBatches: 0,
+
+            totalOrders: 0,
+
+            totalDeliveries: 0
+          },
+
+          batches: []
+        },
+
+        "No delivery batches found"
+      )
+    );
+  }
+
+  // ─────────────────────────────────────────────
+  // SUMMARY
+  // ─────────────────────────────────────────────
+  let totalOrders = 0;
+
+  let totalDeliveries = 0;
+
+  // ─────────────────────────────────────────────
+  // FORMAT BATCHES
+  // ─────────────────────────────────────────────
+  const formattedBatches =
+
+    batches.map(batch => {
+
+      totalOrders +=
+        batch.orders.length;
+
+      totalDeliveries +=
+        batch.orders.length;
+
+      return {
+
+        batchId:
+          batch._id,
+
+        status:
+          batch.status,
+
+        createdAt:
+          batch.createdAt,
+
+        updatedAt:
+          batch.updatedAt,
+
+        finalizedAt:
+          batch.finalizedAt || null,
+
+        totalOrders:
+          batch.orders.length,
+
+        // ===================================================
+        // ORDERS
+        // ===================================================
+        orders:
+          batch.orders.map(orderData => {
+
+            const order =
+              orderData.orderId;
+
+            return {
+
+              // ✅ SEQUENCE
+              sequence:
+                orderData?.sequence || null,
+
+              deliverySequence:
+                orderData?.sequence || null,
+
+              // ✅ ORDER DETAILS
+              orderId:
+                order?._id || null,
+
+              orderNumber:
+                order?._id
+                  ?.toString()
+                  ?.slice(-6)
+                  ?.toUpperCase(),
+
+              totalAmount:
+                order?.totalAmount || 0,
+
+              status:
+                order?.status || "",
+
+              deliveredAt:
+                order?.deliveredAt || null,
+
+              isorderdelivered:
+                order?.isorderdelivered || false,
+
+              deliveryProofImage:
+                order?.deliveryProofImage || null,
+
+              paymentRequested:
+                order?.paymentRequested || false,
+
+              deliveryDate:
+                order?.deliveryDate || null,
+
+              paymentStatus:
+                order?.payment?.status || "",
+
+              paymentMethod:
+                order?.payment?.method || "",
+
+              // ✅ USER DETAILS
+              user: {
+
+                userId:
+                  order?.userId?._id || null,
+
+                username:
+                  order?.userId?.username || "",
+
+                full_name:
+                  order?.userId?.full_name || "",
+
+                email:
+                  order?.userId?.email || "",
+
+                phone_number:
+                  order?.userId?.phone_number || ""
+              },
+
+              // ✅ DELIVERY DETAILS
+              deliveryDetails: {
+
+                addressId:
+                  order?.deliveryDetails?.addressId || null,
+
+                addressLine1:
+                  order?.deliveryDetails?.addressLine1 || "",
+
+                addressLine2:
+                  order?.deliveryDetails?.addressLine2 || "",
+
+                city:
+                  order?.deliveryDetails?.city || "",
+
+                state:
+                  order?.deliveryDetails?.state || "",
+
+                zipCode:
+                  order?.deliveryDetails?.zipCode || "",
+
+                country:
+                  order?.deliveryDetails?.country || "",
+
+                phone:
+                  order?.deliveryDetails?.phone || "",
+
+                instructions:
+                  order?.deliveryDetails?.instructions || "",
+
+                location: {
+
+                  lat:
+                    order?.deliveryDetails?.location?.lat || null,
+
+                  lng:
+                    order?.deliveryDetails?.location?.lng || null
+                }
+              },
+
+              // ✅ ITEMS
+              items:
+                order?.items?.map(item => ({
+
+                  name:
+                    item.name || "",
+
+                  quantity:
+                    item.quantity || 0,
+
+                  type:
+                    item.type || "",
+
+                  variant: {
+
+                    size:
+                      item.selectedVariant?.size || "",
+
+                    price:
+                      item.selectedVariant?.price || 0
+                  },
+
+                  subtotal:
+                    item.subtotal || 0
+                })) || [],
+
+              itemCount:
+                order?.items?.length || 0,
+
+              placedAt:
+                order?.createdAt || null
+            };
+          })
+
+          // ✅ SORT BY SEQUENCE
+          .sort(
+            (a, b) =>
+
+              (a.sequence || 0) -
+              (b.sequence || 0)
+          )
+      };
+    });
+
+  // ─────────────────────────────────────────────
+  // RESPONSE
+  // ─────────────────────────────────────────────
+  return res.status(200).json(
+
+    new ApiResponse(
+
+      200,
+
+      {
+
+        // ✅ DRIVER DETAILS
+        driver: {
+
+          driverId:
+            driver._id,
+
+          name:
+            driver.name,
+
+          email:
+            driver.email,
+
+          phone:
+            driver.phone,
+
+          assignedArea:
+            driver.assignedArea,
+
+          isDriverAvailable:
+            driver.isDriverAvailable,
+
+          upForNextDelivery:
+            driver.upForNextDelivery,
+
+          nextDeliveryDate:
+            driver.nextDeliveryDate
+        },
+
+        // ✅ SUMMARY
+        summary: {
+
+          totalBatches:
+            formattedBatches.length,
+
+          totalOrders,
+
+          totalDeliveries
+        },
+
+        // ✅ BATCHES
+        batches:
+          formattedBatches
+      },
+
+      "Driver batches fetched successfully"
+    )
+  );
+});
 
 
 
@@ -7954,5 +8663,6 @@ export {
         markOrderAsDelivered,
         getAllDeliveryBatches,
         editEmployeeDetails,
-        setDriverForNextDelivery
+        setDriverForNextDelivery,
+        adminViewDriverBatches
     }
