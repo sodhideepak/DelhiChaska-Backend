@@ -20,7 +20,8 @@ const allowedOrigins = [
   "http://localhost:3000",
   "http://localhost:3001",
   "https://yourfrontend.com",
-  "https://tiffinvala-user.vercel.app"
+  "https://tiffinvala-user.vercel.app",
+  "https://tiffinvala.com"
 ];
 
 app.use(
