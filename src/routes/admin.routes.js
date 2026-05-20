@@ -63,7 +63,8 @@ import {
         adminViewBatchesHistory,
         getResetUnDeliveredOrders,
         adminViewDriverBatchHistory,
-        upsertBatch
+        upsertBatch,
+        getDriverActiveBatch
      } from "../controllers/admin.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
@@ -201,6 +202,8 @@ router.route("/alldriversfull").get(verifyStaffJWT,getAllDriversfull)
 
 
 router.route('/getallbatches').get(verifyStaffJWT,getAllDeliveryBatches)
+
+router.route("/getDriverActiveBatch/:driverId").get(verifyStaffJWT,getDriverActiveBatch )
 
 
 router.route("/employee/:employeeId").delete(verifyStaffJWT,deleteEmployee)

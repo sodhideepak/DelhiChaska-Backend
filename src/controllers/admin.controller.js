@@ -6336,6 +6336,210 @@ const adminViewDriverBatches = asynchandler(async (req, res) => {
 
 
 
+const getDriverActiveBatch = asynchandler(async (req, res) => {
+
+  ensureSuperAdmin(req);
+
+  // ─────────────────────────────────────────────
+  // PARAMS
+  // ─────────────────────────────────────────────
+  const { driverId } = req.params;
+
+  if (!driverId) {
+    throw new ApiError(400, "Driver ID is required");
+  }
+
+  // ─────────────────────────────────────────────
+  // CHECK DRIVER
+  // ─────────────────────────────────────────────
+  const driver = await Employee.findById(driverId);
+
+  if (!driver || driver.role !== "driver") {
+    throw new ApiError(404, "Driver not found");
+  }
+
+  // ─────────────────────────────────────────────
+  // FETCH LATEST ACTIVE BATCH
+  // DRAFT + FINALIZED + IN_DELIVERY
+  // SORTED BY createdAt DESC → FIRST = LATEST
+  // ─────────────────────────────────────────────
+  const batch = await DeliveryBatch.findOne({
+    driverId,
+    status: { $in: ["draft", "finalized", "in_delivery"] },
+  })
+    .populate({
+      path: "orders.orderId",
+      select:
+        "totalAmount status deliveryDetails deliveryAssignment payment items deliveredAt isorderdelivered deliveryProofImage paymentRequested deliveryDate createdAt userId",
+      populate: {
+        path: "userId",
+        select: "username full_name email phone_number",
+      },
+    })
+    .sort({ createdAt: -1 });
+
+  // ─────────────────────────────────────────────
+  // NO ACTIVE BATCH
+  // ─────────────────────────────────────────────
+  if (!batch) {
+    return res.status(200).json(
+      new ApiResponse(
+        200,
+        {
+          driver: {
+            driverId: driver._id,
+            name: driver.name,
+            email: driver.email,
+            phone: driver.phone,
+            assignedArea: driver.assignedArea || "",
+            isDriverAvailable: driver.isDriverAvailable,
+            upForNextDelivery: driver.upForNextDelivery,
+          },
+          batch: null,
+          message: "No active batch found for this driver",
+        },
+        "No active batch found"
+      )
+    );
+  }
+
+  // ─────────────────────────────────────────────
+  // SUMMARY COUNTS
+  // ─────────────────────────────────────────────
+  const totalOrders = batch.orders.length;
+
+  const deliveredOrders = batch.orders.filter(
+    (o) => o.orderId?.isorderdelivered === true
+  ).length;
+
+  const pendingOrders = totalOrders - deliveredOrders;
+
+  // ─────────────────────────────────────────────
+  // FORMAT ORDERS
+  // ─────────────────────────────────────────────
+  const formattedOrders = batch.orders
+    .map((orderData) => {
+      const order = orderData.orderId;
+
+      return {
+
+        // ✅ SEQUENCE
+        sequence: orderData?.sequence || null,
+
+        // ✅ ORDER
+        orderId: order?._id || null,
+        orderNumber: order?._id?.toString()?.slice(-6)?.toUpperCase(),
+        status: order?.status || "",
+        totalAmount: order?.totalAmount || 0,
+        deliveredAt: order?.deliveredAt || null,
+        isorderdelivered: order?.isorderdelivered || false,
+        deliveryProofImage: order?.deliveryProofImage || null,
+        paymentRequested: order?.paymentRequested || false,
+        deliveryDate: order?.deliveryDate || null,
+        placedAt: order?.createdAt || null,
+
+        // ✅ PAYMENT
+        payment: {
+          method: order?.payment?.method || "",
+          status: order?.payment?.status || "",
+        },
+
+        // ✅ USER
+        user: {
+          userId: order?.userId?._id || null,
+          username: order?.userId?.username || "",
+          full_name: order?.userId?.full_name || "",
+          email: order?.userId?.email || "",
+          phone_number: order?.userId?.phone_number || "",
+        },
+
+        // ✅ DELIVERY DETAILS
+        deliveryDetails: {
+          addressLine1: order?.deliveryDetails?.addressLine1 || "",
+          addressLine2: order?.deliveryDetails?.addressLine2 || "",
+          city: order?.deliveryDetails?.city || "",
+          state: order?.deliveryDetails?.state || "",
+          zipCode: order?.deliveryDetails?.zipCode || "",
+          country: order?.deliveryDetails?.country || "",
+          phone: order?.deliveryDetails?.phone || "",
+          instructions: order?.deliveryDetails?.instructions || "",
+          location: {
+            lat: order?.deliveryDetails?.location?.lat || null,
+            lng: order?.deliveryDetails?.location?.lng || null,
+          },
+        },
+
+        // ✅ DELIVERY ASSIGNMENT
+        deliveryAssignment: {
+          driverId: order?.deliveryAssignment?.driverId || null,
+          batchId: order?.deliveryAssignment?.batchId || null,
+          deliverySequence: order?.deliveryAssignment?.deliverySequence || null,
+          assignedAt: order?.deliveryAssignment?.assignedAt || null,
+        },
+
+        // ✅ ITEMS
+        items:
+          order?.items?.map((item) => ({
+            name: item.name || "",
+            quantity: item.quantity || 0,
+            type: item.type || "",
+            variant: {
+              size: item.selectedVariant?.size || "",
+              price: item.selectedVariant?.price || 0,
+            },
+            subtotal: item.subtotal || 0,
+          })) || [],
+
+        itemCount: order?.items?.length || 0,
+      };
+    })
+    .sort((a, b) => (a.sequence || 0) - (b.sequence || 0));
+
+  // ─────────────────────────────────────────────
+  // RESPONSE
+  // ─────────────────────────────────────────────
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        // ✅ DRIVER
+        driver: {
+          driverId: driver._id,
+          name: driver.name,
+          email: driver.email,
+          phone: driver.phone,
+          assignedArea: driver.assignedArea || "",
+          isDriverAvailable: driver.isDriverAvailable,
+          upForNextDelivery: driver.upForNextDelivery,
+          nextDeliveryDate: driver.nextDeliveryDate || null,
+        },
+
+        // ✅ BATCH
+        batch: {
+          batchId: batch._id,
+          area: batch.area,
+          status: batch.status,
+          viewToDriver: batch.viewToDriver,
+          createdAt: batch.createdAt,
+          finalizedAt: batch.finalizedAt || null,
+
+          // ✅ PROGRESS
+          summary: {
+            totalOrders,
+            deliveredOrders,
+            pendingOrders,
+          },
+
+          orders: formattedOrders,
+        },
+      },
+      "Active batch fetched successfully"
+    )
+  );
+});
+
+
+
 const adminViewBatchesHistory = asynchandler(async (req, res) => {
 
   ensureSuperAdmin(req);
@@ -10436,6 +10640,7 @@ export {
         editEmployeeDetails,
         setDriverForNextDelivery,
         adminViewDriverBatches,
+        getDriverActiveBatch,
         unassignSingleOrder,
         assignSingleOrder,
         adminViewBatchesHistory,
