@@ -770,7 +770,7 @@ const loginuser = asynchandler(async (req, res) => {
 
     const options = {
         httpOnly: true,
-        secure: "true" ,     // true in production
+        secure: true ,     // true in production
         sameSite: "none",
          path: '/'
     };
