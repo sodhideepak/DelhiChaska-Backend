@@ -12,7 +12,11 @@ const orderItemSchema = new mongoose.Schema({
 
   type: {
     type: String,
-    enum: ["product", "combo","addon"],
+    enum: [
+      "product",
+      "combo",
+      "addon"
+    ],
     required: true
   },
 
@@ -35,7 +39,9 @@ const orderItemSchema = new mongoose.Schema({
     default: 1
   },
 
-  // ✅ IMPORTANT
+  // ─────────────────────────────────────────────
+  // SELECTED VARIANT
+  // ─────────────────────────────────────────────
   selectedVariant: {
 
     size: {
@@ -45,21 +51,26 @@ const orderItemSchema = new mongoose.Schema({
     price: {
       type: Number
     }
-
   },
 
-  // ✅ IMPORTANT
+  // ─────────────────────────────────────────────
+  // SUBTOTAL
+  // ─────────────────────────────────────────────
   subtotal: {
     type: Number,
     default: 0
   },
 
+  // ─────────────────────────────────────────────
+  // CUSTOM SELECTIONS
+  // ─────────────────────────────────────────────
   selections: {
     type: Array,
     default: []
   }
 
 }, { _id: false });
+
 
 // ─────────────────────────────────────────────
 // DELIVERY DATE FUNCTION
@@ -80,11 +91,16 @@ const getNextDeliveryDate = (
     )
   );
 
-  const today = usDate.getDay();
+  const today =
+    usDate.getDay();
 
   let daysToAdd = null;
 
-  for (let i = 1; i <= 7; i++) {
+  for (
+    let i = 1;
+    i <= 7;
+    i++
+  ) {
 
     const nextDay =
       (today + i) % 7;
@@ -92,6 +108,7 @@ const getNextDeliveryDate = (
     if (
       deliveryDays.includes(nextDay)
     ) {
+
       daysToAdd = i;
       break;
     }
@@ -107,29 +124,44 @@ const getNextDeliveryDate = (
   return nextDeliveryDate;
 };
 
+
 // ─────────────────────────────────────────────
 // ORDER SCHEMA
 // ─────────────────────────────────────────────
 const orderSchema = new mongoose.Schema(
   {
+    // ───────────────────────────────────────────
+    // USER
+    // ───────────────────────────────────────────
     userId: {
       type:
         mongoose.Schema.Types.ObjectId,
+
       ref: "user",
+
       required: true
     },
 
+    // ───────────────────────────────────────────
+    // ITEMS
+    // ───────────────────────────────────────────
     items: {
       type: [orderItemSchema],
       required: true
     },
 
+    // ───────────────────────────────────────────
+    // TOTAL
+    // ───────────────────────────────────────────
     totalAmount: {
       type: Number,
       required: true,
       min: 0
     },
 
+    // ───────────────────────────────────────────
+    // ORDER STATUS
+    // ───────────────────────────────────────────
     status: {
       type: String,
 
@@ -145,60 +177,91 @@ const orderSchema = new mongoose.Schema(
       default: "pending"
     },
 
+    // ───────────────────────────────────────────
+    // DELIVERY DATE
+    // ───────────────────────────────────────────
     deliveryDate: {
       type: Date,
       default: () =>
         getNextDeliveryDate()
     },
 
+    // ───────────────────────────────────────────
+    // DELIVERED AT
+    // ───────────────────────────────────────────
     deliveredAt: {
       type: Date,
       default: null
     },
 
+    // ───────────────────────────────────────────
+    // DELIVERY STATUS
+    // ───────────────────────────────────────────
     isorderdelivered: {
       type: Boolean,
       default: false
     },
+
+    // ───────────────────────────────────────────
+    // DELIVERY PROOF IMAGE
+    // ───────────────────────────────────────────
     deliveryProofImage: {
 
-     type: String,
+      type: String,
 
-  default: null
-},
+      default: null
+    },
 
+    // ───────────────────────────────────────────
+    // DELIVERY DETAILS
+    // ───────────────────────────────────────────
     deliveryDetails: {
 
       addressId: {
+
         type:
           mongoose.Schema.Types.ObjectId,
+
         ref: "address"
       },
 
-      addressLine1: String,
+      addressLine1:
+        String,
 
-      addressLine2: String,
+      addressLine2:
+        String,
 
-      city: String,
+      city:
+        String,
 
-      state: String,
+      state:
+        String,
 
-      zipCode: String,
+      zipCode:
+        String,
 
-      country: String,
+      country:
+        String,
 
       location: {
 
-        lat: Number,
+        lat:
+          Number,
 
-        lng: Number
+        lng:
+          Number
       },
 
-      phone: String,
+      phone:
+        String,
 
-      instructions: String
+      instructions:
+        String
     },
 
+    // ───────────────────────────────────────────
+    // PAYMENT
+    // ───────────────────────────────────────────
     payment: {
 
       method: {
@@ -228,6 +291,9 @@ const orderSchema = new mongoose.Schema(
       }
     },
 
+    // ───────────────────────────────────────────
+    // DELIVERY ASSIGNMENT
+    // ───────────────────────────────────────────
     deliveryAssignment: {
 
       driverId: {
@@ -239,6 +305,17 @@ const orderSchema = new mongoose.Schema(
 
         default: null
       },
+        // ✅ HISTORY DRIVER
+  // never removed
+  assignedToDriverHistory: {
+
+    type:
+      mongoose.Schema.Types.ObjectId,
+
+    ref: "employee",
+
+    default: null
+  },
 
       batchId: {
 
@@ -265,6 +342,9 @@ const orderSchema = new mongoose.Schema(
       }
     },
 
+    // ───────────────────────────────────────────
+    // PAYMENT REQUESTED
+    // ───────────────────────────────────────────
     paymentRequested: {
 
       type: Boolean,
@@ -278,6 +358,10 @@ const orderSchema = new mongoose.Schema(
   }
 );
 
+
+// ─────────────────────────────────────────────
+// EXPORT MODEL
+// ─────────────────────────────────────────────
 export const Order =
   mongoose.model(
     "order",

@@ -58,7 +58,12 @@ import {
         editEmployeeDetails,
         setDriverForNextDelivery,
         adminViewDriverBatches,
-        unassignSingleOrder
+        unassignSingleOrder,
+        assignSingleOrder,
+        adminViewBatchesHistory,
+        getResetUnDeliveredOrders,
+        adminViewDriverBatchHistory,
+        upsertBatch
      } from "../controllers/admin.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
@@ -156,10 +161,11 @@ router.route("/orders/area").get(verifyStaffJWT,adminViewOrdersByArea);
 router.route("/orders/kitchen/area").get(verifyStaffJWT,kitchenViewOrdersByArea)
 router.route("/orders/getuserdetails/:orderId").get(verifyStaffJWT,getOrderUserDetailsForAdmin)
     
-
+router.route("/assignSingleOrder/:orderId").post(verifyStaffJWT,assignSingleOrder)
 router.route("/unassignSingleOrder/:orderId").post(verifyStaffJWT,unassignSingleOrder)
 
 router.route("/orders/unassigned-confirmed").get(verifyStaffJWT,getUnassignedConfirmedOrders)
+router.route("/getResetUnDeliveredOrders").get(verifyStaffJWT,getResetUnDeliveredOrders)
 
 
 // Driver assignment route
@@ -222,6 +228,9 @@ router.route("/driver/batches").get(verifyStaffJWT,driverViewMyBatches)
 router.route("/driver/markorderdelivered/:orderId").post(verifyStaffJWT,upload.single("deliveryImage"),markOrderAsDelivered)  
 router.route("/setdriverfornextdelivery").post(verifyStaffJWT,setDriverForNextDelivery)
 router.route("/viewdriverbatches/:driverId").get(verifyStaffJWT,adminViewDriverBatches)
+router.route("/batches/history").get(verifyStaffJWT,adminViewBatchesHistory)
+router.route("/driverbatch/history/:driverId").get(verifyStaffJWT,adminViewDriverBatchHistory)
+router.route("/upsertbatch").post(verifyStaffJWT,upsertBatch)
 
 
 
