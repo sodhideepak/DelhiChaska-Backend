@@ -13,7 +13,7 @@ import jwt from "jsonwebtoken"
 import * as nodemailer from "nodemailer"
 import Randomstring from "randomstring";
 import bcrypt from "bcrypt";
-
+import { cookieOptions } from "../utils/cookieOptions.js";
 
 
 const sendresetpasswordmail = asynchandler(async (fullname, email, token) => {
@@ -770,9 +770,10 @@ const loginuser = asynchandler(async (req, res) => {
 
     const options = {
         httpOnly: true,
-        secure: "false",
-        sameSite: "lax",
-        maxAge: 7 * 24 * 60 * 60 * 1000
+        secure: "true" ,     // true in production
+        sameSite: "none",
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+         path: '/'
     };
 
     return res
@@ -820,8 +821,8 @@ const logout = asynchandler(async (req, res) => {
 
     return res
         .status(200)
-        .clearCookie("accesstoken", options)
-        .clearCookie("refreshtoken", options)
+        .clearCookie("accesstoken", cookieOptions)
+        .clearCookie("refreshtoken", cookieOptions)
         .json(
             new ApiResponse(
                 200,
@@ -876,8 +877,8 @@ const delete_account = asynchandler(async (req, res) => {
 
     return res
         .status(200)
-        .clearCookie("accesstoken", options)
-        .clearCookie("refreshtoken", options)
+        .clearCookie("accesstoken", cookieOptions)
+        .clearCookie("refreshtoken", cookieOptions)
         .json(
             new ApiResponse(
                 200,
@@ -934,8 +935,8 @@ const refreshAccessToken = asynchandler(async (req, res) => {
         // console.log("accesstoken : ",accesstoken);
 
         return res.status(200)
-            .cookie("accesstoken", accesstoken, options)
-            .cookie("refreshtoken", refreshtoken, options)
+            .cookie("accesstoken", accesstoken, cookieOptions)
+            .cookie("refreshtoken", refreshtoken, cookieOptions)
             .json(
                 new ApiResponse(
                     200,

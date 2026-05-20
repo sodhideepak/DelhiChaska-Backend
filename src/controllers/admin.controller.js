@@ -18,6 +18,7 @@ import { Cart }    from "../models/cart.model.js";
 import { Product } from "../models/product.model.js";
 import { Address } from "../models/address.model.js";
 import { DeliveryBatch } from "../models/deliveryBatch.model.js";
+import { cookieOptions } from "../utils/cookieOptions.js";
 
  
 
@@ -307,8 +308,8 @@ const loginuser = asynchandler(async (req,res)=>{
 
     return res
     .status(200)
-    .cookie("accesstoken",accesstoken,options)
-    .cookie("refreshtoken",refreshtoken,options)
+    .cookie("accesstoken",accesstoken,cookieOptions)
+    .cookie("refreshtoken",refreshtoken,cookieOptions)
     .json(
         new ApiResponse(
             200,
@@ -462,8 +463,8 @@ const refreshAccessToken = asynchandler(async(req,res)=>{
         // console.log("accesstoken : ",accesstoken);
     
         return res.status(200)
-        .cookie("accesstoken",accesstoken,options)
-        .cookie("refreshtoken",refreshtoken,options)
+        .cookie("accesstoken",accesstoken,cookieOptions)
+        .cookie("refreshtoken",refreshtoken,cookieOptions)
         .json(
             new ApiResponse(
                 200,
@@ -873,8 +874,8 @@ const loginStaff = asynchandler(async (req, res) => {
     // ==========================
     return res
         .status(200)
-        .cookie("accesstoken", accesstoken, options)
-        .cookie("refreshtoken", refreshtoken, options)
+        .cookie("accesstoken", accesstoken, cookieOptions)
+        .cookie("refreshtoken", refreshtoken, cookieOptions)
         .json(
             new ApiResponse(
                 200,
