@@ -2036,7 +2036,7 @@ const forgotPassword = asynchandler(async (req, res) => {
       email: User.email,
       purpose: "password-reset",        // scope token to this action only
     },
-    process.env.RESET_TOKEN_SECRET,     // use a dedicated secret
+    process.env.resetToken,     // use a dedicated secret
     { expiresIn: "15m" }
   );
  
