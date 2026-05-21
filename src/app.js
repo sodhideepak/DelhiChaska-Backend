@@ -26,7 +26,8 @@ const allowedOrigins = [
   "https://yourfrontend.com",
   "https://tiffinvala-user.vercel.app",
   "https://tiffinvala.com",
-  "https://www.tiffinvala.com"
+  "https://www.tiffinvala.com",
+  "http://localhost:5174/"
 ];
 
 app.use(
