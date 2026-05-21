@@ -524,11 +524,11 @@ const sendEmployeeRegistrationNotification = async(employeeName, employeeEmail, 
     const mailOptions = {
         from: process.env.emailusername,
         to: SUPER_ADMIN_EMAIL,
-        subject: "New Employee Registration - DelhiChaska Backend",
+        subject: "New Employee Registration - TiffinVala Backend",
         html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
                 <div style="text-align: center;">
-                    <h2 style="color: #ff6b35; font-size: 40px;">DelhiChaska</h2>
+                    <h2 style="color: #ff6b35; font-size: 40px;">TiffinVala</h2>
                     <h3 style="color: #444; font-size: 25px;">New Employee Registration</h3>
                 </div>
                 <div style="padding: 10px; font-size: 16px; color: #333;">
@@ -544,7 +544,7 @@ const sendEmployeeRegistrationNotification = async(employeeName, employeeEmail, 
                 </div>
                 <div style="margin-top: 30px; text-align: center; color: #aaa; font-size: 12px;">
                     <p>Please log in to the admin panel to review and approve this registration.</p>
-                    <p>&copy; 2024 DelhiChaska. All rights reserved.</p>
+                    <p>&copy; 2026 TiffinVala. All rights reserved.</p>
                 </div>
             </div>
         `
@@ -585,7 +585,7 @@ const sendEmployeeSubmissionConfirmation = async(employeeName, employeeEmail) =>
         html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
                 <div style="text-align: center;">
-                    <h2 style="color: #ff6b35; font-size: 40px;">DelhiChaska</h2>
+                    <h2 style="color: #ff6b35; font-size: 40px;">TiffinVala</h2>
                     <h3 style="color: #444; font-size: 25px;">Registration Under Review</h3>
                 </div>
                 <div style="padding: 10px; text-align: center;">
@@ -605,7 +605,7 @@ const sendEmployeeSubmissionConfirmation = async(employeeName, employeeEmail) =>
                 </div>
                 <div style="margin-top: 30px; text-align: center; color: #aaa; font-size: 12px;">
                     <p>If you have any questions, please contact our support team.</p>
-                    <p>&copy; 2024 DelhiChaska. All rights reserved.</p>
+                    <p>&copy; 2026 TiffinVala. All rights reserved.</p>
                 </div>
             </div>
         `
@@ -642,11 +642,11 @@ const sendEmployeeApprovalNotification = async(employeeName, employeeEmail, role
     const mailOptions = {
         from: process.env.emailusername,
         to: employeeEmail,
-        subject: "Registration Approved - Welcome to DelhiChaska!",
+        subject: "Registration Approved - Welcome to TiffinVala!",
         html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
                 <div style="text-align: center;">
-                    <h2 style="color: #ff6b35; font-size: 40px;">DelhiChaska</h2>
+                    <h2 style="color: #ff6b35; font-size: 40px;">TiffinVala</h2>
                     <h3 style="color: #28a745; font-size: 25px;">🎉 Registration Approved!</h3>
                 </div>
                 <div style="padding: 10px; text-align: center;">
@@ -656,7 +656,7 @@ const sendEmployeeApprovalNotification = async(employeeName, employeeEmail, role
                     </p>
                     <div style="background-color: #d4edda; border: 1px solid #c3e6cb; border-radius: 5px; padding: 15px; margin: 20px 0;">
                         <p style="font-size: 16px; color: #155724; margin: 0;">
-                            <strong>Welcome to the DelhiChaska team!</strong><br>
+                            <strong>Welcome to the TiffinVala team!</strong><br>
                             Role: ${role}<br>
                             Status: Verified
                         </p>
@@ -667,7 +667,7 @@ const sendEmployeeApprovalNotification = async(employeeName, employeeEmail, role
                 </div>
                 <div style="margin-top: 30px; text-align: center; color: #aaa; font-size: 12px;">
                     <p>If you need any help getting started, please contact your supervisor.</p>
-                    <p>&copy; 2026 DelhiChaska. All rights reserved.</p>
+                    <p>&copy; 2026 TiffinVala. All rights reserved.</p>
                 </div>
             </div>
         `
@@ -1756,7 +1756,7 @@ const sendContactFormMail = async(name, email, subject, message) => {
             html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
                 <div style="text-align: center;">
-                    <h2 style="color: #ff6b35; font-size: 40px;">DelhiChaska</h2>
+                    <h2 style="color: #ff6b35; font-size: 40px;">TiffinVala</h2>
                     <h3 style="color: #444; font-size: 25px;">New Contact Form Message</h3>
                 </div>
                 <div style="padding: 10px; font-size: 16px; color: #333;">
@@ -1767,7 +1767,7 @@ const sendContactFormMail = async(name, email, subject, message) => {
                 </div>
                 <div style="margin-top: 30px; text-align: center; color: #aaa; font-size: 12px;">
                     <p>This email was generated from the contact form on the website.</p>
-                    <p>&copy; 2024 DelhiChaska. All rights reserved.</p>
+                    <p>&copy; 2026 TiffinVala. All rights reserved.</p>
                 </div>
             </div>
             `
@@ -9706,7 +9706,8 @@ const markOrderAsDelivered = asynchandler(async (req, res) => {
   // ─────────────────────────────────────────────
   // ORDER ID
   // ─────────────────────────────────────────────
-  const { orderId } = req.params;
+  const { orderId } =
+    req.params;
 
   // ─────────────────────────────────────────────
   // DRIVER
@@ -9731,11 +9732,6 @@ const markOrderAsDelivered = asynchandler(async (req, res) => {
   const deliveryImageLocalPath =
     req.file?.path;
 
-    console.log(req.file);
-    
-  console.log(deliveryImageLocalPath);
-  
-
   if (!deliveryImageLocalPath) {
 
     throw new ApiError(
@@ -9750,13 +9746,18 @@ const markOrderAsDelivered = asynchandler(async (req, res) => {
   const order =
     await Order.findById(orderId)
 
-    .populate({
+      .populate({
 
-      path: "userId",
+        path: "userId",
 
-      select:
-        "full_name username email phone_number"
-    });
+        select:
+          `
+          full_name
+          username
+          email
+          phone_number
+          `
+      });
 
   if (!order) {
 
@@ -9829,7 +9830,19 @@ const markOrderAsDelivered = asynchandler(async (req, res) => {
   const batch =
     await DeliveryBatch.findOne({
 
-      driverId,
+      $or: [
+
+        // ACTIVE DRIVER
+        {
+          driverId
+        },
+
+        // HISTORY DRIVER
+        {
+          assignedToDriverHistory:
+            driverId
+        }
+      ],
 
       "orders.orderId":
         order._id
@@ -9854,57 +9867,414 @@ const markOrderAsDelivered = asynchandler(async (req, res) => {
   // AREA
   // ─────────────────────────────────────────────
   const area =
-    order?.deliveryDetails?.area ||
     order?.deliveryDetails?.city ||
     "Unknown Area";
 
   // ─────────────────────────────────────────────
-  // SEND MAIL TO USER
+  // SEND USER MAIL
+  // NON BLOCKING
   // ─────────────────────────────────────────────
-  /*
-  await sendEmail({
+sendEmail({
 
-    to: order?.userId?.email,
+  to:
+    order?.userId?.email,
 
-    subject: "Your Order Has Been Delivered",
+  subject:
+    "🎉 Your Tiffinvala Order Has Been Delivered",
+
+  html: `
+
+  <div style="
+    background:#f4f4f4;
+    padding:40px 20px;
+    font-family:Arial,sans-serif;
+  ">
+
+    <div style="
+      max-width:650px;
+      margin:auto;
+      background:#ffffff;
+      border-radius:16px;
+      overflow:hidden;
+      box-shadow:0 4px 15px rgba(0,0,0,0.08);
+    ">
+
+      <!-- HEADER -->
+      <div style="
+        background:#ff6b00;
+        padding:30px;
+        text-align:center;
+        color:white;
+      ">
+
+        <h1 style="
+          margin:0;
+          font-size:32px;
+          font-weight:bold;
+        ">
+          Tiffinvala
+        </h1>
+
+        <p style="
+          margin-top:8px;
+          font-size:15px;
+          opacity:0.9;
+        ">
+          Fresh Meals Delivered With Love ❤️
+        </p>
+
+      </div>
+
+      <!-- BODY -->
+      <div style="padding:35px;">
+
+        <h2 style="
+          margin-top:0;
+          color:#222;
+        ">
+          Order Delivered Successfully 🎉
+        </h2>
+
+        <p style="
+          font-size:16px;
+          color:#444;
+          line-height:1.7;
+        ">
+          Hello
+          <strong>
+            ${order?.userId?.full_name}
+          </strong>
+          (@${order?.userId?.username}),
+        </p>
+
+        <p style="
+          font-size:15px;
+          color:#555;
+          line-height:1.7;
+        ">
+          Your delicious order has been delivered successfully.
+          We hope you enjoy your meal 😋
+        </p>
+
+        <!-- ORDER DETAILS -->
+        <div style="
+          background:#fafafa;
+          border:1px solid #eee;
+          border-radius:12px;
+          padding:20px;
+          margin-top:25px;
+        ">
+
+          <h3 style="
+            margin-top:0;
+            color:#ff6b00;
+          ">
+            Order Details
+          </h3>
+
+          <table style="
+            width:100%;
+            border-collapse:collapse;
+            font-size:14px;
+          ">
+
+            <tr>
+              <td style="padding:8px 0;">
+                <strong>Order ID</strong>
+              </td>
+
+              <td style="padding:8px 0;">
+                ${order?._id}
+              </td>
+            </tr>
+
+            <tr>
+              <td style="padding:8px 0;">
+                <strong>Status</strong>
+              </td>
+
+              <td style="
+                padding:8px 0;
+                color:green;
+                font-weight:bold;
+              ">
+                Delivered
+              </td>
+            </tr>
+
+            <tr>
+              <td style="padding:8px 0;">
+                <strong>Total Amount</strong>
+              </td>
+
+              <td style="padding:8px 0;">
+                ₹${order?.totalAmount}
+              </td>
+            </tr>
+
+            <tr>
+              <td style="padding:8px 0;">
+                <strong>Delivery Date</strong>
+              </td>
+
+              <td style="padding:8px 0;">
+                ${new Date(order?.deliveredAt)
+                  .toLocaleString()}
+              </td>
+            </tr>
+
+            <tr>
+              <td style="padding:8px 0;">
+                <strong>Payment Status</strong>
+              </td>
+
+              <td style="padding:8px 0;">
+                ${order?.payment?.status}
+              </td>
+            </tr>
+
+          </table>
+        </div>
+
+        <!-- ITEMS -->
+        <div style="margin-top:30px;">
+
+          <h3 style="
+            color:#ff6b00;
+            margin-bottom:15px;
+          ">
+            Ordered Items
+          </h3>
+
+          ${
+            order?.items?.map(item => `
+
+              <div style="
+                border-bottom:1px solid #eee;
+                padding:12px 0;
+              ">
+
+                <div style="
+                  display:flex;
+                  justify-content:space-between;
+                ">
+
+                  <div>
+
+                    <strong>
+                      ${item?.name}
+                    </strong>
+
+                    <div style="
+                      color:#777;
+                      margin-top:4px;
+                      font-size:13px;
+                    ">
+                      Qty:
+                      ${item?.quantity}
+                    </div>
+
+                  </div>
+
+                  <div style="
+                    font-weight:bold;
+                    color:#222;
+                  ">
+                    ₹${item?.subtotal || 0}
+                  </div>
+
+                </div>
+
+              </div>
+
+            `).join("")
+          }
+
+        </div>
+
+        <!-- DELIVERY IMAGE -->
+        ${
+          order?.deliveryProofImage
+          ?
+          `
+          <div style="
+            margin-top:35px;
+            text-align:center;
+          ">
+
+            <h3 style="
+              color:#ff6b00;
+            ">
+              Delivery Proof
+            </h3>
+
+            <img
+              src="${order?.deliveryProofImage}"
+              alt="Delivery Proof"
+              style="
+                width:100%;
+                max-width:320px;
+                border-radius:12px;
+                margin-top:10px;
+                border:1px solid #eee;
+              "
+            />
+
+          </div>
+          `
+          :
+          ""
+        }
+
+        <!-- FOOTER MESSAGE -->
+        <div style="
+          margin-top:35px;
+          background:#fff8f2;
+          border-left:4px solid #ff6b00;
+          padding:18px;
+          border-radius:8px;
+        ">
+
+          <p style="
+            margin:0;
+            color:#555;
+            line-height:1.7;
+          ">
+            Thank you for choosing
+            <strong>Tiffinvala</strong>.
+            We truly appreciate your support ❤️
+          </p>
+
+        </div>
+
+      </div>
+
+      <!-- FOOTER -->
+      <div style="
+        background:#222;
+        color:#aaa;
+        text-align:center;
+        padding:20px;
+        font-size:13px;
+      ">
+
+        <p style="margin:0;">
+          © ${new Date().getFullYear()} Tiffinvala
+        </p>
+
+        <p style="
+          margin-top:6px;
+        ">
+          Fresh • Hygienic • Delicious
+        </p>
+
+      </div>
+
+    </div>
+
+  </div>
+  `
+}).catch(error => {
+
+  console.log(
+    "User mail failed:",
+    error.message
+  );
+});
+
+  // ─────────────────────────────────────────────
+  // SEND ADMIN MAIL
+  // NON BLOCKING
+  // ─────────────────────────────────────────────
+  sendEmail({
+
+    to:
+      process.env.ADMIN_EMAIL,
+
+    subject:
+      "Order Delivered Update",
 
     html: `
-      <h2>Order Delivered Successfully</h2>
 
-      <p>Hello ${order?.userId?.full_name},</p>
+      <div style="font-family: Arial; padding: 20px;">
 
-      <p>Your order has been delivered successfully.</p>
+        <h2>
+          Order Delivered Successfully
+        </h2>
 
-      <p>Order Id: ${order?._id}</p>
+        <p>
+          <strong>Order ID:</strong>
+          ${order?._id}
+        </p>
 
-      <p>Thank you for ordering with us.</p>
+        <p>
+          <strong>Customer:</strong>
+          ${order?.userId?.full_name}
+        </p>
+               
+        <p>
+          <strong>Username:</strong>
+          ${order?.userId?.username}
+        </p>
+
+        <p>
+          <strong>City:</strong>
+          ${area}
+        </p>
+
+        <p>
+          <strong>Sequence Number:</strong>
+          ${sequenceNumber}
+        </p>
+
+          <!-- DELIVERY IMAGE -->
+        ${
+          order?.deliveryProofImage
+          ?
+          `
+          <div style="
+            margin-top:35px;
+            text-align:center;
+          ">
+
+            <h3 style="
+              color:#ff6b00;
+            ">
+              Delivery Proof
+            </h3>
+
+            <img
+              src="${order?.deliveryProofImage}"
+              alt="Delivery Proof"
+              style="
+                width:100%;
+                max-width:320px;
+                border-radius:12px;
+                margin-top:10px;
+                border:1px solid #eee;
+              "
+            />
+
+          </div>
+          `
+          :
+          ""
+        }
+
+        <p>
+          Driver completed the delivery successfully.
+        </p>
+
+      </div>
     `
+
+  }).catch(error => {
+
+    console.log(
+      "Admin mail failed:",
+      error.message
+    );
   });
-  */
-
-  // ─────────────────────────────────────────────
-  // SEND MAIL TO ADMIN
-  // ─────────────────────────────────────────────
-  /*
-  await sendEmail({
-
-    to: process.env.ADMIN_EMAIL,
-
-    subject: "Order Delivered Update",
-
-    html: `
-      <h2>Order Delivered</h2>
-
-      <p>Order Id: ${order?._id}</p>
-
-      <p>Area: ${area}</p>
-
-      <p>Sequence Number: ${sequenceNumber}</p>
-
-      <p>Driver completed the delivery successfully.</p>
-    `
-  });
-  */
 
   // ─────────────────────────────────────────────
   // RESPONSE

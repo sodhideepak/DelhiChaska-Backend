@@ -102,11 +102,11 @@ const send_register_otp = asynchandler(async (email, otp, expiresAt) => {
         const mailoptions = {
             from: process.env.emailusername,
             to: email,
-            subject: "OTP to Register on Delhi Chaska",
+            subject: "OTP to Register on TiffinVala",
             html: `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
         <div style="text-align: center;">
-            <h2 style="color: #333;">Delhi Chaska</h2>
+            <h2 style="color: #333;">TiffinVala</h2>
             <h3 style="color: #444;">OTP Verification</h3>
         </div>
         <div style="padding: 20px; text-align: center;">
@@ -122,7 +122,7 @@ const send_register_otp = asynchandler(async (email, otp, expiresAt) => {
         
         <div style="margin-top: 30px; text-align: center; color: #aaa; font-size: 12px;">
             <p>If you did not request this OTP, please ignore this email.</p>
-            <p>&copy; 2026 Delhi Chaska. All rights reserved.</p>
+            <p>&copy; 2026 TiffinVala. All rights reserved.</p>
         </div>
     </div>
     `
@@ -1865,7 +1865,7 @@ const sendContactFormMail = async (name, email, subject, message) => {
             html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
                 <div style="text-align: center;">
-                    <h2 style="color: #ff6b35; font-size: 40px;">DelhiChaska</h2>
+                    <h2 style="color: #ff6b35; font-size: 40px;">TiffinVala</h2>
                     <h3 style="color: #444; font-size: 25px;">New Contact Form Message</h3>
                 </div>
                 <div style="padding: 10px; font-size: 16px; color: #333;">
@@ -1876,7 +1876,7 @@ const sendContactFormMail = async (name, email, subject, message) => {
                 </div>
                 <div style="margin-top: 30px; text-align: center; color: #aaa; font-size: 12px;">
                     <p>This email was generated from the contact form on the website.</p>
-                    <p>&copy; 2024 DelhiChaska. All rights reserved.</p>
+                    <p>&copy; 2026 TiffinVala. All rights reserved.</p>
                 </div>
             </div>
             `
@@ -1948,62 +1948,238 @@ const bookingformenquiry = asynchandler(async (req, res) => {
 
 
 
+// const forgotPassword = asynchandler(async (req, res) => {
+
+//   const { email } = req.body;
+
+//   // check email
+//   if (!email) {
+//     throw new ApiError(
+//       400,
+//       "Email is required"
+//     );
+//   }
+
+//   // find user
+//   const User = await user.findOne({ email });
+
+
+//   if (!User) {
+//     throw new ApiError(
+//       404,
+//       "User not found"
+//     );
+//   }
+
+//   // generate token
+//   const resetToken = jwt.sign(
+//     {
+//       _id: User._id,
+//       email: User.email
+//     },
+//     process.env.resetToken,
+//     {
+//       expiresIn: "15m"
+//     }
+//   );
+
+//   // reset url
+//   const resetUrl =
+//     `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
+
+//   console.log("Reset URL :", resetUrl);
+
+//   // send email here
+
+//   return res.status(200).json(
+//     new ApiResponse(
+//       200,
+//       {
+//         resetUrl
+//       },
+//       "Password reset link sent successfully"
+//     )
+//   );
+
+// });
+
+
+
+
 const forgotPassword = asynchandler(async (req, res) => {
-
+ 
   const { email } = req.body;
-
-  // check email
+ 
+  // ── validate ──
   if (!email) {
-    throw new ApiError(
-      400,
-      "Email is required"
-    );
+    throw new ApiError(400, "Email is required");
   }
-
-  // find user
+ 
+  // ── find user ──
   const User = await user.findOne({ email });
-
-
+ 
   if (!User) {
-    throw new ApiError(
-      404,
-      "User not found"
+    // Return generic message to avoid user-enumeration
+    return res.status(200).json(
+      new ApiResponse(
+        200,
+        null,
+        "If an account with that email exists, a reset link has been sent."
+      )
     );
   }
-
-  // generate token
+ 
+  // ── generate short-lived JWT ──
   const resetToken = jwt.sign(
     {
-      _id: User._id,
-      email: User.email
+      _id:   User._id,
+      email: User.email,
+      purpose: "password-reset",        // scope token to this action only
     },
-    process.env.resetToken,
-    {
-      expiresIn: "15m"
-    }
+    process.env.RESET_TOKEN_SECRET,     // use a dedicated secret
+    { expiresIn: "15m" }
   );
-
-  // reset url
-  const resetUrl =
-    `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
-
-  console.log("Reset URL :", resetUrl);
-
-  // send email here
-
+ 
+  // ── build reset URL ──
+  const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
+ 
+  // ── send email ──
+  await sendEmail({
+    to:      User.email,
+    subject: "Reset Your Password",
+    html: `
+      <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 480px; margin: auto;">
+ 
+        <h2 style="color: #0e1420;">Password Reset Request</h2>
+ 
+        <p style="color: #374151; line-height: 1.6;">
+          We received a request to reset the password for your account.
+          Click the button below to choose a new password.
+          This link will expire in <strong>15 minutes</strong>.
+        </p>
+ 
+        <div style="text-align: center; margin: 32px 0;">
+          <a
+            href="${resetUrl}"
+            style="
+              display: inline-block;
+              padding: 13px 32px;
+              background-color: #2563eb;
+              color: #ffffff;
+              text-decoration: none;
+              border-radius: 4px;
+              font-weight: 700;
+              font-size: 15px;
+              letter-spacing: 0.5px;
+            "
+          >
+            Reset Password
+          </a>
+        </div>
+ 
+        <p style="color: #6b7280; font-size: 13px; line-height: 1.6;">
+          If the button doesn't work, copy and paste this link into your browser:
+        </p>
+        <p style="word-break: break-all; font-size: 12px; color: #2563eb;">
+          ${resetUrl}
+        </p>
+ 
+        <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
+ 
+        <p style="color: #9ca3af; font-size: 12px;">
+          If you did not request a password reset, you can safely ignore this email.
+          Your password will not be changed.
+        </p>
+ 
+      </div>
+    `,
+  });
+ 
   return res.status(200).json(
     new ApiResponse(
       200,
-      {
-        resetUrl
-      },
-      "Password reset link sent successfully"
+      null,
+      "If an account with that email exists, a reset link has been sent."
     )
   );
-
 });
-
-
+ 
+ 
+/* ─────────────────────────────────────────────
+   RESET PASSWORD
+   POST /api/v1/auth/reset-password
+   body: { token, newPassword }
+───────────────────────────────────────────── */
+const TiffinresetPassword = asynchandler(async (req, res) => {
+ 
+  const { token, newPassword } = req.body;
+ 
+  // ── validate input ──
+  if (!token || !newPassword) {
+    throw new ApiError(400, "Token and new password are required");
+  }
+ 
+  if (newPassword.length < 8) {
+    throw new ApiError(400, "Password must be at least 8 characters");
+  }
+ 
+  // ── verify token ──
+  let decoded;
+  try {
+    decoded = jwt.verify(token, process.env.RESET_TOKEN_SECRET);
+  } catch (err) {
+    if (err.name === "TokenExpiredError") {
+      throw new ApiError(401, "Reset link has expired. Please request a new one.");
+    }
+    throw new ApiError(401, "Invalid reset link");
+  }
+ 
+  // ── extra scope check ──
+  if (decoded.purpose !== "password-reset") {
+    throw new ApiError(401, "Invalid reset link");
+  }
+ 
+  // ── find user ──
+  const User = await user.findById(decoded._id);
+ 
+  if (!User) {
+    throw new ApiError(404, "User not found");
+  }
+ 
+  // ── hash new password ──
+  const salt         = await bcrypt.genSalt(12);
+  const hashedPassword = await bcrypt.hash(newPassword, salt);
+ 
+  // ── persist ──
+  User.password = hashedPassword;
+  await User.save();
+ 
+  // ── optional: notify user that password was changed ──
+  await sendEmail({
+    to:      User.email,
+    subject: "Your Password Was Changed",
+    html: `
+      <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 480px; margin: auto;">
+ 
+        <h2 style="color: #0e1420;">Password Changed Successfully</h2>
+ 
+        <p style="color: #374151; line-height: 1.6;">
+          Your password has been updated. You can now log in with your new credentials.
+        </p>
+ 
+        <p style="color: #6b7280; font-size: 13px; line-height: 1.6;">
+          If you did not make this change, please contact support immediately.
+        </p>
+ 
+      </div>
+    `,
+  });
+ 
+  return res.status(200).json(
+    new ApiResponse(200, null, "Password has been reset successfully")
+  );
+});
+ 
 
 
 

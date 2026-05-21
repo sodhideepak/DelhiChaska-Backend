@@ -2445,6 +2445,11 @@ else if (item.type === "combo") {
 
       <br/>
 
+      Username:
+      ${User?.username || ""}
+
+      <br/>
+
       Email:
       ${User?.email || ""}
 
@@ -2512,26 +2517,66 @@ else if (item.type === "combo") {
   // ─────────────────────────────────────────────
   const userHtml = `
 
-    <h2>Thank You For Your Order 🎉</h2>
+    <h2 style="color:#111827; font-size:28px;">
+      🎉 Thank You For Your Order
+    </h2>
 
-    <p>
-      Hello ${User?.name || "Customer"},
+    <p style="font-size:16px; color:#374151;">
+      Hello <strong>${User?.name || "Customer"}</strong> 👋
     </p>
 
-    <p>
-      Your order has been placed successfully.
+    <p style="font-size:15px; color:#4B5563;">
+      Your order has been placed successfully and is currently being processed.
     </p>
 
-    <p>
-      <strong>Order ID:</strong>
-      ${order._id}
-    </p>
+    <div 
+      style="
+        background:#F9FAFB;
+        padding:15px;
+        border-radius:10px;
+        margin:20px 0;
+        border:1px solid #E5E7EB;
+      "
+    >
 
-    <table border="1" cellpadding="10">
+      <p>
+        <strong>Username:</strong>
+        ${User?.username || "N/A"}
+      </p>
+
+      <p>
+        <strong>Order ID:</strong>
+        ${order._id}
+      </p>
+
+      <p>
+        <strong>Total Amount:</strong>
+        <span style="color:#059669; font-size:18px; font-weight:bold;">
+          $${totalAmount}
+        </span>
+      </p>
+
+    </div>
+
+    <h3 style="color:#111827;">
+      🛒 Order Summary
+    </h3>
+
+    <table 
+      border="1" 
+      cellpadding="12"
+      cellspacing="0"
+      width="100%"
+      style="
+        border-collapse:collapse;
+        border:1px solid #E5E7EB;
+        overflow:hidden;
+      "
+    >
 
       <thead>
 
-        <tr>
+        <tr style="background:#111827; color:white;">
 
           <th>Item</th>
 
@@ -2555,32 +2600,60 @@ else if (item.type === "combo") {
 
     </table>
 
-    <h3>Total Amount: $${totalAmount}</h3>
+    <div 
+      style="
+        background:#F3F4F6;
+        padding:20px;
+        border-radius:12px;
+        margin-top:30px;
+      "
+    >
 
-    <h3>Payment Instructions</h3>
+      <h3 style="margin-top:0; color:#111827;">
+        💳 Payment Instructions
+      </h3>
 
-    <p>
-      <strong>Venmo:</strong>
-      ${paymentDetails.venmoId}
+      <p>
+        <strong>Venmo:</strong>
+        ${paymentDetails.venmoId}
+      </p>
+
+      <p>
+
+        <strong>Zelle Name:</strong>
+        ${paymentDetails.Zelle_name}
+
+        <br/><br/>
+
+        <strong>Zelle Number:</strong>
+        ${paymentDetails.zell_number}
+
+      </p>
+
+      <p style="color:#4B5563; line-height:1.6;">
+
+        Please complete the payment at your earliest convenience.
+
+        <br/><br/>
+
+        Your order confirmation mail will be sent once the admin confirms your order and payment.
+
+      </p>
+
+    </div>
+
+    <p 
+      style="
+        margin-top:30px;
+        text-align:center;
+        color:#6B7280;
+        font-size:14px;
+      "
+    >
+      ❤️ Thank you.
     </p>
 
-    <p>
-
-      <strong>Zelle Name:</strong>
-      ${paymentDetails.Zelle_name}
-
-      <br/>
-
-      <strong>Zelle Number:</strong>
-      ${paymentDetails.zell_number}
-
-      <br/>
-
-      Please complete the payment at your earliest convenience. Your order will got mail after admin confirms order and payment.
-
-    </p>
   `;
-
   // ─────────────────────────────────────────────
   // SEND EMAILS
   // ─────────────────────────────────────────────
@@ -2604,7 +2677,7 @@ else if (item.type === "combo") {
         User.email,
 
       subject:
-        `Your Order Confirmation - ${order._id}`,
+        `Your Order is Placed - ${order._id}`,
 
       html:
         userHtml
