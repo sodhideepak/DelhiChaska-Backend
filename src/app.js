@@ -29,6 +29,7 @@ const allowedOrigins = [
   "https://www.tiffinvala.com",
   "http://localhost:5174/",
   "https://tiffinvala-admin.vercel.app",
+  "https://www.dashboard.tiffinvala.com"
 ];
 
 app.use(
