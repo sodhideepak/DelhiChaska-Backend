@@ -201,7 +201,7 @@ const createProduct = asynchandler(async (req, res) => {
     ) {
         throw new ApiError(
             400,
-            "name, description, category, product_type and food_class are required"
+            "name, category, product_type and food_class are required"
         );
     }
 
