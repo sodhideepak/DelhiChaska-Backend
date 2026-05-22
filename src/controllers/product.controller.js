@@ -13,18 +13,63 @@ const SUPER_ADMIN_EMAIL = process.env.SUPER_ADMIN_EMAIL || "deepaksodhi0023@gmai
 const HARD_CODED_SUPER_ADMIN_ROLE = "super_admin";
 
 const ensureSuperAdmin = (req) => {
-        const isSuperAdmin = req.staff?.email?.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
-console.log(req.staff?.email?.toLowerCase());
-console.log(SUPER_ADMIN_EMAIL.toLowerCase());
 
-    if (!isSuperAdmin) {
-        throw new ApiError(403, "only super admin can perform this action");
-    }
+  // ─────────────────────────────────────────────
+  // GET EMAILS FROM ENV
+  // ─────────────────────────────────────────────
+  const superAdminEmails =
 
-    return {
-        role: HARD_CODED_SUPER_ADMIN_ROLE,
-        email: req.staff.email
-    };
+    process.env.SUPER_ADMIN_EMAILS
+
+      ?.split(",")
+
+      .map(email =>
+
+        email
+          .trim()
+          .toLowerCase()
+      ) || [];
+
+  // ─────────────────────────────────────────────
+  // CURRENT USER EMAIL
+  // ─────────────────────────────────────────────
+  const currentUserEmail =
+
+    req.staff?.email
+      ?.trim()
+      ?.toLowerCase();
+
+  // ─────────────────────────────────────────────
+  // CHECK SUPER ADMIN
+  // ─────────────────────────────────────────────
+  const isSuperAdmin =
+
+    superAdminEmails.includes(
+      currentUserEmail
+    );
+
+  // ─────────────────────────────────────────────
+  // NOT ALLOWED
+  // ─────────────────────────────────────────────
+  if (!isSuperAdmin) {
+
+    throw new ApiError(
+      403,
+      "Only super admin can perform this action"
+    );
+  }
+
+  // ─────────────────────────────────────────────
+  // RETURN
+  // ─────────────────────────────────────────────
+  return {
+
+    role:
+      HARD_CODED_SUPER_ADMIN_ROLE,
+
+    email:
+      currentUserEmail
+  };
 };
 
 // Create a new product
