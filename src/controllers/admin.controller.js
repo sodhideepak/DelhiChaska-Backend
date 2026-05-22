@@ -27,6 +27,21 @@ import { cookieOptions } from "../utils/cookieOptions.js";
 const SUPER_ADMIN_EMAIL = process.env.SUPER_ADMIN_EMAIL;
 const HARD_CODED_SUPER_ADMIN_ROLE = "super_admin";
 
+
+
+
+const adminEmails =
+   process.env.SUPER_ADMIN_EMAILS
+
+      ?.split(",")
+
+      .map(email =>
+
+        email
+          .trim()
+          .toLowerCase()
+      ) || [];
+
 // Utility function to calculate age
 const calculate_age = function calculateAge(dob) {
     const dobDate = new Date(dob);
@@ -541,7 +556,7 @@ const sendEmployeeRegistrationNotification = async(employeeName, employeeEmail, 
 
     const mailOptions = {
         from: process.env.emailusername,
-        to: SUPER_ADMIN_EMAIL,
+        to: adminEmails,
         subject: "New Employee Registration - TiffinVala Backend",
         html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
@@ -10317,7 +10332,7 @@ sendEmail({
   sendEmail({
 
     to:
-      process.env.ADMIN_EMAIL,
+      adminEmails,
 
     subject:
       "Order Delivered Update",

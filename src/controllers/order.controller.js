@@ -17,6 +17,21 @@ import mongoose from "mongoose";
 const SUPER_ADMIN_EMAIL = process.env.SUPER_ADMIN_EMAIL || "deepaksodhi0023@gmail.com";
 const HARD_CODED_SUPER_ADMIN_ROLE = "super_admin";
 
+
+const adminEmails =
+   process.env.SUPER_ADMIN_EMAILS
+
+      ?.split(",")
+
+      .map(email =>
+
+        email
+          .trim()
+          .toLowerCase()
+      ) || [];
+
+
+
 const ensureSuperAdmin = (req) => {
 
   // ─────────────────────────────────────────────
@@ -2705,7 +2720,7 @@ else if (item.type === "combo") {
   await sendEmail({
 
     to:
-      process.env.ADMIN_EMAIL,
+      adminEmails,
 
     subject:
       `New Order Received - ${order._id}`,
@@ -3276,7 +3291,7 @@ const notifyPaymentDone = asynchandler(async (req, res) => {
     // SEND EMAIL TO ADMIN
     // ─────────────────────────────────────────────
     await sendEmail({
-        to: process.env.ADMIN_EMAIL,
+        to: adminEmails,
 
         subject: "Payment Approval Request",
 
