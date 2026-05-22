@@ -195,7 +195,7 @@ const createProduct = asynchandler(async (req, res) => {
     } = req.body;
 
     if (
-        [name, description, category, product_type, food_class].some(
+        [name, category, product_type, food_class].some(
             (field) => !field || field.toString().trim() === ""
         )
     ) {
