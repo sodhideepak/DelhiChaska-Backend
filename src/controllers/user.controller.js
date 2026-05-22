@@ -1010,7 +1010,7 @@ const addAddress = asynchandler(async (req, res) => {
 
     // ✅ check in DB
     const allowedZip = await ZipCode.findOne({
-        country: country.toUpperCase(),
+        // country: country.toUpperCase(),
         zip_prefix: zipPrefix
     });
 
