@@ -227,7 +227,8 @@ const createProduct = asynchandler(async (req, res) => {
         veg_dry: ["8oz","16oz", "32oz"],
         rice: ["8oz","16oz", "32oz"],
         chinese: ["8oz","16oz", "32oz"],
-        breads: []
+        breads: [],
+        paranthas: []
     };
 
     const allowedSizes = PRODUCT_TYPE_CONFIG[product_type.toLowerCase()];
@@ -238,7 +239,7 @@ const createProduct = asynchandler(async (req, res) => {
 
 
     // const ALLOWED_FOOD_CLASS = ["veg_curry", "paneer", "chicken", "mutton", "veg_other"];
-    const ALLOWED_FOOD_CLASS = ["veg_curry", "paneer", "chicken", "mutton", "veg_other", "veg_dry", "rice", "chinese", "breads"];
+    const ALLOWED_FOOD_CLASS = ["veg_curry", "paneer", "chicken", "mutton", "veg_other", "veg_dry", "rice", "chinese", "breads","paranthas"];
 
     if (!ALLOWED_FOOD_CLASS.includes(food_class.toLowerCase())) {
         throw new ApiError(
