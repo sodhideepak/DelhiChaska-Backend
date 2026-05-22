@@ -302,7 +302,7 @@ const createProduct = asynchandler(async (req, res) => {
     // ==========================
     const product = await Product.create({
         name: name.trim(),
-        description: description.trim(),
+        description: description.trim() || " ",
         category: category.trim().toLowerCase(),
         product_type: product_type.trim().toLowerCase(),
         food_class: food_class.trim().toLowerCase(),
