@@ -19,7 +19,7 @@ const variantSchema = new mongoose.Schema(
 const productSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true },
-    description: { type: String, required: true, trim: true },
+    description: { type: String, trim: true },
     image: { type: String, required: true },
     category: { type: String, required: true, trim: true },
     food_class: { type: String, required: true, trim: true },
