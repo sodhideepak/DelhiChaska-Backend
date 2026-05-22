@@ -24,7 +24,7 @@ import { cookieOptions } from "../utils/cookieOptions.js";
 
 
 
-const SUPER_ADMIN_EMAIL = process.env.SUPER_ADMIN_EMAIL || "deepaksodhi0023@gmail.com";
+const SUPER_ADMIN_EMAIL = process.env.SUPER_ADMIN_EMAIL;
 const HARD_CODED_SUPER_ADMIN_ROLE = "super_admin";
 
 // Utility function to calculate age
@@ -54,45 +54,63 @@ const calculate_age = function calculateAge(dob) {
 
 const ensureSuperAdmin = (req) => {
 
-    // convert env string into array
-    const superAdminEmails =
-        process.env.SUPER_ADMIN_EMAILS
-            ?.split(",")
-            .map(email =>
-                email.trim().toLowerCase()
-            ) || [];
+  // ─────────────────────────────────────────────
+  // GET EMAILS FROM ENV
+  // ─────────────────────────────────────────────
+  const superAdminEmails =
 
-    const currentUserEmail =
-        req.staff?.email
-            ?.trim()
-            ?.toLowerCase();
+    process.env.SUPER_ADMIN_EMAILS
 
-    console.log(currentUserEmail);
-    console.log(superAdminEmails);
+      ?.split(",")
 
-    const isSuperAdmin =
-        superAdminEmails.includes(
-            currentUserEmail
-        );
+      .map(email =>
 
-    if (!isSuperAdmin) {
+        email
+          .trim()
+          .toLowerCase()
+      ) || [];
 
-        throw new ApiError(
-            403,
-            "only super admin can perform this action"
-        );
-    }
+  // ─────────────────────────────────────────────
+  // CURRENT USER EMAIL
+  // ─────────────────────────────────────────────
+  const currentUserEmail =
 
-    return {
+    req.staff?.email
+      ?.trim()
+      ?.toLowerCase();
 
-        role:
-            HARD_CODED_SUPER_ADMIN_ROLE,
+  // ─────────────────────────────────────────────
+  // CHECK SUPER ADMIN
+  // ─────────────────────────────────────────────
+  const isSuperAdmin =
 
-        email:
-            req.staff.email
-    };
+    superAdminEmails.includes(
+      currentUserEmail
+    );
+
+  // ─────────────────────────────────────────────
+  // NOT ALLOWED
+  // ─────────────────────────────────────────────
+  if (!isSuperAdmin) {
+
+    throw new ApiError(
+      403,
+      "Only super admin can perform this action"
+    );
+  }
+
+  // ─────────────────────────────────────────────
+  // RETURN
+  // ─────────────────────────────────────────────
+  return {
+
+    role:
+      HARD_CODED_SUPER_ADMIN_ROLE,
+
+    email:
+      currentUserEmail
+  };
 };
-
 
 const sendresetpasswordmail=asynchandler(async(fullname,email,token)=>{
 
@@ -940,7 +958,155 @@ const logoutStaff = asynchandler(async (req, res) => {
 });
 
 
+const changeStaffPassword = asynchandler(async (req, res) => {
 
+  ensureSuperAdmin(req);
+  // ─────────────────────────────────────────────
+  // STAFF
+  // ─────────────────────────────────────────────
+  const staffId =
+    req.staff?._id;
+
+  // ─────────────────────────────────────────────
+  // BODY
+  // ─────────────────────────────────────────────
+  const {
+    oldPassword,
+    newPassword,
+    confirmPassword
+  } = req.body;
+
+  // ─────────────────────────────────────────────
+  // VALIDATIONS
+  // ─────────────────────────────────────────────
+  if (
+    !oldPassword ||
+    !newPassword ||
+    !confirmPassword
+  ) {
+
+    throw new ApiError(
+      400,
+      "All fields are required"
+    );
+  }
+
+  // ─────────────────────────────────────────────
+  // CHECK PASSWORD MATCH
+  // ─────────────────────────────────────────────
+  if (
+    newPassword !==
+    confirmPassword
+  ) {
+
+    throw new ApiError(
+      400,
+      "New password and confirm password do not match"
+    );
+  }
+
+  // ─────────────────────────────────────────────
+  // PASSWORD LENGTH
+  // ─────────────────────────────────────────────
+  if (
+    newPassword.length < 6
+  ) {
+
+    throw new ApiError(
+      400,
+      "Password must be at least 6 characters"
+    );
+  }
+
+  // ─────────────────────────────────────────────
+  // FIND STAFF
+  // ─────────────────────────────────────────────
+  const staff =
+    await Employee.findById(
+      staffId
+    );
+
+  if (!staff) {
+
+    throw new ApiError(
+      404,
+      "Staff not found"
+    );
+  }
+
+  // ─────────────────────────────────────────────
+  // CHECK OLD PASSWORD
+  // ─────────────────────────────────────────────
+  const isPasswordCorrect =
+    await staff.isPasswordcorrect(
+      oldPassword
+    );
+
+  if (!isPasswordCorrect) {
+
+    throw new ApiError(
+      400,
+      "Old password is incorrect"
+    );
+  }
+
+  // ─────────────────────────────────────────────
+  // CHECK SAME PASSWORD
+  // ─────────────────────────────────────────────
+  const isSamePassword =
+    await bcrypt.compare(
+      newPassword,
+      staff.password
+    );
+
+  if (isSamePassword) {
+
+    throw new ApiError(
+      400,
+      "New password cannot be same as old password"
+    );
+  }
+
+  // ─────────────────────────────────────────────
+  // HASH PASSWORD
+  // ─────────────────────────────────────────────
+  const hashedPassword =
+    await bcrypt.hash(
+      newPassword,
+      10
+    );
+
+  // ─────────────────────────────────────────────
+  // UPDATE PASSWORD
+  // ─────────────────────────────────────────────
+  staff.password =
+    hashedPassword;
+
+  await staff.save();
+
+  // ─────────────────────────────────────────────
+  // RESPONSE
+  // ─────────────────────────────────────────────
+  return res.status(200).json(
+
+    new ApiResponse(
+      200,
+      {
+
+        staffId:
+          staff._id,
+
+        name:
+          staff.name,
+
+        email:
+          staff.email
+      },
+
+      "Password changed successfully"
+    )
+  );
+});
 
 
 // Get all employees by verification status
@@ -11017,5 +11183,6 @@ export {
         adminViewBatchesHistory,
         getResetUnDeliveredOrders,
         adminViewDriverBatchHistory,
-        upsertBatch
+        upsertBatch,
+        changeStaffPassword
     }

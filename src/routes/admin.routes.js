@@ -64,7 +64,8 @@ import {
         getResetUnDeliveredOrders,
         adminViewDriverBatchHistory,
         upsertBatch,
-        getDriverActiveBatch
+        getDriverActiveBatch,
+        changeStaffPassword
      } from "../controllers/admin.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
@@ -120,6 +121,8 @@ router.route("/forgotpassword").post(forgotpassword)
 
 router.route("/resetpassword").post(resetpassword)
 
+
+router.route("/employee/changeStaffPassword").post(verifyStaffJWT,changeStaffPassword)
 
 
 
