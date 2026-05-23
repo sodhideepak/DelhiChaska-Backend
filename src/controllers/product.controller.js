@@ -273,8 +273,10 @@ const createProduct = asynchandler(async (req, res) => {
         rice: ["8oz","16oz", "32oz"],
         chinese: ["8oz","16oz", "32oz"],
         biryani: ["8oz","16oz", "32oz"],
-        breads: [],
-        paranthas: []
+        breads:[],
+        roti: [],
+        plain_parantha: [],
+        stuffed_parantha: []
     };
 
     const allowedSizes = PRODUCT_TYPE_CONFIG[product_type.toLowerCase()];
@@ -285,7 +287,7 @@ const createProduct = asynchandler(async (req, res) => {
 
 
     // const ALLOWED_FOOD_CLASS = ["veg_curry", "paneer", "chicken", "mutton", "veg_other"];
-    const ALLOWED_FOOD_CLASS = ["veg_curry", "paneer", "chicken", "mutton", "veg_other", "veg_dry", "rice", "chinese", "breads","paranthas","biryani"];
+    const ALLOWED_FOOD_CLASS = ["veg_curry", "paneer", "chicken", "mutton", "veg_other", "veg_dry", "rice", "chinese", "breads","paranthas","biryani","roti","plain_parantha","stuffed_parantha"];
 
     if (!ALLOWED_FOOD_CLASS.includes(food_class.toLowerCase())) {
         throw new ApiError(
@@ -685,12 +687,14 @@ const updateProduct = asynchandler(async (req, res) => {
         rice: ["8oz","16oz", "32oz"],
         chinese: ["8oz","16oz", "32oz"],
         biryani: ["8oz","16oz", "32oz"],
-        paranthas: [],
-        breads: []
+        breads:[],
+        stuffed_parantha: [],
+        plain_parantha: [],
+        roti: []
     };
     const ALLOWED_FOOD_CLASS = [
         "veg_curry", "paneer", "chicken", "mutton",
-        "veg_other", "veg_dry", "rice", "chinese", "breads","paranthas", "biryani"
+        "veg_other", "veg_dry", "rice", "chinese", "roti","plain_parantha", "biryani","stuffed_parantha", "breads"
     ];
 
     // ==========================
