@@ -980,9 +980,50 @@ const changeCurrentPassword = asynchandler(async (req, res) => {
 
 
 
+const AREA_CITY_MAP = {
+    bay_area: [
+        "bay_area",
+        "San Mateo",
+        "Foster City",
+        "Burlingame",
+        "San Carlos",
+        "Redwood City",
+        "Belmont",
+        "Menlo Park",
+        "Palo Alto",
+        "Mountain View",
+        "Los Altos",
+        "Sunnyvale",
+        "Cupertino",
+        "Santa Clara",
+        "San Jose",
+        "Saratoga",
+        "Campbell",
+        "Los Gatos",
+        "Milpitas"
+    ],
 
+    seattle: [
+        "Seattle",
+        "Bellevue",
+        "Redmond",
+        "Kirkland",
+        "Bothell",
+        "Lynnwood",
+        "Everett",
+        "Mill Creek",
+        "Woodinville",
+        "Sammamish",
+        "Issaquah",
+        "Newcastle",
+        "Renton",
+        "Kent",
+        "Kenmore"
+    ]
+};
 
 const addAddress = asynchandler(async (req, res) => {
+
     const {
         addressLine1,
         addressLine2,
@@ -993,62 +1034,98 @@ const addAddress = asynchandler(async (req, res) => {
         location
     } = req.body;
 
-    // ✅ basic validation
-    if ([addressLine1, city, state, zipCode, country].some(
-        (field) => !field || field.toString().trim() === ""
-    )) {
-        throw new ApiError(400, "addressLine1, city, state, zipCode and country are required");
+    // ✅ validation
+    if (
+        [addressLine1, city, state, zipCode, country].some(
+            (field) => !field || field.toString().trim() === ""
+        )
+    ) {
+        throw new ApiError(
+            400,
+            "addressLine1, city, state, zipCode and country are required"
+        );
     }
 
-    // ✅ extract first 3 digits
-    const zipPrefix = zipCode.toString().substring(0, 3);
+    // ✅ zip validation
+    const zipPrefix =
+        zipCode.toString().substring(0, 3);
 
     if (zipPrefix.length !== 3) {
         throw new ApiError(400, "Invalid ZIP code");
     }
 
-    // ✅ check in DB
     const allowedZip = await ZipCode.findOne({
-        // country: country.toUpperCase(),
         zip_prefix: zipPrefix
     });
 
     if (!allowedZip) {
-        throw new ApiError(400, "Service not available in this area (ZIP not supported)");
+        throw new ApiError(
+            400,
+            "Service not available in this area"
+        );
     }
 
-    // ✅ OPTIONAL: auto-correct city/state (recommended)
-    // city = allowedZip.city
-    // state = allowedZip.state
+    // ✅ auto assign area from city
+    let area = "other";
+
+    const normalizedCity =
+        city.trim().toLowerCase();
+
+    for (const [areaKey, cities] of Object.entries(AREA_CITY_MAP)) {
+
+        const normalizedCities =
+            cities.map(city =>
+                city.toLowerCase()
+            );
+
+        if (
+            normalizedCities.includes(normalizedCity)
+        ) {
+            area = areaKey;
+            break;
+        }
+    }
 
     // ✅ create address
-    const createdAddress = await Address.create({
-        user: req.user._id,
-        addressLine1,
-        addressLine2,
-        city,
-        state,
-        zipCode,
-        country: country.toUpperCase(),
-        location,
-        area
-    });
+    const createdAddress =
+        await Address.create({
 
-    // ✅ link to user
+            user: req.user._id,
+
+            addressLine1,
+            addressLine2,
+
+            city,
+            state,
+            zipCode,
+
+            country:
+                country.toUpperCase(),
+
+            location,
+
+            area
+        });
+
+    // ✅ attach address to user
     await user.findByIdAndUpdate(
         req.user._id,
         {
             $addToSet: {
-                addresses: createdAddress._id
+                addresses:
+                    createdAddress._id
             }
         }
     );
 
     return res.status(201).json(
-        new ApiResponse(201, createdAddress, "Address added successfully")
+        new ApiResponse(
+            201,
+            createdAddress,
+            "Address added successfully"
+        )
     );
 });
-
 
 
 
