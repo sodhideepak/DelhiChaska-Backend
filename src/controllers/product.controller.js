@@ -688,8 +688,8 @@ const updateProduct = asynchandler(async (req, res) => {
         chinese: ["8oz","16oz", "32oz"],
         biryani: ["8oz","16oz", "32oz"],
         breads:[],
-        stuffed_parantha: [],
-        plain_parantha: [],
+        stuffed_parantha:[],
+        plain_parantha:[],
         roti: []
     };
     const ALLOWED_FOOD_CLASS = [
