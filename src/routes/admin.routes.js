@@ -65,7 +65,8 @@ import {
         adminViewDriverBatchHistory,
         upsertBatch,
         getDriverActiveBatch,
-        changeStaffPassword
+        changeStaffPassword,
+
      } from "../controllers/admin.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
@@ -91,7 +92,7 @@ router.route("/employee/edit/:employeeId").patch(verifyStaffJWT,editEmployeeDeta
 
 router.route("/sendotp").post(send_otp)
 
-// router.route("/verifyemail").post(verifyemail)
+// router.route("/verifyemail").post(verifyemail)  
 
 router.route("/login").post(loginuser)
 

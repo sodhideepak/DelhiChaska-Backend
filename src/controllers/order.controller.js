@@ -2423,14 +2423,44 @@ else if (item.type === "combo") {
   // ─────────────────────────────────────────────
   let paymentDetails = {};
 
-  const area =
+  // const area =
 
-    (
-      address.area || ""
-    ).toLowerCase();
+  //   (
+  //     address.area || ""
+  //   ).toLowerCase();
+      let area = "bay_area";
+
+    const city =
+      address.city?.trim()?.toLowerCase();
+
+    if (
+      [
+        "seattle",
+        "bellevue",
+        "redmond",
+        "kirkland",
+        "bothell",
+        "lynnwood",
+        "everett",
+        "mill creek",
+        "woodinville",
+        "sammamish",
+        "issaquah",
+        "newcastle",
+        "renton",
+        "kent",
+        "kenmore"
+      ].includes(city)
+    ) {
+
+      area = "seattle";
+    }
+
+
+  
 
   if (
-    area.includes("bay_area")
+    area === "bay_area"
   ) {
 
     paymentDetails = {
@@ -2531,6 +2561,8 @@ else if (item.type === "combo") {
       ${deliveryDetails.city},
 
       ${deliveryDetails.state}
+
+      ${area}
 
       <br/>
 

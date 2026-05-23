@@ -993,7 +993,6 @@ const addAddress = asynchandler(async (req, res) => {
         location
     } = req.body;
 
-    const area="bay_area"
     // ✅ basic validation
     if ([addressLine1, city, state, zipCode, country].some(
         (field) => !field || field.toString().trim() === ""

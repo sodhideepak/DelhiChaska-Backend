@@ -20,6 +20,7 @@ import { Address } from "../models/address.model.js";
 import { DeliveryBatch } from "../models/deliveryBatch.model.js";
 import { cookieOptions } from "../utils/cookieOptions.js";
 
+
  
 
 
@@ -975,7 +976,7 @@ const logoutStaff = asynchandler(async (req, res) => {
 
 const changeStaffPassword = asynchandler(async (req, res) => {
 
-  ensureSuperAdmin(req);
+  // ensureSuperAdmin(req);
   // ─────────────────────────────────────────────
   // STAFF
   // ─────────────────────────────────────────────
@@ -2246,6 +2247,7 @@ const AREA_CITY_MAP = {
   bay_area: [
 
   // San Francisco Bay Area
+  "bay_area",
 "San Mateo", 
 "Foster City", 
 "Burlingame", 
@@ -11099,6 +11101,21 @@ const upsertBatch = async (req, res) => {
 };
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 export {
         registeruser,
         startEmployeeRegistration,
@@ -11161,5 +11178,5 @@ export {
         getResetUnDeliveredOrders,
         adminViewDriverBatchHistory,
         upsertBatch,
-        changeStaffPassword
+        changeStaffPassword,
     }
