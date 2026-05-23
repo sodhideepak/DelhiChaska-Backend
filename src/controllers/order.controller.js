@@ -1912,27 +1912,27 @@ const clearCart = asynchandler(async (req, res) => {
 });
 
 
-
 const getNextDeliveryDate = asynchandler(async (req, res) => {
 
     // ==========================
-    // 🔥 CONFIG (DYNAMIC)
+    // 🔥 CONFIG
     // ==========================
-    // const deliveryDays = [1, 3, 5]; // Monday, Wednesday, Friday
-    const deliveryDays = [1]; // Monday, Wednesday, Friday
+    const deliveryDays = [1,4]; // Monday & Thursday
     const cutoffHour = 22; // 10 PM
 
     // ==========================
-    // 🕒 CURRENT TIME (PST/PDT)
+    // 🕒 CURRENT LA TIME
     // ==========================
     const now = new Date();
 
-    const usDate = new Date(
-        now.toLocaleString("en-US", { timeZone: "America/Los_Angeles" })
+    const laDate = new Date(
+        now.toLocaleString("en-US", {
+            timeZone: "America/Los_Angeles"
+        })
     );
 
-    const today = usDate.getDay();
-    const currentHour = usDate.getHours();
+    const today = laDate.getDay();
+    const currentHour = laDate.getHours();
 
     // ==========================
     // 🔍 FIND NEXT DELIVERY DAY
@@ -1941,6 +1941,7 @@ const getNextDeliveryDate = asynchandler(async (req, res) => {
     let nextDeliveryDay = null;
 
     for (let i = 1; i <= 7; i++) {
+
         const nextDay = (today + i) % 7;
 
         if (deliveryDays.includes(nextDay)) {
@@ -1951,29 +1952,31 @@ const getNextDeliveryDate = asynchandler(async (req, res) => {
     }
 
     if (daysToAdd === null) {
-        throw new ApiError(500, "No delivery days configured");
+        throw new ApiError(
+            500,
+            "No delivery days configured"
+        );
     }
 
     // ==========================
-    // 📅 NEXT DELIVERY DATE
+    // 🔥 CUTOFF LOGIC
     // ==========================
-    const nextDeliveryDate = new Date(usDate);
-    nextDeliveryDate.setDate(usDate.getDate() + daysToAdd);
-
-    // ==========================
-    // 🔥 CHECK CUTOFF LOGIC
-    // ==========================
-    const previousDay = (nextDeliveryDay + 6) % 7; // day before delivery
-
     let isAcceptingOrders = true;
 
-    // Case 1: Today is delivery day → NOT accepting
+    // If today is delivery day
     if (deliveryDays.includes(today)) {
         isAcceptingOrders = false;
     }
 
-    // Case 2: Today is previous day & after cutoff time
-    if (today === previousDay && currentHour >= cutoffHour) {
+    // Day before delivery
+    const previousDay =
+        (nextDeliveryDay + 6) % 7;
+
+    // After cutoff on previous day
+    if (
+        today === previousDay &&
+        currentHour >= cutoffHour
+    ) {
         isAcceptingOrders = false;
     }
 
@@ -1981,6 +1984,7 @@ const getNextDeliveryDate = asynchandler(async (req, res) => {
     // ❌ NOT ACCEPTING
     // ==========================
     if (!isAcceptingOrders) {
+
         return res.status(200).json(
             new ApiResponse(
                 200,
@@ -1993,16 +1997,39 @@ const getNextDeliveryDate = asynchandler(async (req, res) => {
     }
 
     // ==========================
-    // ✅ ACCEPTING → SEND DATE
+    // 📅 NEXT DELIVERY DATE
     // ==========================
-    const formattedDate = nextDeliveryDate.toLocaleDateString("en-US", {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-        timeZone: "America/Los_Angeles"
-    });
+    const nextDeliveryDate = new Date(laDate);
 
+    nextDeliveryDate.setDate(
+        nextDeliveryDate.getDate() + daysToAdd
+    );
+
+    // ==========================
+    // ✅ FORMAT RESPONSE
+    // ==========================
+    const formattedDate =
+        nextDeliveryDate.toLocaleDateString(
+            "en-US",
+            {
+                weekday: "long",
+                year: "numeric",
+                month: "long",
+                day: "numeric"
+            }
+        );
+
+    const day =
+        nextDeliveryDate.toLocaleDateString(
+            "en-US",
+            {
+                weekday: "long"
+            }
+        );
+
+    // ==========================
+    // ✅ RESPONSE
+    // ==========================
     return res.status(200).json(
         new ApiResponse(
             200,
@@ -2010,17 +2037,12 @@ const getNextDeliveryDate = asynchandler(async (req, res) => {
                 acceptingOrders: true,
                 date: nextDeliveryDate,
                 formatted: formattedDate,
-                day: nextDeliveryDate.toLocaleDateString("en-US", {
-                    weekday: "long",
-                    timeZone: "America/Los_Angeles"
-                })
+                day
             },
             "Next delivery date fetched successfully"
         )
     );
 });
-
-
 const ProceedToOrder = asynchandler(async (req, res) => {
 
   // ─────────────────────────────────────────────
