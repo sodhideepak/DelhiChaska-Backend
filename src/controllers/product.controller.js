@@ -274,9 +274,9 @@ const createProduct = asynchandler(async (req, res) => {
         chinese: ["8oz","16oz", "32oz"],
         biryani: ["8oz","16oz", "32oz"],
         breads:[],
-        roti: [],
-        paneer_tikka:[],
-        chicken_tikka:[],
+        roti: [], 
+        paneer_tikka:["8oz","16oz", "32oz"],
+        chicken_tikka:["8oz","16oz", "32oz"],
         plain_parantha: [],
         stuffed_parantha: []
     };
@@ -689,8 +689,8 @@ const updateProduct = asynchandler(async (req, res) => {
         rice: ["8oz","16oz", "32oz"],
         chinese: ["8oz","16oz", "32oz"],
         biryani: ["8oz","16oz", "32oz"],
-        paneer_tikka:[],
-        chicken_tikka:[],
+        paneer_tikka:["8oz","16oz", "32oz"],
+        chicken_tikka:["8oz","16oz", "32oz"],
         breads:[],
         stuffed_parantha:[],
         plain_parantha:[],
