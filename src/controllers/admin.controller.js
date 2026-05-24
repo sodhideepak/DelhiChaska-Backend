@@ -2178,7 +2178,7 @@ const adminViewAllOrders = asynchandler(async (req, res) => {
     ensureSuperAdmin(req);
   // optional filters via query params
   // e.g. /admin/orders?status=pending&payment=cod&page=1&limit=10
-  const { status, payment, page = 1, limit = 10 } = req.query;
+  const { status, payment, page = 1, limit = 999 } = req.query;
 
   const filter = {};
   if (status)  filter.status           = status;
@@ -3095,7 +3095,7 @@ const kitchenViewOrdersByArea = asynchandler(async (req, res) => {
   const {
     area,
     page = 1,
-    limit = 20
+    limit = 999
   } = req.query;
 
   // ─────────────────────────────────────────────
@@ -3883,7 +3883,7 @@ const getAllDrivers = asynchandler(async (req, res) => {
     search,
     upForNextDelivery,
     page = 1,
-    limit = 10
+    limit = 999
   } = req.query;
 
   // ─────────────────────────────────────────────
@@ -4314,7 +4314,7 @@ const getUnverifiedDrivers = asynchandler(async (req, res) => {
   const {
     search,
     page = 1,
-    limit = 10
+    limit = 999
   } = req.query;
 
   // ─────────────────────────────────────────────
@@ -4597,7 +4597,7 @@ const getAllUsers = asynchandler(async (req, res) => {
     search,
     gender,
     page = 1,
-    limit = 10
+    limit = 999
   } = req.query;
 
   // ─────────────────────────────────────────────
@@ -4781,7 +4781,7 @@ const getAllDriversfull = asynchandler(async (req, res) => {
   // ─────────────────────────────────────────────
   const {
     page = 1,
-    limit = 10
+    limit = 999
   } = req.query;
 
   // ─────────────────────────────────────────────
@@ -7389,7 +7389,7 @@ const getUnassignedConfirmedOrders = asynchandler(async (req, res) => {
     endDate,
 
     page = 1,
-    limit = 10
+    limit = 999
 
   } = req.query;
 
@@ -7789,7 +7789,7 @@ const getResetUnDeliveredOrders = asynchandler(async (req, res) => {
     endDate,
 
     page = 1,
-    limit = 10
+    limit = 999
 
   } = req.query;
 
@@ -8734,7 +8734,7 @@ const adminPaymentHistoryByArea = asynchandler(async (req, res) => {
 
     // ✅ PAGINATION
     page = 1,
-    limit = 10
+    limit = 999
 
   } = req.query;
 
@@ -10484,7 +10484,7 @@ const getAllDeliveryBatches = asynchandler(async (req, res) => {
 
         // PAGINATION
         page = 1,
-        limit = 10
+        limit = 999
 
     } = req.query;
 
