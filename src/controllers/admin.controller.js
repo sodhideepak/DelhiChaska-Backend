@@ -2282,6 +2282,7 @@ seattle: [
   "Mill Creek", 
   "Woodinville", 
   "Sammamish", 
+  "snohomish",
   "Issaquah", 
   "Newcastle", 
   "Renton", 
