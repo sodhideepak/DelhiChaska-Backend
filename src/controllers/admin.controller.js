@@ -2313,7 +2313,7 @@ const adminViewOrdersByArea = asynchandler(async (req, res) => {
     endDate,
 
     page = 1,
-    limit = 10
+    limit = 999
 
   } = req.query;
 
