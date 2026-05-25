@@ -10976,7 +10976,7 @@ const upsertBatch = async (req, res) => {
     let batch = await DeliveryBatch.findOne({
       driverId,
       area: area.toLowerCase().trim(),
-      status: { $in: ["draft", "active", "in_progress", "finalised"] },
+      status: { $in: ["draft", "active", "in_progress", "finalized"] },
     });
 
     let isNewBatch = false;
