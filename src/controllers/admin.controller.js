@@ -3496,6 +3496,9 @@ const kitchenViewOrdersByArea = asynchandler(async (req, res) => {
       itemCount:
         order.items.length,
 
+      totalprice:
+        order.totalAmount || 0,
+
       items:
         order.items.map(item => ({
 
