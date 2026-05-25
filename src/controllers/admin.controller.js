@@ -2368,17 +2368,33 @@ const adminViewOrdersByArea = asynchandler(async (req, res) => {
   // ─────────────────────────────────────────────
   if (status) {
 
-    filter.status = status;
+  // support:
+  // ?status=delivered
+  // ?status=delivered,confirmed
+
+  const statuses =
+    status
+      .split(",")
+      .map(item =>
+        item.trim()
+      );
+
+  // single status
+  if (statuses.length === 1) {
+
+    filter.status =
+      statuses[0];
   }
 
-  // ─────────────────────────────────────────────
-  // PAYMENT STATUS
-  // ─────────────────────────────────────────────
-  if (paymentStatus) {
+  // multiple status
+  else {
 
-    filter["payment.status"] =
-      paymentStatus;
+    filter.status = {
+
+      $in: statuses
+    };
   }
+}
 
   // ─────────────────────────────────────────────
   // SINGLE DATE FILTER
