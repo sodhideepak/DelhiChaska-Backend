@@ -3482,10 +3482,13 @@ const kitchenViewOrdersByArea = asynchandler(async (req, res) => {
 
       username:
         order.userId?.username ||
-
-        order.userId?.full_name ||
-
         "Unknown",
+
+      full_name:
+        order.userId?.full_name || "",
+
+      city:
+        order.deliveryDetails?.city || "",
 
       status:
         order.status,
