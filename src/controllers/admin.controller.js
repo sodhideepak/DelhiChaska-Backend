@@ -2291,7 +2291,6 @@ seattle: [
 
 ],
 };
-
 const adminViewOrdersByArea = asynchandler(async (req, res) => {
 
   // ─────────────────────────────────────────────
@@ -2368,33 +2367,67 @@ const adminViewOrdersByArea = asynchandler(async (req, res) => {
   // ─────────────────────────────────────────────
   if (status) {
 
-  // support:
-  // ?status=delivered
-  // ?status=delivered,confirmed
+    // support:
+    // ?status=delivered
+    // ?status=delivered,confirmed
 
-  const statuses =
-    status
-      .split(",")
-      .map(item =>
-        item.trim()
-      );
+    const statuses =
+      status
+        .split(",")
+        .map(item =>
+          item.trim().toLowerCase()
+        );
 
-  // single status
-  if (statuses.length === 1) {
+    // single status
+    if (statuses.length === 1) {
 
-    filter.status =
-      statuses[0];
+      filter.status =
+        statuses[0];
+    }
+
+    // multiple status
+    else {
+
+      filter.status = {
+
+        $in: statuses
+      };
+    }
   }
 
-  // multiple status
-  else {
+  // ─────────────────────────────────────────────
+  // PAYMENT STATUS FILTER
+  // ─────────────────────────────────────────────
+  if (paymentStatus) {
 
-    filter.status = {
+    // support:
+    // ?paymentStatus=paid
+    // ?paymentStatus=pending
+    // ?paymentStatus=paid,pending
 
-      $in: statuses
-    };
+    const paymentStatuses =
+      paymentStatus
+        .split(",")
+        .map(item =>
+          item.trim().toLowerCase()
+        );
+
+    // single payment status
+    if (paymentStatuses.length === 1) {
+
+      filter["payment.status"] =
+        paymentStatuses[0];
+    }
+
+    // multiple payment status
+    else {
+
+      filter["payment.status"] = {
+
+        $in: paymentStatuses
+      };
+    }
   }
-}
 
   // ─────────────────────────────────────────────
   // SINGLE DATE FILTER
@@ -8745,6 +8778,402 @@ const resetConfirmedOrders = asynchandler(async (req, res) => {
 
 
 
+// const adminPaymentHistoryByArea = asynchandler(async (req, res) => {
+
+//   ensureSuperAdmin(req);
+
+//   const {
+//     area,
+
+//     // ✅ PAYMENT FILTER
+//     paymentStatus,
+
+//     // ✅ DATE FILTERS
+//     date,
+//     startDate,
+//     endDate,
+
+//     // ✅ PAGINATION
+//     page = 1,
+//     limit = 999
+
+//   } = req.query;
+
+//   // ─────────────────────────────────────────────
+//   // AREA REQUIRED
+//   // ─────────────────────────────────────────────
+//   if (!area) {
+
+//     throw new ApiError(
+//       400,
+//       "Area is required"
+//     );
+//   }
+
+//   // ─────────────────────────────────────────────
+//   // GET CITIES
+//   // ─────────────────────────────────────────────
+//   const cities =
+//     AREA_CITY_MAP[area.toLowerCase()];
+
+//   if (!cities) {
+
+//     throw new ApiError(
+//       400,
+//       "Invalid area provided"
+//     );
+//   }
+
+//   // ─────────────────────────────────────────────
+//   // BASE FILTER
+//   // ─────────────────────────────────────────────
+//   const filter = {
+
+//     "deliveryDetails.city": {
+//       $in: cities
+//     }
+
+//   };
+
+//   // ─────────────────────────────────────────────
+//   // PAYMENT STATUS FILTER
+//   // ─────────────────────────────────────────────
+//   if (paymentStatus) {
+
+//     filter["payment.status"] =
+//       paymentStatus;
+//   }
+
+//   // ─────────────────────────────────────────────
+//   // SINGLE DATE FILTER
+//   // ─────────────────────────────────────────────
+//   if (date) {
+
+//     const selectedDate =
+//       new Date(date);
+
+//     const startOfDay =
+//       new Date(selectedDate);
+
+//     startOfDay.setHours(
+//       0, 0, 0, 0
+//     );
+
+//     const endOfDay =
+//       new Date(selectedDate);
+
+//     endOfDay.setHours(
+//       23, 59, 59, 999
+//     );
+
+//     filter.createdAt = {
+
+//       $gte: startOfDay,
+//       $lte: endOfDay
+
+//     };
+//   }
+
+//   // ─────────────────────────────────────────────
+//   // DATE RANGE FILTER
+//   // ─────────────────────────────────────────────
+//   if (startDate || endDate) {
+
+//     filter.createdAt = {};
+
+//     if (startDate) {
+
+//       filter.createdAt.$gte =
+//         new Date(startDate);
+//     }
+
+//     if (endDate) {
+
+//       const end =
+//         new Date(endDate);
+
+//       end.setHours(
+//         23, 59, 59, 999
+//       );
+
+//       filter.createdAt.$lte =
+//         end;
+//     }
+//   }
+
+//   // ─────────────────────────────────────────────
+//   // PAGINATION
+//   // ─────────────────────────────────────────────
+//   const currentPage =
+//     Number(page) || 1;
+
+//   const perPage =
+//     Number(limit) || 10;
+
+//   const skip =
+//     (currentPage - 1) * perPage;
+
+//   // ─────────────────────────────────────────────
+//   // FETCH ORDERS
+//   // ─────────────────────────────────────────────
+//   const [orders, totalOrders] =
+//     await Promise.all([
+
+//       Order.find(filter)
+
+//         .populate(
+//           "userId",
+//           "full_name phone_number username"
+//         )
+
+//         .sort({
+//           createdAt: -1
+//         })
+
+//         .skip(skip)
+
+//         .limit(perPage)
+
+//         .lean(),
+
+//       Order.countDocuments(filter)
+
+//     ]);
+
+//   // ─────────────────────────────────────────────
+//   // FORMAT PAYMENTS
+//   // ─────────────────────────────────────────────
+//   const formattedPayments =
+//     orders.map(order => ({
+
+//       orderId:
+//         order._id,
+
+//       user: {
+
+//         userId:
+//           order.userId?._id || null,
+
+//         name:
+//           order.userId?.full_name || "",
+
+//         username:
+//           order.userId?.username || "",
+
+//         phone:
+//           order.userId?.phone_number ||
+//           order.deliveryDetails?.phone || "",
+
+//         address: {
+
+//           addressId:
+//             order.deliveryDetails?.addressId || "",
+
+//           addressLine1:
+//             order.deliveryDetails?.addressLine1 || "",
+
+//           addressLine2:
+//             order.deliveryDetails?.addressLine2 || "",
+
+//           city:
+//             order.deliveryDetails?.city || "",
+
+//           state:
+//             order.deliveryDetails?.state || "",
+
+//           zipCode:
+//             order.deliveryDetails?.zipCode || "",
+
+//           country:
+//             order.deliveryDetails?.country || "",
+
+//           location: {
+
+//             lat:
+//               order.deliveryDetails?.location?.lat || null,
+
+//             lng:
+//               order.deliveryDetails?.location?.lng || null
+
+//           }
+
+//         }
+
+//       },
+
+//       payment: {
+
+//         method:
+//           order.payment?.method || "",
+
+//         status:
+//           order.payment?.status || ""
+
+//       },
+
+//       totalAmount:
+//         order.totalAmount || 0,
+
+//       paymentRequested:
+//         order.paymentRequested || false,
+
+//       status:
+//         order.status,
+
+//       deliveryDate:
+//         order.deliveryDate || null,
+
+//       deliveredAt:
+//         order.deliveredAt || null,
+
+//       placedAt:
+//         order.createdAt
+
+//     }));
+
+//   // ─────────────────────────────────────────────
+//   // AREA SUMMARY REPORT
+//   // ─────────────────────────────────────────────
+//   const report = {
+
+//     title:
+//       `Total ${area} - Delivery Cycle Report`,
+
+//     deliveryCycle:
+//       date ||
+//       `${startDate || "N/A"} to ${endDate || "N/A"}`,
+
+//     totalConfirmedOrders: 0,
+
+//     paid: 0,
+
+//     unpaid: 0,
+
+//     totalAmount: 0,
+
+//     received: 0,
+
+//     remaining: 0
+
+//   };
+
+//   // ─────────────────────────────────────────────
+//   // CALCULATE REPORT
+//   // ─────────────────────────────────────────────
+//   orders.forEach(order => {
+
+//     // ONLY CONFIRMED ORDERS
+//     if (
+//       order.status?.toLowerCase() !==
+//       "confirmed"
+//     ) {
+//       return;
+//     }
+
+//     const amount =
+//       Number(order.totalAmount || 0);
+
+//     report.totalConfirmedOrders += 1;
+
+//     report.totalAmount += amount;
+
+//     // PAID
+//     if (
+//       order.payment?.status
+//         ?.toLowerCase() === "paid"
+//     ) {
+
+//       report.paid += 1;
+
+//       report.received += amount;
+
+//     }
+
+//     // UNPAID
+//     else {
+
+//       report.unpaid += 1;
+
+//       report.remaining += amount;
+
+//     }
+
+//   });
+
+//   // ─────────────────────────────────────────────
+//   // RESPONSE
+//   // ─────────────────────────────────────────────
+//   return res.status(200).json(
+
+//     new ApiResponse(
+
+//       200,
+
+//       {
+
+//         area,
+
+//         citiesCovered:
+//           cities,
+
+//         filters: {
+
+//           paymentStatus:
+//             paymentStatus || null,
+
+//           date:
+//             date || null,
+
+//           startDate:
+//             startDate || null,
+
+//           endDate:
+//             endDate || null
+
+//         },
+
+//         // ✅ SUMMARY REPORT
+//         report,
+
+//         // ✅ PAYMENT HISTORY
+//         payments:
+//           formattedPayments,
+
+//         // ✅ PAGINATION
+//         pagination: {
+
+//           totalOrders,
+
+//           currentPage,
+
+//           totalPages: Math.ceil(
+//             totalOrders / perPage
+//           ),
+
+//           limit:
+//             perPage
+
+//         }
+
+//       },
+
+//       "Payment history fetched successfully"
+
+//     )
+
+//   );
+
+// });
+
+
+
+
+
+
+
+
+
+
 const adminPaymentHistoryByArea = asynchandler(async (req, res) => {
 
   ensureSuperAdmin(req);
@@ -8781,7 +9210,9 @@ const adminPaymentHistoryByArea = asynchandler(async (req, res) => {
   // GET CITIES
   // ─────────────────────────────────────────────
   const cities =
-    AREA_CITY_MAP[area.toLowerCase()];
+    AREA_CITY_MAP[
+      area.toLowerCase()
+    ];
 
   if (!cities) {
 
@@ -8836,6 +9267,7 @@ const adminPaymentHistoryByArea = asynchandler(async (req, res) => {
     filter.createdAt = {
 
       $gte: startOfDay,
+
       $lte: endOfDay
 
     };
@@ -9010,12 +9442,19 @@ const adminPaymentHistoryByArea = asynchandler(async (req, res) => {
       date ||
       `${startDate || "N/A"} to ${endDate || "N/A"}`,
 
+    // ✅ ORDER COUNTS
+    totalOrders: 0,
+
     totalConfirmedOrders: 0,
 
+    totalDeliveredOrders: 0,
+
+    // ✅ PAYMENT COUNTS
     paid: 0,
 
     unpaid: 0,
 
+    // ✅ AMOUNTS
     totalAmount: 0,
 
     received: 0,
@@ -9029,10 +9468,13 @@ const adminPaymentHistoryByArea = asynchandler(async (req, res) => {
   // ─────────────────────────────────────────────
   orders.forEach(order => {
 
-    // ONLY CONFIRMED ORDERS
+    const status =
+      order.status?.toLowerCase();
+
+    // ✅ ONLY CONFIRMED OR DELIVERED
     if (
-      order.status?.toLowerCase() !==
-      "confirmed"
+      status !== "confirmed" &&
+      status !== "delivered"
     ) {
       return;
     }
@@ -9040,11 +9482,25 @@ const adminPaymentHistoryByArea = asynchandler(async (req, res) => {
     const amount =
       Number(order.totalAmount || 0);
 
-    report.totalConfirmedOrders += 1;
+    // ✅ TOTAL ORDERS
+    report.totalOrders += 1;
 
+    // ✅ CONFIRMED ORDERS
+    if (status === "confirmed") {
+
+      report.totalConfirmedOrders += 1;
+    }
+
+    // ✅ DELIVERED ORDERS
+    if (status === "delivered") {
+
+      report.totalDeliveredOrders += 1;
+    }
+
+    // ✅ TOTAL AMOUNT
     report.totalAmount += amount;
 
-    // PAID
+    // ✅ PAID
     if (
       order.payment?.status
         ?.toLowerCase() === "paid"
@@ -9056,7 +9512,7 @@ const adminPaymentHistoryByArea = asynchandler(async (req, res) => {
 
     }
 
-    // UNPAID
+    // ✅ UNPAID
     else {
 
       report.unpaid += 1;
@@ -9113,9 +9569,10 @@ const adminPaymentHistoryByArea = asynchandler(async (req, res) => {
 
           currentPage,
 
-          totalPages: Math.ceil(
-            totalOrders / perPage
-          ),
+          totalPages:
+            Math.ceil(
+              totalOrders / perPage
+            ),
 
           limit:
             perPage
@@ -9131,6 +9588,8 @@ const adminPaymentHistoryByArea = asynchandler(async (req, res) => {
   );
 
 });
+
+
 
 
 
