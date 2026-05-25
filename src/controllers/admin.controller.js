@@ -3567,6 +3567,10 @@ const kitchenViewOrdersByArea = asynchandler(async (req, res) => {
 
     const username =
       order.username || "Unknown";
+    const full_name =
+      order.full_name || "Unknown";
+    const city =
+      order.city || "Unknown";
 
     // =====================================================
     // CREATE GROUP
@@ -3580,6 +3584,8 @@ const kitchenViewOrdersByArea = asynchandler(async (req, res) => {
       ] = {
 
         username,
+        full_name,
+        city,
 
         totalOrders: 0,
 
