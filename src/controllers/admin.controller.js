@@ -11650,6 +11650,75 @@ const getAllAddresses = asynchandler(async (req, res) => {
         uniqueCities
     };
 
+
+console.log("hellouybvubvff");
+
+const getDeliveryDateOnly = (
+  baseDate = new Date()
+) => {
+
+  // Monday & Thursday
+  const deliveryDays = [1,4];
+
+  // Seattle timezone
+  const seattleDate = new Date(
+    baseDate.toLocaleString(
+      "en-US",
+      {
+        timeZone:
+          "America/Los_Angeles"
+      }
+    )
+  );
+
+  const today =
+    seattleDate.getDay();
+
+  let daysToAdd = 0;
+
+  // Find next delivery day
+  for (
+    let i = 1;
+    i <= 7;
+    i++
+  ) {
+
+    const nextDay =
+      (today + i) % 7;
+
+    if (
+      deliveryDays.includes(nextDay)
+    ) {
+
+      daysToAdd = i;
+      break;
+    }
+  }
+
+  // Create next delivery date
+  const nextDeliveryDate =
+    new Date(seattleDate);
+
+  nextDeliveryDate.setDate(
+    seattleDate.getDate() + daysToAdd
+  );
+
+  // IMPORTANT:
+  // Store UTC midnight only
+  return new Date(
+    Date.UTC(
+      nextDeliveryDate.getFullYear(),
+      nextDeliveryDate.getMonth(),
+      nextDeliveryDate.getDate()
+    )
+  );
+};
+
+const nextDate =
+  getDeliveryDateOnly();
+
+console.log(nextDate);
+
     // ─────────────────────────────────────────────
     // RESPONSE
     // ─────────────────────────────────────────────
@@ -11660,7 +11729,7 @@ const getAllAddresses = asynchandler(async (req, res) => {
             200,
 
             {
-
+nextDate,
                 report,
 
                 addresses
