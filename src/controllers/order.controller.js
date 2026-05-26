@@ -2614,171 +2614,207 @@ const ProceedToOrder = asynchandler(async (req, res) => {
   // ─────────────────────────────────────────────
   // USER EMAIL
   // ─────────────────────────────────────────────
-  const userHtml = `
+const userHtml = `
 
-    <h2 style="color:#111827; font-size:28px;">
-      🎉 Thank You For Your Order
-    </h2>
+  <h2 style="color:#111827; font-size:28px;">
+    🎉 Thank You For Your Order
+  </h2>
 
-    <p style="font-size:16px; color:#374151;">
-      Hello <strong>${User?.name || "Customer"}</strong> 👋
+  <p style="font-size:16px; color:#374151;">
+    Hello <strong>${User?.name || "Customer"}</strong> 👋
+  </p>
+
+  <p style="font-size:15px; color:#4B5563;">
+    Your order has been placed successfully and is currently being processed.
+  </p>
+
+  <div 
+    style="
+      background:#F9FAFB;
+      padding:15px;
+      border-radius:10px;
+      margin:20px 0;
+      border:1px solid #E5E7EB;
+    "
+  >
+
+    <p>
+      <strong>Username:</strong>
+      ${User?.username || "N/A"}
     </p>
 
-    <p style="font-size:15px; color:#4B5563;">
-      Your order has been placed successfully and is currently being processed.
+    <p>
+      <strong>Order ID:</strong>
+      ${order._id}
     </p>
 
-    <div 
-      style="
-        background:#F9FAFB;
-        padding:15px;
-        border-radius:10px;
-        margin:20px 0;
-        border:1px solid #E5E7EB;
-      "
-    >
+    <p>
+      <strong>Total Amount:</strong>
+      <span style="color:#059669; font-size:18px; font-weight:bold;">
+        $${totalAmount}
+      </span>
+    </p>
 
-      <p>
-        <strong>Username:</strong>
-        ${User?.username || "N/A"}
-      </p>
+  </div>
 
-      <p>
-        <strong>Order ID:</strong>
-        ${order._id}
-      </p>
+  <div
+    style="
+      background:#FEF3C7;
+      border:1px solid #F59E0B;
+      padding:18px;
+      border-radius:12px;
+      margin:25px 0;
+    "
+  >
 
-      <p>
-        <strong>Total Amount:</strong>
-        <span style="color:#059669; font-size:18px; font-weight:bold;">
-          $${totalAmount}
-        </span>
-      </p>
-
-    </div>
-
-    <h3 style="color:#111827;">
-      🛒 Order Summary
+    <h3 style="margin-top:0; color:#92400E;">
+      ⚠️ Important Payment Notice
     </h3>
 
-    <table 
-      border="1" 
-      cellpadding="12"
-      cellspacing="0"
-      width="100%"
-      style="
-        border-collapse:collapse;
-        border:1px solid #E5E7EB;
-        overflow:hidden;
-      "
-    >
+    <p style="color:#78350F; line-height:1.7; margin-bottom:12px;">
 
-      <thead>
+      Your order will be confirmed only after the payment is completed.
 
-        <tr style="background:#111827; color:white;">
-
-          <th>Item</th>
-
-          <th>Size</th>
-
-          <th>Qty</th>
-
-          <th>Price</th>
-
-          <th>Subtotal</th>
-
-        </tr>
-
-      </thead>
-
-      <tbody>
-
-        ${orderItemsHtml}
-
-      </tbody>
-
-    </table>
-
-    <div 
-      style="
-        background:#F3F4F6;
-        padding:20px;
-        border-radius:12px;
-        margin-top:30px;
-      "
-    >
-
-      <h3 style="margin-top:0; color:#111827;">
-        💳 Payment Instructions
-      </h3>
-
-      <p>
-        <strong>Venmo:</strong>
-        ${paymentDetails.venmoId}
-      </p>
-
-      <p>
-
-        <strong>Zelle Name:</strong>
-        ${paymentDetails.Zelle_name}
-
-        <br/><br/>
-
-        <strong>Zelle Number:</strong>
-        ${paymentDetails.zell_number}
-
-      </p>
-
-      ${
-        paymentDetails?.zelleQrImage
-          ? `
-            <div style="margin-top:20px;">
-
-              <p>
-                <strong>Zelle QR Code:</strong>
-              </p>
-
-              <img
-                src="${paymentDetails.zelleQrImage}"
-                alt="Zelle QR"
-                style="
-                  width:220px;
-                  height:auto;
-                  border-radius:12px;
-                  border:1px solid #E5E7EB;
-                "
-              />
-
-            </div>
-          `
-          : ""
-      }
-
-      <p style="color:#4B5563; line-height:1.6;">
-
-        Please complete the payment at your earliest convenience.
-
-        <br/><br/>
-
-        Your order confirmation mail will be sent once the admin confirms your order and payment.
-
-      </p>
-
-    </div>
-
-    <p 
-      style="
-        margin-top:30px;
-        text-align:center;
-        color:#6B7280;
-        font-size:14px;
-      "
-    >
-      ❤️ Thank you.
     </p>
 
-  `;
+    <p style="color:#78350F; line-height:1.7; margin-bottom:0;">
 
+      After completing the payment, please send the payment screenshot to 
+      <strong>WhatsApp: +1 (661) 863-8001</strong>
+
+      <br/><br/>
+
+      Kindly include your:
+      <br/>
+      • Username
+      <br/>
+      • Full Name
+
+    </p>
+
+  </div>
+
+  <h3 style="color:#111827;">
+    🛒 Order Summary
+  </h3>
+
+  <table 
+    border="1" 
+    cellpadding="12"
+    cellspacing="0"
+    width="100%"
+    style="
+      border-collapse:collapse;
+      border:1px solid #E5E7EB;
+      overflow:hidden;
+    "
+  >
+
+    <thead>
+
+      <tr style="background:#111827; color:white;">
+
+        <th>Item</th>
+
+        <th>Size</th>
+
+        <th>Qty</th>
+
+        <th>Price</th>
+
+        <th>Subtotal</th>
+
+      </tr>
+
+    </thead>
+
+    <tbody>
+
+      ${orderItemsHtml}
+
+    </tbody>
+
+  </table>
+
+  <div 
+    style="
+      background:#F3F4F6;
+      padding:20px;
+      border-radius:12px;
+      margin-top:30px;
+    "
+  >
+
+    <h3 style="margin-top:0; color:#111827;">
+      💳 Payment Instructions
+    </h3>
+
+    <p>
+      <strong>Venmo:</strong>
+      ${paymentDetails.venmoId}
+    </p>
+
+    <p>
+
+      <strong>Zelle Name:</strong>
+      ${paymentDetails.Zelle_name}
+
+      <br/><br/>
+
+      <strong>Zelle Number:</strong>
+      ${paymentDetails.zell_number}
+
+    </p>
+
+    ${
+      paymentDetails?.zelleQrImage
+        ? `
+          <div style="margin-top:20px;">
+
+            <p>
+              <strong>Zelle QR Code:</strong>
+            </p>
+
+            <img
+              src="${paymentDetails.zelleQrImage}"
+              alt="Zelle QR"
+              style="
+                width:220px;
+                height:auto;
+                border-radius:12px;
+                border:1px solid #E5E7EB;
+              "
+            />
+
+          </div>
+        `
+        : ""
+    }
+
+    <p style="color:#4B5563; line-height:1.6;">
+
+      Please complete the payment at your earliest convenience.
+
+      <br/><br/>
+
+      Your order confirmation email will be sent once the admin confirms your payment and order.
+
+    </p>
+
+  </div>
+
+  <p 
+    style="
+      margin-top:30px;
+      text-align:center;
+      color:#6B7280;
+      font-size:14px;
+    "
+  >
+    ❤️ Thank you.
+  </p>
+
+`;
   // ─────────────────────────────────────────────
   // SEND EMAILS
   // ─────────────────────────────────────────────
