@@ -2247,7 +2247,7 @@ const AREA_CITY_MAP = {
   bay_area: [
 
   // San Francisco Bay Area
-  "bay_area",
+"bay_area",
 "San Mateo", 
 "Foster City", 
 "Burlingame", 
@@ -2287,7 +2287,8 @@ seattle: [
   "Newcastle", 
   "Renton", 
   "Kent", 
-  "Kenmore"
+  "Kenmore",
+  "Lake Forest Park"
 
 ],
 };
@@ -9342,8 +9343,7 @@ const adminPaymentHistoryByArea = asynchandler(async (req, res) => {
   // ─────────────────────────────────────────────
   // FORMAT PAYMENTS
   // ─────────────────────────────────────────────
-  const formattedPayments =
-    orders.map(order => ({
+  const formattedPayments =  orders.map(order => ({
 
       orderId:
         order._id,
@@ -11593,6 +11593,85 @@ const upsertBatch = async (req, res) => {
 
 
 
+const getAllAddresses = asynchandler(async (req, res) => {
+
+    // ─────────────────────────────────────────────
+    // FETCH ALL ADDRESSES
+    // ─────────────────────────────────────────────
+    const addresses = await Address.find()
+
+        .populate(
+            "user",
+            "name username email phone_number"
+        )
+
+        .sort({ createdAt: -1 });
+
+    // ─────────────────────────────────────────────
+    // NO ADDRESSES FOUND
+    // ─────────────────────────────────────────────
+    if (!addresses || addresses.length === 0) {
+
+        throw new ApiError(
+            404,
+            "No addresses found"
+        );
+    }
+
+    // ─────────────────────────────────────────────
+    // UNIQUE CITIES
+    // ─────────────────────────────────────────────
+    const uniqueCitiesSet = new Set();
+
+    addresses.forEach(address => {
+
+        if (address.city) {
+
+            uniqueCitiesSet.add(
+                address.city.trim()
+            );
+        }
+    });
+
+    const uniqueCities =
+        Array.from(uniqueCitiesSet);
+
+    // ─────────────────────────────────────────────
+    // REPORT
+    // ─────────────────────────────────────────────
+    const report = {
+
+        totalAddresses:
+            addresses.length,
+
+        totalUniqueCities:
+            uniqueCities.length,
+
+        uniqueCities
+    };
+
+    // ─────────────────────────────────────────────
+    // RESPONSE
+    // ─────────────────────────────────────────────
+    return res.status(200).json(
+
+        new ApiResponse(
+
+            200,
+
+            {
+
+                report,
+
+                addresses
+            },
+
+            "Addresses fetched successfully"
+        )
+    );
+});
+
+
 
 
 
@@ -11667,4 +11746,5 @@ export {
         adminViewDriverBatchHistory,
         upsertBatch,
         changeStaffPassword,
+        getAllAddresses
     }

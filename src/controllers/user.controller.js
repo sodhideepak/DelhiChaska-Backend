@@ -14,6 +14,7 @@ import * as nodemailer from "nodemailer"
 import Randomstring from "randomstring";
 import bcrypt from "bcrypt";
 import { cookieOptions } from "../utils/cookieOptions.js";
+import { SERVICEABLE_CITIES } from "../utils/serviceableCities.js";
 
 
 const sendresetpasswordmail = asynchandler(async (fullname, email, token) => {
@@ -1018,9 +1019,14 @@ const AREA_CITY_MAP = {
         "Newcastle",
         "Renton",
         "Kent",
-        "Kenmore"
+        "Kenmore",
+        "Lake Forest Park"
     ]
 };
+
+
+
+
 
 const addAddress = asynchandler(async (req, res) => {
 
@@ -1046,30 +1052,25 @@ const addAddress = asynchandler(async (req, res) => {
         );
     }
 
-    // ✅ zip validation
-    const zipPrefix =
-        zipCode.toString().substring(0, 3);
+    // ✅ normalize city
+    const normalizedCity =
+        city.toString().trim().toLowerCase();
 
-    if (zipPrefix.length !== 3) {
-        throw new ApiError(400, "Invalid ZIP code");
-    }
+    // ✅ check city serviceability
+    const isServiceableCity =
+        SERVICEABLE_CITIES.includes(
+            normalizedCity
+        );
 
-    const allowedZip = await ZipCode.findOne({
-        zip_prefix: zipPrefix
-    });
-
-    if (!allowedZip) {
+    if (!isServiceableCity) {
         throw new ApiError(
             400,
-            "Service not available in this area"
+            "Service not available in this city"
         );
     }
 
     // ✅ auto assign area from city
     let area = "other";
-
-    const normalizedCity =
-        city.trim().toLowerCase();
 
     for (const [areaKey, cities] of Object.entries(AREA_CITY_MAP)) {
 
@@ -1126,10 +1127,6 @@ const addAddress = asynchandler(async (req, res) => {
         )
     );
 });
-
-
-
-
 
 
 const editAddress = asynchandler(async (req, res) => {

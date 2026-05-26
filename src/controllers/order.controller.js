@@ -2043,6 +2043,9 @@ const getNextDeliveryDate = asynchandler(async (req, res) => {
         )
     );
 });
+
+
+
 const ProceedToOrder = asynchandler(async (req, res) => {
 
   // ─────────────────────────────────────────────
@@ -2095,7 +2098,7 @@ const ProceedToOrder = asynchandler(async (req, res) => {
   const User = await user.findById(userId)
 
     .select(
-      "name email phone_number full_name"
+      "name email phone_number full_name username"
     );
 
   // ─────────────────────────────────────────────
@@ -2209,158 +2212,145 @@ const ProceedToOrder = asynchandler(async (req, res) => {
     // =====================================================
     // COMBO
     // =====================================================
-    // =====================================================
-// COMBO
-// =====================================================
-else if (item.type === "combo") {
+    else if (item.type === "combo") {
 
-  const combo =
-    item.comboId;
+      const combo =
+        item.comboId;
 
-  // SKIP INVALID COMBO
-  if (
-    !combo ||
-    !combo.isActive
-  ) continue;
+      // SKIP INVALID COMBO
+      if (
+        !combo ||
+        !combo.isActive
+      ) continue;
 
-  const price =
+      const price =
 
-    item.selectedVariant?.price ||
+        item.selectedVariant?.price ||
 
-    combo.price ||
+        combo.price ||
 
-    0;
+        0;
 
-  const size =
+      const size =
 
-    item.selectedVariant?.size ||
+        item.selectedVariant?.size ||
 
-    combo.size ||
+        combo.size ||
 
-    "";
+        "";
 
-  const subtotal =
+      const subtotal =
 
-    item.subtotal ||
+        item.subtotal ||
 
-    (
-      price *
-      item.quantity
-    );
+        (
+          price *
+          item.quantity
+        );
 
-  totalAmount += subtotal;
+      totalAmount += subtotal;
 
-  // =====================================================
-  // BUILD SELECTIONS WITH PRODUCT DETAILS
-  // =====================================================
-  const formattedSelections = [];
+      // =====================================================
+      // BUILD SELECTIONS WITH PRODUCT DETAILS
+      // =====================================================
+      const formattedSelections = [];
 
-  for (const sel of item.selections || []) {
+      for (const sel of item.selections || []) {
 
-    // ===============================================
-    // FETCH PRODUCTS
-    // ===============================================
-    const productIds =
+        const productIds =
 
-      sel.products.map(
-        p => p.productId
-      );
+          sel.products.map(
+            p => p.productId
+          );
 
-    const products =
-      await Product.find({
+        const products =
+          await Product.find({
 
-        _id: {
-          $in: productIds
-        }
+            _id: {
+              $in: productIds
+            }
 
-      }).select(
+          }).select(
 
-        "name category variants"
-      );
+            "name category variants"
+          );
 
-    // ===============================================
-    // PRODUCT MAP
-    // ===============================================
-    const productMap = {};
+        const productMap = {};
 
-    products.forEach(p => {
-
-      productMap[
-        p._id.toString()
-      ] = p;
-    });
-
-    // ===============================================
-    // FORMAT PRODUCTS
-    // ===============================================
-    const formattedProducts =
-
-      sel.products.map(p => {
-
-        const prod =
+        products.forEach(p => {
 
           productMap[
-            p.productId.toString()
-          ];
+            p._id.toString()
+          ] = p;
+        });
 
-        return {
+        const formattedProducts =
 
-          productId:
-            p.productId,
+          sel.products.map(p => {
 
-          name:
-            prod?.name || "",
+            const prod =
 
-          category:
-            prod?.category || "",
+              productMap[
+                p.productId.toString()
+              ];
 
-          quantity:
-            p.quantity
-        };
+            return {
+
+              productId:
+                p.productId,
+
+              name:
+                prod?.name || "",
+
+              category:
+                prod?.category || "",
+
+              quantity:
+                p.quantity
+            };
+          });
+
+        formattedSelections.push({
+
+          ruleId:
+            sel.ruleId,
+
+          products:
+            formattedProducts
+        });
+      }
+
+      // =====================================================
+      // PUSH COMBO
+      // =====================================================
+      orderItems.push({
+
+        comboId:
+          combo._id,
+
+        name:
+          item.name ||
+          combo.name,
+
+        quantity:
+          item.quantity,
+
+        selectedVariant: {
+
+          size,
+
+          price
+        },
+
+        subtotal,
+
+        type:
+          "combo",
+
+        selections:
+          formattedSelections
       });
-
-    formattedSelections.push({
-
-      ruleId:
-        sel.ruleId,
-
-      products:
-        formattedProducts
-    });
-  }
-
-  // =====================================================
-  // PUSH COMBO
-  // =====================================================
-  orderItems.push({
-
-    comboId:
-      combo._id,
-
-    name:
-      item.name ||
-      combo.name,
-
-    quantity:
-      item.quantity,
-
-    selectedVariant: {
-
-      size,
-
-      price
-    },
-
-    subtotal,
-
-    type:
-      "combo",
-
-    // ✅ IMPORTANT
-    selections:
-      formattedSelections
-  });
-}
+    }
   }
 
   // ─────────────────────────────────────────────
@@ -2445,41 +2435,33 @@ else if (item.type === "combo") {
   // ─────────────────────────────────────────────
   let paymentDetails = {};
 
-  // const area =
+  let area = "bay_area";
 
-  //   (
-  //     address.area || ""
-  //   ).toLowerCase();
-      let area = "bay_area";
+  const city =
+    address.city?.trim()?.toLowerCase();
 
-    const city =
-      address.city?.trim()?.toLowerCase();
+  if (
+    [
+      "seattle",
+      "bellevue",
+      "redmond",
+      "kirkland",
+      "bothell",
+      "lynnwood",
+      "everett",
+      "mill creek",
+      "woodinville",
+      "sammamish",
+      "issaquah",
+      "newcastle",
+      "renton",
+      "kent",
+      "kenmore"
+    ].includes(city)
+  ) {
 
-    if (
-      [
-        "seattle",
-        "bellevue",
-        "redmond",
-        "kirkland",
-        "bothell",
-        "lynnwood",
-        "everett",
-        "mill creek",
-        "woodinville",
-        "sammamish",
-        "issaquah",
-        "newcastle",
-        "renton",
-        "kent",
-        "kenmore"
-      ].includes(city)
-    ) {
-
-      area = "seattle";
-    }
-
-
-  
+    area = "seattle";
+  }
 
   if (
     area === "bay_area"
@@ -2489,13 +2471,12 @@ else if (item.type === "combo") {
 
       venmoId:
         "https://venmo.com/u/Delhi-Chaska",
-      
+
       Zelle_name:
         "Neelam Gogna",
 
       zell_number:
         "3176032757",
-
     };
   }
 
@@ -2510,7 +2491,11 @@ else if (item.type === "combo") {
         "Parminder singh",
 
       zell_number:
-        "+1 (206) 913-9361"
+        "+1 (206) 913-9361",
+
+      // ✅ Seattle QR
+      zelleQrImage:
+        "https://res.cloudinary.com/ddvloqbxp/image/upload/v1779797522/Screenshot_2026-05-26_at_5.41.44_PM_is6awu.png"
     };
   }
 
@@ -2744,6 +2729,31 @@ else if (item.type === "combo") {
 
       </p>
 
+      ${
+        paymentDetails?.zelleQrImage
+          ? `
+            <div style="margin-top:20px;">
+
+              <p>
+                <strong>Zelle QR Code:</strong>
+              </p>
+
+              <img
+                src="${paymentDetails.zelleQrImage}"
+                alt="Zelle QR"
+                style="
+                  width:220px;
+                  height:auto;
+                  border-radius:12px;
+                  border:1px solid #E5E7EB;
+                "
+              />
+
+            </div>
+          `
+          : ""
+      }
+
       <p style="color:#4B5563; line-height:1.6;">
 
         Please complete the payment at your earliest convenience.
@@ -2768,6 +2778,7 @@ else if (item.type === "combo") {
     </p>
 
   `;
+
   // ─────────────────────────────────────────────
   // SEND EMAILS
   // ─────────────────────────────────────────────
@@ -2832,7 +2843,6 @@ else if (item.type === "combo") {
     )
   );
 });
-
 
 
 const viewMyOrders = asynchandler(async (req, res) => {
@@ -3275,8 +3285,6 @@ const deleteAllOrdersOfUser = asynchandler(async (req, res) => {
 
 
 
-
-
 const notifyPaymentDone = asynchandler(async (req, res) => {
 
     const userId = req.user?._id;
@@ -3292,12 +3300,12 @@ const notifyPaymentDone = asynchandler(async (req, res) => {
     }
 
     // ─────────────────────────────────────────────
-    // FIND ORDER
+    // FIND ORDER + USER DETAILS
     // ─────────────────────────────────────────────
     const order = await Order.findOne({
         _id: orderId,
         userId
-    });
+    }).populate("userId", "name username city");
 
     if (!order) {
         throw new ApiError(404, "Order not found");
@@ -3337,9 +3345,18 @@ const notifyPaymentDone = asynchandler(async (req, res) => {
     // UPDATE ORDER
     // ─────────────────────────────────────────────
     order.paymentRequested = true;
-    console.log(order.paymentRequested,"this is payment requested");
+
+    console.log(
+        order.paymentRequested,
+        "this is payment requested"
+    );
 
     await order.save();
+
+    // ─────────────────────────────────────────────
+    // USER DETAILS
+    // ─────────────────────────────────────────────
+    const user = order.userId;
 
     // ─────────────────────────────────────────────
     // SEND EMAIL TO ADMIN
@@ -3357,6 +3374,8 @@ const notifyPaymentDone = asynchandler(async (req, res) => {
                 and is waiting for admin approval.
             </p>
 
+            <hr />
+
             <p>
                 <strong>Order ID:</strong>
                 ${order._id}
@@ -3366,6 +3385,32 @@ const notifyPaymentDone = asynchandler(async (req, res) => {
                 <strong>Total Amount:</strong>
                 $${order.totalAmount}
             </p>
+
+            <hr />
+
+            <h3>User Details</h3>
+
+            <p>
+                <strong>Name:</strong>
+                ${user?.name || "N/A"}
+            </p>
+
+            <p>
+                <strong>Username:</strong>
+                ${user?.username || "N/A"}
+            </p>
+
+            <p>
+                <strong>City:</strong>
+                ${user?.city || "N/A"}
+            </p>
+
+            <p>
+                <strong>Amount:</strong>
+                $${order.totalAmount}
+            </p>
+
+            <hr />
 
             <p>
                 Please verify the payment from admin panel.
@@ -3386,9 +3431,6 @@ const notifyPaymentDone = asynchandler(async (req, res) => {
         )
     );
 });
-
-
-
 // admin routes
 
 
