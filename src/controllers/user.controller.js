@@ -14,7 +14,7 @@ import * as nodemailer from "nodemailer"
 import Randomstring from "randomstring";
 import bcrypt from "bcrypt";
 import { cookieOptions } from "../utils/cookieOptions.js";
-import { SERVICEABLE_CITIES } from "../utils/serviceableCities.js";
+import { SERVICEABLE_CITIES } from "../utils/serviceablecities.js";
 
 
 const sendresetpasswordmail = asynchandler(async (fullname, email, token) => {

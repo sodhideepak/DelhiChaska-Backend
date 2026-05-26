@@ -36,6 +36,7 @@ export const SERVICEABLE_CITIES = [
     "renton",
     "kent",
     "kenmore",
-    "lake forest park" 
+    "lake forest park" ,
+    "jalandhar"
 
 ];
