@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { getNextDeliveryDate } from "../utils/getNextDeliveryDate";
 
 // ─────────────────────────────────────────────
 // ORDER ITEM SCHEMA
@@ -79,7 +80,7 @@ const getNextDeliveryDate = (
   baseDate = new Date()
 ) => {
 
-  const deliveryDays = [1];
+  const deliveryDays = [1,4];
 
   const usDate = new Date(
     baseDate.toLocaleString(
