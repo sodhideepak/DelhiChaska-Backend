@@ -80,8 +80,10 @@ const getNextDeliveryDate = (
   baseDate = new Date()
 ) => {
 
-  const deliveryDays = [1,4];
+  // Monday & Thursday
+  const deliveryDays = [1, 4];
 
+  // Convert to US Pacific Time
   const usDate = new Date(
     baseDate.toLocaleString(
       "en-US",
@@ -95,8 +97,9 @@ const getNextDeliveryDate = (
   const today =
     usDate.getDay();
 
-  let daysToAdd = null;
+  let daysToAdd = 0;
 
+  // Find next Monday or Thursday
   for (
     let i = 1;
     i <= 7;
@@ -115,6 +118,7 @@ const getNextDeliveryDate = (
     }
   }
 
+  // Create next delivery date
   const nextDeliveryDate =
     new Date(usDate);
 
@@ -122,8 +126,18 @@ const getNextDeliveryDate = (
     usDate.getDate() + daysToAdd
   );
 
+  // Reset time
+  nextDeliveryDate.setHours(
+    0,
+    0,
+    0,
+    0
+  );
+
   return nextDeliveryDate;
 };
+
+
 
 
 // ─────────────────────────────────────────────
