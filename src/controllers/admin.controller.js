@@ -11749,6 +11749,51 @@ nextDate,
 
 
 
+const deleteSingleOrder = asynchandler(async (req, res) => {
+
+  ensureSuperAdmin(req);
+
+  const { orderId } = req.params;
+
+  // check order id
+  if (!orderId) {
+
+    throw new ApiError(
+      400,
+      "Order ID is required"
+    );
+  }
+
+  // find order
+  const existingOrder =
+    await Order.findById(orderId);
+
+  if (!existingOrder) {
+
+    throw new ApiError(
+      404,
+      "Order not found"
+    );
+  }
+
+  // delete order
+  await Order.findByIdAndDelete(orderId);
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        deletedOrderId: orderId
+      },
+      "Order deleted successfully"
+    )
+  );
+
+});
+
+
+
+
 
 
 
@@ -11815,5 +11860,6 @@ export {
         adminViewDriverBatchHistory,
         upsertBatch,
         changeStaffPassword,
-        getAllAddresses
+        getAllAddresses,
+        deleteSingleOrder
     }

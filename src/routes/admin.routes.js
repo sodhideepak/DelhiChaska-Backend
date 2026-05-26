@@ -66,7 +66,8 @@ import {
         upsertBatch,
         getDriverActiveBatch,
         changeStaffPassword,
-        getAllAddresses
+        getAllAddresses,
+        deleteSingleOrder
 
      } from "../controllers/admin.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
@@ -268,6 +269,10 @@ router.route("/bulkpaymentreminders/area/:area").post(verifyStaffJWT,sendBulkPay
 router.route("/getAllAddresses").get(verifyStaffJWT,getAllAddresses)
 
 router.route("/deleteallorders").delete(verifyStaffJWT,deleteAllOrders)
+
+
+
+router.route("/deleteorder/:orderId").delete(verifyStaffJWT,deleteSingleOrder)
 export default router 
 
 

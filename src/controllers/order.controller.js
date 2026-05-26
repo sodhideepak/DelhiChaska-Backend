@@ -2456,7 +2456,8 @@ const ProceedToOrder = asynchandler(async (req, res) => {
       "newcastle",
       "renton",
       "kent",
-      "kenmore"
+      "kenmore",
+      "Lake Forest Park"
     ].includes(city)
   ) {
 
