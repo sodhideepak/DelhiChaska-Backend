@@ -2457,7 +2457,9 @@ const ProceedToOrder = asynchandler(async (req, res) => {
       "renton",
       "kent",
       "kenmore",
-      "Lake Forest Park"
+      "lake forest park",
+      "maple valley",
+      "auburn",
     ].includes(city)
   ) {
 
@@ -2491,8 +2493,8 @@ const ProceedToOrder = asynchandler(async (req, res) => {
       Zelle_name:
         "Parminder singh",
 
-      zell_number:
-        "+1 (206) 913-9361",
+      // zell_number:
+      //   "+1 (206) 913-9361",
 
       // ✅ Seattle QR
       zelleQrImage:
@@ -2762,9 +2764,9 @@ const userHtml = `
 
       <br/><br/>
 
-      <strong>Zelle Number:</strong>
-      ${paymentDetails.zell_number}
-
+      ${paymentDetails?.zell_number ? `
+          <strong>Zelle Number:</strong>
+          ${paymentDetails.zell_number}` : ""}
     </p>
 
     ${

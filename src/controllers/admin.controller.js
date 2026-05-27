@@ -2288,7 +2288,9 @@ seattle: [
   "Renton", 
   "Kent", 
   "Kenmore",
-  "Lake Forest Park"
+  "Lake Forest Park",
+  "Maple Valley",
+  "Auburn",
 
 ],
 };
