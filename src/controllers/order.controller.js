@@ -2559,6 +2559,13 @@ const ProceedToOrder = asynchandler(async (req, res) => {
       ${User?.phone_number || ""}
     </p>
 
+    <br/>
+      <strong>Area:</strong>
+
+      ${area}
+      <br/>
+
+    
     <h3>Delivery Address</h3>
 
     <p>
@@ -2571,8 +2578,7 @@ const ProceedToOrder = asynchandler(async (req, res) => {
       ${deliveryDetails.city},
 
       ${deliveryDetails.state}
-
-      ${area}
+      
 
       <br/>
 
