@@ -3133,7 +3133,6 @@ export const ensureKitchen = (req) => {
 // kitchen routes \   thisi th eprevious one 
 
 
-
 const kitchenViewOrdersByArea = asynchandler(async (req, res) => {
 
   // ─────────────────────────────────────────────
@@ -3282,6 +3281,28 @@ const kitchenViewOrdersByArea = asynchandler(async (req, res) => {
   };
 
   // ─────────────────────────────────────────────
+  // CATEGORY HELPERS
+  // ─────────────────────────────────────────────
+  const noVariantCategories = [
+
+    "bread",
+    "breads",
+    "roti",
+      "parantha",
+  "paratha",
+  "stuffed_parantha",
+  "stuffed_paratha"
+  ];
+
+  const measurableCategories = [
+
+    "veg_curry",
+    "veg_dry",
+    "chicken",
+    "paneer"
+  ];
+
+  // ─────────────────────────────────────────────
   // AGGREGATED ITEMS
   // ─────────────────────────────────────────────
   const aggregatedItemsMap = {};
@@ -3290,7 +3311,7 @@ const kitchenViewOrdersByArea = asynchandler(async (req, res) => {
 
     order.items.forEach(item => {
 
-      const size =
+      const itemSize =
 
         item.selectedVariant?.size ||
         "default";
@@ -3311,7 +3332,13 @@ const kitchenViewOrdersByArea = asynchandler(async (req, res) => {
               product.name || "Unknown";
 
             const category =
-              product.category || "Others";
+              (
+                product.category ||
+                "Others"
+              ).trim();
+
+            const normalizedCategory =
+              category.toLowerCase();
 
             const quantity =
 
@@ -3323,14 +3350,22 @@ const kitchenViewOrdersByArea = asynchandler(async (req, res) => {
               );
 
             // =====================================================
-            // CONVERT TO 16oz
+            // ONLY CONVERT MEASURABLE ITEMS
             // =====================================================
             const equivalent16ozQty =
 
-              convertTo16OzUnits(
-                size,
-                quantity
-              );
+              measurableCategories.includes(
+                normalizedCategory
+              )
+
+                ?
+
+                convertTo16OzUnits(
+                  itemSize,
+                  quantity
+                )
+
+                : quantity;
 
             // =====================================================
             // UNIQUE KEY
@@ -3363,6 +3398,20 @@ const kitchenViewOrdersByArea = asynchandler(async (req, res) => {
             }
 
             // =====================================================
+            // FIX CATEGORY OVERRIDE
+            // =====================================================
+            if (
+              aggregatedItemsMap[key]
+                .category === "Others" &&
+              category !== "Others"
+            ) {
+
+              aggregatedItemsMap[
+                key
+              ].category = category;
+            }
+
+            // =====================================================
             // TOTALS
             // =====================================================
             aggregatedItemsMap[
@@ -3376,12 +3425,12 @@ const kitchenViewOrdersByArea = asynchandler(async (req, res) => {
               equivalent16ozQty;
 
             // =====================================================
-            // BREADS → NO VARIANTS
+            // NO VARIANTS ITEMS
             // =====================================================
             if (
-              category
-                ?.toLowerCase() ===
-              "breads"
+              noVariantCategories.includes(
+                normalizedCategory
+              )
             ) {
 
               return;
@@ -3393,17 +3442,17 @@ const kitchenViewOrdersByArea = asynchandler(async (req, res) => {
             if (
               !aggregatedItemsMap[
                 key
-              ].variants[size]
+              ].variants[itemSize]
             ) {
 
               aggregatedItemsMap[
                 key
-              ].variants[size] = 0;
+              ].variants[itemSize] = 0;
             }
 
             aggregatedItemsMap[
               key
-            ].variants[size] +=
+            ].variants[itemSize] +=
               quantity;
 
           });
@@ -3419,21 +3468,33 @@ const kitchenViewOrdersByArea = asynchandler(async (req, res) => {
       const quantity =
         item.quantity || 0;
 
-      const equivalent16ozQty =
-
-        convertTo16OzUnits(
-          size,
-          quantity
-        );
-
-      // =====================================================
-      // CATEGORY
-      // =====================================================
       const category =
 
-        item.category ||
+        (
+          item.category ||
+          "Others"
+        ).trim();
 
-        "Others";
+      const normalizedCategory =
+        category.toLowerCase();
+
+      // =====================================================
+      // ONLY CONVERT MEASURABLE ITEMS
+      // =====================================================
+      const equivalent16ozQty =
+
+        measurableCategories.includes(
+          normalizedCategory
+        )
+
+          ?
+
+          convertTo16OzUnits(
+            itemSize,
+            quantity
+          )
+
+          : quantity;
 
       // =====================================================
       // UNIQUE KEY
@@ -3466,6 +3527,20 @@ const kitchenViewOrdersByArea = asynchandler(async (req, res) => {
       }
 
       // =====================================================
+      // FIX CATEGORY OVERRIDE
+      // =====================================================
+      if (
+        aggregatedItemsMap[key]
+          .category === "Others" &&
+        category !== "Others"
+      ) {
+
+        aggregatedItemsMap[
+          key
+        ].category = category;
+      }
+
+      // =====================================================
       // TOTALS
       // =====================================================
       aggregatedItemsMap[
@@ -3479,12 +3554,12 @@ const kitchenViewOrdersByArea = asynchandler(async (req, res) => {
         equivalent16ozQty;
 
       // =====================================================
-      // BREADS → NO VARIANTS
+      // NO VARIANTS ITEMS
       // =====================================================
       if (
-        category
-          ?.toLowerCase() ===
-        "breads"
+        noVariantCategories.includes(
+          normalizedCategory
+        )
       ) {
 
         return;
@@ -3496,17 +3571,17 @@ const kitchenViewOrdersByArea = asynchandler(async (req, res) => {
       if (
         !aggregatedItemsMap[
           key
-        ].variants[size]
+        ].variants[itemSize]
       ) {
 
         aggregatedItemsMap[
           key
-        ].variants[size] = 0;
+        ].variants[itemSize] = 0;
       }
 
       aggregatedItemsMap[
         key
-      ].variants[size] +=
+      ].variants[itemSize] +=
         quantity;
 
     });
@@ -3622,8 +3697,10 @@ const kitchenViewOrdersByArea = asynchandler(async (req, res) => {
 
     const username =
       order.username || "Unknown";
+
     const full_name =
       order.full_name || "Unknown";
+
     const city =
       order.city || "Unknown";
 
@@ -3712,8 +3789,6 @@ const kitchenViewOrdersByArea = asynchandler(async (req, res) => {
     )
   );
 });
-
-
 
 
 
