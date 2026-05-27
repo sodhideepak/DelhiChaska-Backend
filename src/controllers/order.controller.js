@@ -1973,12 +1973,12 @@ const getNextDeliveryDate = asynchandler(async (req, res) => {
         (nextDeliveryDay + 6) % 7;
 
     // After cutoff on previous day
-    if (
-        today === previousDay &&
-        currentHour >= cutoffHour
-    ) {
-        isAcceptingOrders = false;
-    }
+    // if (
+    //     today === previousDay &&
+    //     currentHour >= cutoffHour
+    // ) {
+    //     isAcceptingOrders = false;
+    // }
 
     // ==========================
     // ❌ NOT ACCEPTING
