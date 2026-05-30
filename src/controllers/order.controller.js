@@ -2475,6 +2475,9 @@ const ProceedToOrder = asynchandler(async (req, res) => {
       venmoId:
         "https://venmo.com/u/Delhi-Chaska",
 
+      venmoNumber:
+        "+1 (661) 863-8001",
+
       Zelle_name:
         "Parminder Singh",
 
@@ -2495,6 +2498,9 @@ const ProceedToOrder = asynchandler(async (req, res) => {
 
       venmoId:
         "https://venmo.com/u/Delhi-Chaska",
+
+      venmoNumber:
+        "+1 (661) 863-8001",
 
       Zelle_name:
         "ParminderPal Singh ",
@@ -2765,10 +2771,16 @@ const userHtml = `
     </h3>
 
     <p>
-      <strong>Venmo:</strong>
+      <strong>VenmoId:</strong>
       ${paymentDetails.venmoId}
     </p>
 
+    <p>
+      <strong>Venmo Number:</strong>
+      ${paymentDetails.venmoNumber}
+    </p>
+
+    
     <p>
 
       <strong>Zelle Name:</strong>
