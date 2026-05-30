@@ -44,6 +44,7 @@ export const SERVICEABLE_CITIES = [
     "kenmore",
     "lake forest park",
     "maple valley",
-    "snohomish"
+    "snohomish",
+    "auburn"
 
-];
+]; 
