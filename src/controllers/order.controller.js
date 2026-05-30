@@ -9,7 +9,7 @@ import { Address } from "../models/address.model.js";
 import { user } from "../models/user.model.js";
 import { sendEmail } from "../utils/sendutilmail.js";
 import mongoose from "mongoose";
- 
+import Setting from "../models/settings.model.js";
 
 
 
@@ -2476,10 +2476,16 @@ const ProceedToOrder = asynchandler(async (req, res) => {
         "https://venmo.com/u/Delhi-Chaska",
 
       Zelle_name:
-        "Neelam Gogna",
+        "Parminder Singh",
 
-      zell_number:
-        "3176032757",
+      // zell_number:
+      //   "3176032757",
+
+      // ✅ bay_area QR
+      zelleQrImage:
+        "https://res.cloudinary.com/ddvloqbxp/image/upload/v1780119676/Screenshot_2026-05-30_at_11.11.07_AM_nulqzl.png"
+      
+
     };
   }
 
@@ -2491,14 +2497,14 @@ const ProceedToOrder = asynchandler(async (req, res) => {
         "https://venmo.com/u/Delhi-Chaska",
 
       Zelle_name:
-        "Parminder singh",
+        "ParminderPal Singh ",
 
       // zell_number:
       //   "+1 (206) 913-9361",
 
       // ✅ Seattle QR
       zelleQrImage:
-        "https://res.cloudinary.com/ddvloqbxp/image/upload/v1779797522/Screenshot_2026-05-26_at_5.41.44_PM_is6awu.png"
+        "https://res.cloudinary.com/ddvloqbxp/image/upload/v1780119865/Screenshot_2026-05-30_at_11.14.18_AM_lyg9yo.png"
     };
   }
 
@@ -3663,6 +3669,95 @@ const viewAllOrders = asynchandler(async (req, res) => {
 });
 
 
+
+
+
+const getOrderAcceptanceStatus = asynchandler(async (req, res) => {
+  let setting = await Setting.findOne();
+
+  if (!setting) {
+    setting = await Setting.create({
+      isAcceptingOrders: true
+    });
+  }
+
+  res.status(200).json({
+    success: true,
+    isAcceptingOrders: setting.isAcceptingOrders
+  });
+});
+
+
+
+
+const getNextDeliveryDate2 = asynchandler(async (req, res) => {
+
+  const deliveryDays = [1, 4]; // Monday, Thursday
+  const cutoffHour = 10; // 10 AM
+
+  const setting = await Setting.findOne();
+
+  if (setting && !setting.isAcceptingOrders) {
+    return res.status(200).json({
+      success: true,
+      isAcceptingOrders: false,
+      message: "Orders are currently closed"
+    });
+  }
+
+  const now = new Date();
+
+  const currentDay = now.getDay();
+  const currentHour = now.getHours();
+
+  let deliveryDate = new Date(now);
+
+  const isDeliveryDay = deliveryDays.includes(currentDay);
+
+  // Monday/Thursday before 10 AM
+  if (isDeliveryDay && currentHour < cutoffHour) {
+    deliveryDate = new Date(now);
+  } else {
+
+    let found = false;
+
+    for (let i = 1; i <= 7; i++) {
+
+      const tempDate = new Date(now);
+      tempDate.setDate(tempDate.getDate() + i);
+
+      const day = tempDate.getDay();
+
+      if (deliveryDays.includes(day)) {
+        deliveryDate = tempDate;
+        found = true;
+        break;
+      }
+    }
+
+    if (!found) {
+      deliveryDate.setDate(deliveryDate.getDate() + 7);
+    }
+  }
+
+  const formattedDate = deliveryDate.toLocaleDateString("en-IN", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric"
+  });
+
+  res.status(200).json({
+    success: true,
+    isAcceptingOrders: true,
+    deliveryDate,
+    formattedDate
+  });
+});
+
+
+
+
 export {
     placeOrder,
     getUserOrders,
@@ -3681,5 +3776,6 @@ export {
      viewMyOrders,
       notifyPaymentDone,
       viewAllOrders,
-        deleteAllOrdersOfUser
+        deleteAllOrdersOfUser,
+        getOrderAcceptanceStatus
 };

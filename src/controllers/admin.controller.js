@@ -19,7 +19,7 @@ import { Product } from "../models/product.model.js";
 import { Address } from "../models/address.model.js";
 import { DeliveryBatch } from "../models/deliveryBatch.model.js";
 import { cookieOptions } from "../utils/cookieOptions.js";
-
+import Setting from "../models/settings.model.js";
 
  
 
@@ -11869,6 +11869,30 @@ const deleteSingleOrder = asynchandler(async (req, res) => {
 });
 
 
+const toggleOrderAcceptance = asynchandler(async (req, res) => {
+  let setting = await Setting.findOne();
+
+  if (!setting) {
+    setting = await Setting.create({
+      isAcceptingOrders: false
+    });
+  } else {
+    setting.isAcceptingOrders = !setting.isAcceptingOrders;
+    await setting.save();
+  }
+
+  res.status(200).json({
+    success: true,
+    isAcceptingOrders: setting.isAcceptingOrders,
+    message: setting.isAcceptingOrders
+      ? "Orders are now LIVE"
+      : "Orders are now CLOSED"
+  });
+});
+
+
+
+
 
 
 
@@ -11938,5 +11962,6 @@ export {
         upsertBatch,
         changeStaffPassword,
         getAllAddresses,
-        deleteSingleOrder
+        deleteSingleOrder,
+        toggleOrderAcceptance
     }

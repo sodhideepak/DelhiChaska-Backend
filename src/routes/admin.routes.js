@@ -67,7 +67,8 @@ import {
         getDriverActiveBatch,
         changeStaffPassword,
         getAllAddresses,
-        deleteSingleOrder
+        deleteSingleOrder,
+        toggleOrderAcceptance
 
      } from "../controllers/admin.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
@@ -273,6 +274,11 @@ router.route("/deleteallorders").delete(verifyStaffJWT,deleteAllOrders)
 
 
 router.route("/deleteorder/:orderId").delete(verifyStaffJWT,deleteSingleOrder)
+
+
+
+
+router.route("/toggleorderacceptance").post(verifyStaffJWT,toggleOrderAcceptance)
 export default router 
 
 

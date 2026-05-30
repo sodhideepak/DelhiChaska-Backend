@@ -11,6 +11,7 @@ import { addToCart,
          viewMyOrders,
             notifyPaymentDone,
             deleteAllOrdersOfUser,  
+            getOrderAcceptanceStatus,
          viewAllOrders } from "../controllers/order.controller.js";
 import { validateApiKey } from "../middlewares/validateapi.middleware.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
@@ -41,4 +42,9 @@ router.route("/notifypaymentdone/:orderId").post(verifyJWT,notifyPaymentDone)
 router.route("/allorders").get(verifyStaffJWT,viewAllOrders)
 
 router.route("/deleteuserorders/:userId").delete(verifyStaffJWT,deleteAllOrdersOfUser)
+router.route("/getorderacceptancestatus").get(verifyStaffJWT,getOrderAcceptanceStatus)
+
+
+
+
 export default router;
