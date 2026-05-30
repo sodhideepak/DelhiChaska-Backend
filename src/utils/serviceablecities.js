@@ -19,6 +19,12 @@ export const SERVICEABLE_CITIES = [
     "campbell",
     "los gatos",
     "milpitas",
+    "livermore",
+    "dublin",
+    "ruby hill",
+    "san ramon",
+    "danville",
+    "pleasanton",
 
     // SEATTLE
     "seattle",
@@ -37,5 +43,7 @@ export const SERVICEABLE_CITIES = [
     "kent",
     "kenmore",
     "lake forest park",
+    "maple valley",
+    "snohomish"
 
 ];
