@@ -1064,15 +1064,15 @@ const addAddress = asynchandler(async (req, res) => {
     // ✅ normalize city
     const normalizedCity =
         city.toString().trim().toLowerCase();
-    console.log(normalizedCity);
-    
+
 
     // ✅ check city serviceability
-    const isServiceableCity =
-        SERVICEABLE_CITIES.includes(
-            normalizedCity
-        );
-console.log(isServiceableCity);
+    const isServiceableCity = SERVICEABLE_CITIES.some(
+    city =>
+        city.trim().toLowerCase() ===
+        normalizedCity?.trim().toLowerCase()
+);
+
 
     if (!isServiceableCity) {
         throw new ApiError(
