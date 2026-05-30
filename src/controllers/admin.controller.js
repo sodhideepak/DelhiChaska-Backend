@@ -2265,7 +2265,13 @@ const AREA_CITY_MAP = {
 "Saratoga", 
 "Campbell", 
 "Los Gatos", 
-"Milpitas"
+"Milpitas",
+"Livermore",
+"Dublin",
+"Ruby Hill",
+"San Ramon",
+"Danville",
+"Pleasanton"
 
 ],
 

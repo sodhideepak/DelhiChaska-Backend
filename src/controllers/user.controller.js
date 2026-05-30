@@ -1001,8 +1001,14 @@ const AREA_CITY_MAP = {
         "Saratoga",
         "Campbell",
         "Los Gatos",
-        "Milpitas"
-    ],
+        "Milpitas",
+        "Livermore",
+        "Dublin",
+        "Ruby Hill",
+        "San Ramon",
+        "Danville",
+        "Pleasanton"
+    ], 
 
     seattle: [
         "Seattle",
@@ -1015,12 +1021,15 @@ const AREA_CITY_MAP = {
         "Mill Creek",
         "Woodinville",
         "Sammamish",
+        "Snohomish",
         "Issaquah",
         "Newcastle",
         "Renton",
         "Kent",
         "Kenmore",
-        "Lake Forest Park"
+        "Lake Forest Park",
+        "Maple Valley",
+        "Auburn"
     ]
 };
 
