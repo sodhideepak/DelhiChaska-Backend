@@ -12,6 +12,7 @@ import { addToCart,
             notifyPaymentDone,
             deleteAllOrdersOfUser,  
             getOrderAcceptanceStatus,
+            getNextDeliveryDate2,
          viewAllOrders } from "../controllers/order.controller.js";
 import { validateApiKey } from "../middlewares/validateapi.middleware.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
@@ -22,6 +23,7 @@ const router = Router();
 router.use(validateApiKey)
 
 router.route("/nextdeliverydate").get(getNextDeliveryDate)
+router.route("/nextdeliverydate2").get(getNextDeliveryDate2)
 
 
 router.route("/addtocart").post(verifyJWT,addToCart)

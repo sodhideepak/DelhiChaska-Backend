@@ -1912,13 +1912,13 @@ const clearCart = asynchandler(async (req, res) => {
 });
 
 
-const getNextDeliveryDate = asynchandler(async (req, res) => {
+const getNextDeliveryDate2 = asynchandler(async (req, res) => {
 
     // ==========================
     // 🔥 CONFIG
     // ==========================
     const deliveryDays = [1,4]; // Monday & Thursday
-    const cutoffHour = 22; // 10 PM
+    // const cutoffHour = 22; // 10 PM
 
     // ==========================
     // 🕒 CURRENT LA TIME
@@ -3701,72 +3701,95 @@ const getOrderAcceptanceStatus = asynchandler(async (req, res) => {
 
 
 
+const getNextDeliveryDate = asynchandler(async (req, res) => {
 
-const getNextDeliveryDate2 = asynchandler(async (req, res) => {
+    // ==========================
+    // 🔥 SETTINGS CHECK
+    // ==========================
+    const setting = await Setting.findOne();
 
-  const deliveryDays = [1, 4]; // Monday, Thursday
-  const cutoffHour = 10; // 10 AM
-
-  const setting = await Setting.findOne();
-
-  if (setting && !setting.isAcceptingOrders) {
-    return res.status(200).json({
-      success: true,
-      isAcceptingOrders: false,
-      message: "Orders are currently closed"
-    });
-  }
-
-  const now = new Date();
-
-  const currentDay = now.getDay();
-  const currentHour = now.getHours();
-
-  let deliveryDate = new Date(now);
-
-  const isDeliveryDay = deliveryDays.includes(currentDay);
-
-  // Monday/Thursday before 10 AM
-  if (isDeliveryDay && currentHour < cutoffHour) {
-    deliveryDate = new Date(now);
-  } else {
-
-    let found = false;
-
-    for (let i = 1; i <= 7; i++) {
-
-      const tempDate = new Date(now);
-      tempDate.setDate(tempDate.getDate() + i);
-
-      const day = tempDate.getDay();
-
-      if (deliveryDays.includes(day)) {
-        deliveryDate = tempDate;
-        found = true;
-        break;
-      }
+    if (setting && !setting.isAcceptingOrders) {
+        return res.status(200).json(
+            new ApiResponse(
+                200,
+                {
+                    acceptingOrders: false
+                },
+                "Currently not accepting orders"
+            )
+        );
     }
 
-    if (!found) {
-      deliveryDate.setDate(deliveryDate.getDate() + 7);
+    // ==========================
+    // 📅 DELIVERY DAYS
+    // ==========================
+    // Sunday=0, Monday=1, Tuesday=2...
+    const deliveryDays = [1, 4]; // Monday & Thursday
+
+    const today = new Date();
+    const currentDay = today.getDay();
+
+    // ==========================
+    // 🔍 FIND NEXT DELIVERY DAY
+    // ==========================
+    let daysToAdd = 0;
+
+    for (let i = 0; i <= 7; i++) {
+
+        const dayToCheck = (currentDay + i) % 7;
+
+        if (deliveryDays.includes(dayToCheck)) {
+            daysToAdd = i;
+            break;
+        }
     }
-  }
 
-  const formattedDate = deliveryDate.toLocaleDateString("en-IN", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric"
-  });
+    // ==========================
+    // 📅 DELIVERY DATE
+    // ==========================
+    const deliveryDateObj = new Date(today);
 
-  res.status(200).json({
-    success: true,
-    isAcceptingOrders: true,
-    deliveryDate,
-    formattedDate
-  });
+    deliveryDateObj.setDate(
+        deliveryDateObj.getDate() + daysToAdd
+    );
+
+    const date = deliveryDateObj.toLocaleDateString(
+        "en-CA"
+    );
+
+    const day = deliveryDateObj.toLocaleDateString(
+        "en-US",
+        {
+            weekday: "long"
+        }
+    );
+
+    const formatted = deliveryDateObj.toLocaleDateString(
+        "en-US",
+        {
+            weekday: "long",
+            year: "numeric",
+            month: "long",
+            day: "numeric"
+        }
+    );
+
+    // ==========================
+    // ✅ RESPONSE
+    // ==========================
+    return res.status(200).json(
+        new ApiResponse(
+            200,
+            {
+                acceptingOrders: true,
+                date,
+                day,
+                formatted
+            },
+            "Next delivery date fetched successfully"
+        )
+    );
 });
-
 
 
 
@@ -3789,5 +3812,6 @@ export {
       notifyPaymentDone,
       viewAllOrders,
         deleteAllOrdersOfUser,
-        getOrderAcceptanceStatus
+        getOrderAcceptanceStatus,
+        getNextDeliveryDate2
 };
