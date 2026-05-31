@@ -3409,10 +3409,10 @@ const notifyPaymentDone = asynchandler(async (req, res) => {
     // ─────────────────────────────────────────────
     order.paymentRequested = true;
 
-    console.log(
-        order.paymentRequested,
-        "this is payment requested"
-    );
+    // console.log(
+    //     order.paymentRequested,
+    //     "this is payment requested"
+    // );
 
     await order.save();
 

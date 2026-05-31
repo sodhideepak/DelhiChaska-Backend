@@ -207,7 +207,7 @@ const startRegistration = asynchandler(async (req, res) => {
         DOB,
         password
     } = req.body;
-console.log("gdhtdhtdt");
+
 
     // ─────────────────────────────────────────────
     // VALIDATION
@@ -351,8 +351,7 @@ console.log("gdhtdhtdt");
     // ─────────────────────────────────────────────
     // SEND OTP MAIL
     // ─────────────────────────────────────────────
-    console.log("here is is code");
-    
+
     await send_register_otp(
         email,
         otp,
@@ -608,7 +607,7 @@ const registeruser = asynchandler(async (req, res) => {
     )
 
     if (existeduser) {
-        console.log("hello")
+
         throw new ApiError(409, "user already registered", [])
 
     }
@@ -688,7 +687,7 @@ const loginuser = asynchandler(async (req, res) => {
     const { identifier, password } = req.body;
 
     const api = req.headers.apikey;
-    console.log(api);
+
 
     // ❌ validation
     if (!identifier || !password) {
@@ -797,7 +796,7 @@ const loginuser = asynchandler(async (req, res) => {
 
 
 const logout = asynchandler(async (req, res) => {
-    console.log(req.user._id);
+
 
     await user.findByIdAndUpdate(
         req.user._id, {
@@ -918,7 +917,7 @@ const refreshAccessToken = asynchandler(async (req, res) => {
         }
 
         // console.log("incomminrefreshtoken : ",incomingrefreshtoken);
-        console.log("User?.refreshToken : ", User?.refreshToken);
+
 
         if (incomingrefreshtoken !== User?.refreshToken) {
             throw new ApiError(401, "refresh token is expired or used")

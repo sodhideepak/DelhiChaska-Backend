@@ -305,7 +305,6 @@ const loginuser = asynchandler(async (req,res)=>{
 
     // const api=req.headers.api_key;
     const api=req.headers.apikey;
-    console.log(api);
     
 
     if (!email ) {
@@ -480,8 +479,6 @@ const refreshAccessToken = asynchandler(async(req,res)=>{
         }
         
         // console.log("incomminrefreshtoken : ",incomingrefreshtoken);
-        console.log("User?.refreshToken : ",User?.refreshToken);
-
         if(incomingrefreshtoken !== User?.refreshToken){
             throw new ApiError(401,"refresh token is expired or used")
         }
@@ -3119,8 +3116,7 @@ export const ensureKitchen = (req) => {
       "Unauthorized access"
     );
   } 
-  console.log("Staff role:", req.staff.role);
-  
+
   // ❌ NOT KITCHEN
   if ( req.staff.role !== "admin"  && req.staff.role !== "kitchen") {
     throw new ApiError(
@@ -11376,7 +11372,7 @@ const setDriverForNextDelivery = asynchandler(async (req, res) => {
     // PARAMS
     // ─────────────────────────────────────────────
     const { driverId } = req.query;
-    console.log(req.query);
+
     
 
     // ─────────────────────────────────────────────
@@ -11734,7 +11730,6 @@ const getAllAddresses = asynchandler(async (req, res) => {
     };
 
 
-console.log("hellouybvubvff");
 
 const getDeliveryDateOnly = (
   baseDate = new Date()
@@ -11800,7 +11795,6 @@ const getDeliveryDateOnly = (
 const nextDate =
   getDeliveryDateOnly();
 
-console.log(nextDate);
 
     // ─────────────────────────────────────────────
     // RESPONSE
