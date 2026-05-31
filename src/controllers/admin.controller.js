@@ -3301,7 +3301,16 @@ const kitchenViewOrdersByArea = asynchandler(async (req, res) => {
     "veg_curry",
     "veg_dry",
     "chicken",
-    "paneer"
+    "paneer",
+    "mutton", 
+    "veg_other", 
+    "veg_dry", 
+    "rice", 
+    "chinese", 
+    "biryani",
+    "paneer_tikka",
+    "chicken_tikka",
+    "others"
   ];
 
   // ─────────────────────────────────────────────
