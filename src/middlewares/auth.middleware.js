@@ -1,54 +1,113 @@
-import { ApiError } from "../utils/ApiError.js";
-import { asynchandler } from "../utils/asynchandler.js";
-import  Jwt  from "jsonwebtoken";
+import Jwt from "jsonwebtoken";
 import { user } from "../models/user.model.js";
+import { asynchandler } from "../utils/asynchandler.js";
+import { ApiResponse } from "../utils/ApiResponse.js";
+import { clearAuthCookies } from "../utils/cookieclear.js";
 
+const verifyJWT = asynchandler(async (req, res, next) => {
 
-const verifyJWT= asynchandler(async(req,_,next)=>{
     try {
-      const accessToken = req.headers.cookie?.match(/accesstoken=([^;]+)/)?.[1];
-        const token=accessToken || req.headers.cookie.accesstoken ||  req.header("Authorization")?.replace("Bearer ","")
-        // console.log("cookies:", req.cookies);
-        console.log("headers cookie:", accessToken);
-        // console.log("access token:", req.cookies?.accesstoken);
-    
+
+        const token =
+            req.cookies?.accesstoken ||
+            req.header("Authorization")?.replace("Bearer ", "");
+
         if (!token) {
-            throw new ApiError(401,"unauthorized request")
-            
-        }
-    
-        const decodedtoken= Jwt.verify(token,process.env.Access_Token_Secret)
-    
-        const User = await user.findById(decodedtoken?._id).select("-password -refreshtoken")
-    
-        if (!User) {
-            throw new ApiError(401,"invalid access token")
-            
-        }
-    
-        req.user =User;
-        next()
-    
-    } catch (error) {
-        throw new ApiError(401,error?.message || "inavalid access token")
-    }
-})
 
- const getLoggedInUserOrIgnore = asynchandler(async (req, res, next) => {
-    const token =
-      req.cookies?.accessToken ||
-      req.header("Authorization")?.replace("Bearer ", "");
-  
-    try {
-        const decodedtoken= Jwt.verify(token,process.env.Access_Token_Secret)
-      const User = await user.findById(decodedtoken?._id).select(
-        "-password -refreshToken"
-      );
-      req.user = User;
-      next();
+            clearAuthCookies(res);
+
+            return res.status(401).json(
+                new ApiResponse(
+                    401,
+                    {},
+                    "Please login again"
+                )
+            );
+        }
+
+        const decodedToken = Jwt.verify(
+            token,
+            process.env.Access_Token_Secret
+        );
+
+        const User = await user
+            .findById(decodedToken?._id)
+            .select("-password -refreshToken");
+
+        if (!User) {
+
+            clearAuthCookies(res);
+
+            return res.status(401).json(
+                new ApiResponse(
+                    401,
+                    {},
+                    "Please login again"
+                )
+            );
+        }
+
+        req.user = User;
+
+        next();
+
     } catch (error) {
-      // Fail silently with req.user being falsy
-      next();
+
+        clearAuthCookies(res);
+
+        return res.status(401).json(
+            new ApiResponse(
+                401,
+                {},
+                error?.name === "TokenExpiredError"
+                    ? "Session expired. Please login again."
+                    : "Invalid access token"
+            )
+        );
     }
-  });
-export {verifyJWT,getLoggedInUserOrIgnore}
+
+});
+
+
+const getLoggedInUserOrIgnore = asynchandler(async (req, res, next) => {
+
+    try {
+
+        const token =
+            req.cookies?.accesstoken ||
+            req.header("Authorization")?.replace("Bearer ", "");
+
+        if (!token) {
+            return next();
+        }
+
+        const decodedToken = Jwt.verify(
+            token,
+            process.env.Access_Token_Secret
+        );
+
+        const User = await user
+            .findById(decodedToken?._id)
+            .select("-password -refreshToken");
+
+        if (User) {
+            req.user = User;
+        }
+
+        return next();
+
+    } catch (error) {
+
+        clearAuthCookies(res);
+
+        req.user = null;
+
+        return next();
+    }
+
+});
+
+export {
+    verifyJWT,
+    getLoggedInUserOrIgnore
+};
