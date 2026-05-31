@@ -15,7 +15,7 @@ const verifyStaffJWT = asynchandler(async (req, _, next) => {
             req.headers.cookie?.accesstoken ||
             req.header("Authorization")?.replace("Bearer ", "");
 
-        console.log("headers cookie:", accessToken);
+        // console.log("headers cookie:", accessToken);
 
         if (!token) {
             throw new ApiError(401, "unauthorized staff request");

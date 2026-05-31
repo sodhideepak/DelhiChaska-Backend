@@ -9,10 +9,10 @@ import { addToCart,
          clearCart,
          ProceedToOrder,
          viewMyOrders,
-            notifyPaymentDone,
-            deleteAllOrdersOfUser,  
-            getOrderAcceptanceStatus,
-            getNextDeliveryDate2,
+         notifyPaymentDone,
+         deleteAllOrdersOfUser,  
+         getOrderAcceptanceStatus,
+         getNextDeliveryDate2,
          viewAllOrders } from "../controllers/order.controller.js";
 import { validateApiKey } from "../middlewares/validateapi.middleware.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";

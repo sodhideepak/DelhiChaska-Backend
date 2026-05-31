@@ -1206,7 +1206,7 @@ const verifyEmployeeRegistration = asynchandler(async(req,res)=>{
     if (existingEmployee) {
         throw new ApiError(409, "employee already exists");
     }
-console.log(tempEmployee.assignedArea);
+// console.log(tempEmployee.assignedArea);
 
     const employee = new Employee({
         name: tempEmployee.name,
@@ -1293,7 +1293,7 @@ const editEmployeeDetails = asynchandler(async (req, res) => {
     const employee =
         await Employee.findById(employeeId);
 
-    console.log(employee);
+    // console.log(employee);
 
     if (!employee) {
 
