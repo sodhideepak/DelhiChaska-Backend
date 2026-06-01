@@ -78,67 +78,31 @@ const orderItemSchema = new mongoose.Schema({
 // ─────────────────────────────────────────────
 
 
-const getDeliveryDateOnly = (
-  baseDate = new Date()
-) => {
+const getDeliveryDateOnly = (baseDate = new Date()) => {
+    const deliveryDays = [1, 4]; // Monday, Thursday
 
-  // Monday & Thursday
-  const deliveryDays = [1,4];
+    const currentDay = baseDate.getDay();
 
-  // Seattle timezone
-  const seattleDate = new Date(
-    baseDate.toLocaleString(
-      "en-US",
-      {
-        timeZone:
-          "America/Los_Angeles"
-      }
-    )
-  );
+    let daysToAdd = 0;
 
-  const today =
-    seattleDate.getDay();
+    for (let i = 0; i <= 7; i++) {
+        const dayToCheck = (currentDay + i) % 7;
 
-  let daysToAdd = 0;
-
-  // Find next delivery day
-  for (
-    let i = 1;
-    i <= 7;
-    i++
-  ) {
-
-    const nextDay =
-      (today + i) % 7;
-
-    if (
-      deliveryDays.includes(nextDay)
-    ) {
-
-      daysToAdd = i;
-      break;
+        if (deliveryDays.includes(dayToCheck)) {
+            daysToAdd = i;
+            break;
+        }
     }
-  }
 
-  // Create next delivery date
-  const nextDeliveryDate =
-    new Date(seattleDate);
+    const deliveryDate = new Date(baseDate);
 
-  nextDeliveryDate.setDate(
-    seattleDate.getDate() + daysToAdd
-  );
+    deliveryDate.setHours(0, 0, 0, 0);
+    deliveryDate.setDate(
+        deliveryDate.getDate() + daysToAdd
+    );
 
-  // IMPORTANT:
-  // Store UTC midnight only
-  return new Date(
-    Date.UTC(
-      nextDeliveryDate.getFullYear(),
-      nextDeliveryDate.getMonth(),
-      nextDeliveryDate.getDate()
-    )
-  );
+    return deliveryDate;
 };
-
 
 
 // ─────────────────────────────────────────────
