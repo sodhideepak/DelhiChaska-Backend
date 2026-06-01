@@ -78,14 +78,17 @@ const orderItemSchema = new mongoose.Schema({
 // ─────────────────────────────────────────────
 
 
-const getDeliveryDateOnly = (baseDate = new Date()) => {
+const getDeliveryDateOnly = () => {
+
     const deliveryDays = [1, 4]; // Monday, Thursday
 
-    const currentDay = baseDate.getDay();
+    const today = new Date();
+    const currentDay = today.getDay();
 
     let daysToAdd = 0;
 
     for (let i = 0; i <= 7; i++) {
+
         const dayToCheck = (currentDay + i) % 7;
 
         if (deliveryDays.includes(dayToCheck)) {
@@ -94,14 +97,18 @@ const getDeliveryDateOnly = (baseDate = new Date()) => {
         }
     }
 
-    const deliveryDate = new Date(baseDate);
-
-    deliveryDate.setHours(0, 0, 0, 0);
+    const deliveryDate = new Date(today);
     deliveryDate.setDate(
         deliveryDate.getDate() + daysToAdd
     );
 
-    return deliveryDate;
+    return new Date(
+        Date.UTC(
+            deliveryDate.getFullYear(),
+            deliveryDate.getMonth(),
+            deliveryDate.getDate()
+        )
+    );
 };
 
 

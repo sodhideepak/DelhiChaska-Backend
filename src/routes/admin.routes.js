@@ -68,7 +68,8 @@ import {
     changeStaffPassword,
     getAllAddresses,
     deleteSingleOrder,
-    toggleOrderAcceptance
+    toggleOrderAcceptance,
+    getDeliveryDateOnly22
 
      } from "../controllers/admin.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
@@ -279,6 +280,12 @@ router.route("/deleteorder/:orderId").delete(verifyStaffJWT,deleteSingleOrder)
 
 
 router.route("/toggleorderacceptance").post(verifyStaffJWT,toggleOrderAcceptance)
+
+
+
+
+router.route("/getDeliveryDateOnlyj").get(verifyStaffJWT,getDeliveryDateOnly22)
+
 export default router 
 
 

@@ -11740,67 +11740,39 @@ const getAllAddresses = asynchandler(async (req, res) => {
 
 
 
-const getDeliveryDateOnly = (
-  baseDate = new Date()
-) => {
 
-  // Monday & Thursday
-  const deliveryDays = [1,4];
+const getDeliveryDateOnly = () => {
 
-  // Seattle timezone
-  const seattleDate = new Date(
-    baseDate.toLocaleString(
-      "en-US",
-      {
-        timeZone:
-          "America/Los_Angeles"
-      }
-    )
-  );
+    const deliveryDays = [1, 4]; // Monday, Thursday
 
-  const today =
-    seattleDate.getDay();
+    const today = new Date();
+    const currentDay = today.getDay();
 
-  let daysToAdd = 0;
+    let daysToAdd = 0;
 
-  // Find next delivery day
-  for (
-    let i = 1;
-    i <= 7;
-    i++
-  ) {
+    for (let i = 0; i <= 7; i++) {
 
-    const nextDay =
-      (today + i) % 7;
+        const dayToCheck = (currentDay + i) % 7;
 
-    if (
-      deliveryDays.includes(nextDay)
-    ) {
-
-      daysToAdd = i;
-      break;
+        if (deliveryDays.includes(dayToCheck)) {
+            daysToAdd = i;
+            break;
+        }
     }
-  }
 
-  // Create next delivery date
-  const nextDeliveryDate =
-    new Date(seattleDate);
+    const deliveryDate = new Date(today);
+    deliveryDate.setDate(
+        deliveryDate.getDate() + daysToAdd
+    );
 
-  nextDeliveryDate.setDate(
-    seattleDate.getDate() + daysToAdd
-  );
-
-  // IMPORTANT:
-  // Store UTC midnight only
-  return new Date(
-    Date.UTC(
-      nextDeliveryDate.getFullYear(),
-      nextDeliveryDate.getMonth(),
-      nextDeliveryDate.getDate()
-    )
-  );
+    return new Date(
+        Date.UTC(
+            deliveryDate.getFullYear(),
+            deliveryDate.getMonth(),
+            deliveryDate.getDate()
+        )
+    );
 };
-
 const nextDate =
   getDeliveryDateOnly();
 
@@ -11904,6 +11876,47 @@ const toggleOrderAcceptance = asynchandler(async (req, res) => {
 
 
 
+const getDeliveryDateOnly22 = () => {
+
+    const deliveryDays = [1, 4]; // Monday, Thursday
+
+    const today = new Date();
+    const currentDay = today.getDay();
+
+    let daysToAdd = 0;
+
+    for (let i = 0; i <= 7; i++) {
+
+        const dayToCheck = (currentDay + i) % 7;
+
+        if (deliveryDays.includes(dayToCheck)) {
+            daysToAdd = i;
+            break;
+        }
+    }
+
+    const deliveryDate = new Date(today);
+
+    deliveryDate.setHours(0, 0, 0, 0);
+
+    deliveryDate.setDate(
+        deliveryDate.getDate() + daysToAdd
+    );
+console.log(deliveryDate);
+ res.status(200).json({
+    success: true,
+    isAcceptingOrders: setting.isAcceptingOrders,
+    message: setting.isAcceptingOrders
+      ? "Orders are now LIVE"
+      : "Orders are now CLOSED"
+  });
+
+
+};
+
+
+
+
 
 
 
@@ -11972,5 +11985,6 @@ export {
         changeStaffPassword,
         getAllAddresses,
         deleteSingleOrder,
-        toggleOrderAcceptance
+        toggleOrderAcceptance,
+        getDeliveryDateOnly22
     }
