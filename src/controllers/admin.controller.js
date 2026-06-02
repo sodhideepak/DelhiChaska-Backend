@@ -1229,18 +1229,18 @@ const verifyEmployeeRegistration = asynchandler(async(req,res)=>{
     await TempEmployee.findByIdAndDelete(tempEmployeeId);
 
     // Send approval notification email to employee (non-blocking)
-    let emailStatus = "approval notification sent successfully";
+    // let emailStatus = "approval notification sent successfully";
 
-    sendEmployeeApprovalNotification(
-        tempEmployee.name,
-        tempEmployee.email,
-        tempEmployee.role
-    ).catch(error => {
-        console.log("Failed to send approval email:", error.message);
+    // sendEmployeeApprovalNotification(
+    //     tempEmployee.name,
+    //     tempEmployee.email,
+    //     tempEmployee.role
+    // ).catch(error => {
+    //     console.log("Failed to send approval email:", error.message);
 
-        emailStatus =
-        "employee verified, but approval notification failed";
-    });
+    //     emailStatus =
+    //     "employee verified, but approval notification failed";
+    // });
 
     return res
     .status(201)
@@ -1248,7 +1248,7 @@ const verifyEmployeeRegistration = asynchandler(async(req,res)=>{
         new ApiResponse(
             201,
             employee,
-            `employee verified and registered successfully! ${emailStatus}`
+            // `employee verified and registered successfully! ${emailStatus}`
         )
     );
 });
@@ -5154,11 +5154,20 @@ const getAllDriversfull = asynchandler(async (req, res) => {
 //   );
 // });
 
+
+
+
+
+
+
+
 const resetAllDrivers = asynchandler(async (req, res) => {
 
   ensureSuperAdmin(req);
 
-  // Reset drivers
+  // ------------------------------------------------
+  // RESET ALL DRIVERS
+  // ------------------------------------------------
   const driverResult = await Employee.updateMany(
     { role: "driver" },
     {
@@ -5171,7 +5180,9 @@ const resetAllDrivers = asynchandler(async (req, res) => {
     }
   );
 
-  // Active batches only
+  // ------------------------------------------------
+  // GET ACTIVE BATCHES
+  // ------------------------------------------------
   const activeBatches = await DeliveryBatch.find({
     status: {
       $in: ["draft", "finalized", "in_delivery"]
@@ -5180,7 +5191,10 @@ const resetAllDrivers = asynchandler(async (req, res) => {
     "_id driverId assignedToDriverHistory"
   );
 
-  // Preserve history and remove active driver
+  // ------------------------------------------------
+  // PRESERVE DRIVER HISTORY
+  // REMOVE ACTIVE DRIVER
+  // ------------------------------------------------
   if (activeBatches.length) {
 
     const batchBulkOps = activeBatches.map(
@@ -5192,36 +5206,95 @@ const resetAllDrivers = asynchandler(async (req, res) => {
           update: {
             $set: {
 
-              ...( !batch.assignedToDriverHistory &&
-                  batch.driverId && {
-                assignedToDriverHistory:
-                  batch.driverId
-              }),
+              // Preserve original driver if not already saved
+              ...(
+                !batch.assignedToDriverHistory &&
+                batch.driverId && {
+                  assignedToDriverHistory:
+                    batch.driverId
+                }
+              ),
 
               driverId: null,
-              viewToDriver: false,
-
-              // IMPORTANT
-              orders: []
+              viewToDriver: false
             }
           }
         }
       })
     );
 
-    await DeliveryBatch.bulkWrite(
-      batchBulkOps
-    );
+    await DeliveryBatch.bulkWrite(batchBulkOps);
   }
 
-  // Move orders back to unassigned
+  // ------------------------------------------------
+  // UNASSIGN ONLY PENDING ORDERS
+  // ------------------------------------------------
+  const pendingOrders = await Order.find({
+    status: {
+      $nin: ["delivered", "cancelled"]
+    },
+    "deliveryAssignment.batchId": {
+      $ne: null
+    }
+  }).select(
+    "_id deliveryAssignment.batchId"
+  );
+
+  // ------------------------------------------------
+  // REMOVE PENDING ORDERS FROM BATCHES
+  // KEEP DELIVERED ORDERS IN BATCH HISTORY
+  // ------------------------------------------------
+  if (pendingOrders.length) {
+
+    const batchOrderMap = {};
+
+    pendingOrders.forEach((order) => {
+
+      const batchId =
+        order.deliveryAssignment?.batchId?.toString();
+
+      if (!batchId) return;
+
+      if (!batchOrderMap[batchId]) {
+        batchOrderMap[batchId] = [];
+      }
+
+      batchOrderMap[batchId].push(order._id);
+    });
+
+    const batchBulkOps = Object.entries(
+      batchOrderMap
+    ).map(([batchId, orderIds]) => ({
+      updateOne: {
+        filter: {
+          _id: batchId
+        },
+        update: {
+          $pull: {
+            orders: {
+              orderId: {
+                $in: orderIds
+              }
+            }
+          }
+        }
+      }
+    }));
+
+    if (batchBulkOps.length) {
+      await DeliveryBatch.bulkWrite(
+        batchBulkOps
+      );
+    }
+  }
+
+  // ------------------------------------------------
+  // RESET DELIVERY ASSIGNMENTS
+  // ------------------------------------------------
   const orderResult = await Order.updateMany(
     {
       status: {
-        $nin: [
-          "delivered",
-          "cancelled"
-        ]
+        $nin: ["delivered", "cancelled"]
       }
     },
     {
@@ -5238,13 +5311,13 @@ const resetAllDrivers = asynchandler(async (req, res) => {
 
         "deliveryAssignment.assignedAt":
           null
-
-        // Keep history
-        // assignedToDriverHistory remains
       }
     }
   );
 
+  // ------------------------------------------------
+  // RESPONSE
+  // ------------------------------------------------
   return res.status(200).json(
     new ApiResponse(
       200,
@@ -5265,14 +5338,15 @@ const resetAllDrivers = asynchandler(async (req, res) => {
 
         batches: {
           processed:
-            activeBatches.length,
-          historyPreserved: true
+            activeBatches.length
         }
       },
-      "All drivers reset successfully. Orders moved back to unassigned."
+      "Drivers reset successfully. Pending orders moved back to unassigned. Delivered order history preserved."
     )
   );
 });
+
+
 
 
 
