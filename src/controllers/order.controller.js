@@ -2192,6 +2192,9 @@ const ProceedToOrder = asynchandler(async (req, res) => {
           item.name ||
           product.name,
 
+        category:
+          product.category || "",
+
         quantity:
           item.quantity,
 

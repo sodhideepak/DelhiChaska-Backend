@@ -791,33 +791,33 @@ const startEmployeeRegistration = asynchandler(async (req, res) => {
   let emailStatus = "emails sent successfully";
 
   // Admin notification
-  sendEmployeeRegistrationNotification(
-    name,
-    email,
-    role
-  ).catch((error) => {
-    console.log(
-      "Failed to send admin notification:",
-      error.message
-    );
+  // sendEmployeeRegistrationNotification(
+  //   name,
+  //   email,
+  //   role
+  // ).catch((error) => {
+  //   console.log(
+  //     "Failed to send admin notification:",
+  //     error.message
+  //   );
 
-    emailStatus =
-      "registration successful, but admin notification failed";
-  });
+  //   emailStatus =
+  //     "registration successful, but admin notification failed";
+  // });
 
-  // Employee confirmation
-  sendEmployeeSubmissionConfirmation(
-    name,
-    email
-  ).catch((error) => {
-    console.log(
-      "Failed to send employee confirmation:",
-      error.message
-    );
+  // // Employee confirmation
+  // sendEmployeeSubmissionConfirmation(
+  //   name,
+  //   email
+  // ).catch((error) => {
+  //   console.log(
+  //     "Failed to send employee confirmation:",
+  //     error.message
+  //   );
 
-    emailStatus =
-      "registration successful, but employee confirmation failed";
-  });
+  //   emailStatus =
+  //     "registration successful, but employee confirmation failed";
+  // });
 
   // ✅ Response
   return res.status(201).json(
@@ -5055,7 +5055,231 @@ const getAllDriversfull = asynchandler(async (req, res) => {
 
 
 
+
+
+// const resetAllDrivers = asynchandler(async (req, res) => {
+
+//   ensureSuperAdmin(req);
+
+//   // ─────────────────────────────────────────────
+//   // RESET ALL DRIVERS
+//   // ─────────────────────────────────────────────
+//   const driverResult = await Employee.updateMany(
+//     { role: "driver" },
+//     {
+//       $set: {
+//         isDriverAvailable: true,
+//         upForNextDelivery: false,
+//         nextDeliveryDate: null,
+//         nextDeliveryNotes: "",
+//       },
+//     }
+//   );
+
+//   // ─────────────────────────────────────────────
+//   // GET ACTIVE BATCHES ONLY
+//   // EXCLUDE COMPLETED
+//   // ─────────────────────────────────────────────
+//   const activeBatches = await DeliveryBatch.find({
+//     driverId: { $ne: null },
+//     status: { $in: ["draft", "finalized", "in_delivery"] },
+//   }).select("_id driverId assignedToDriverHistory");
+
+//   // ─────────────────────────────────────────────
+//   // BULK UPDATE BATCHES
+//   // PRESERVE HISTORY + CLEAR ACTIVE DRIVER
+//   // ─────────────────────────────────────────────
+//   if (activeBatches.length) {
+
+//     const batchBulkOps = activeBatches.map((batch) => ({
+//       updateOne: {
+//         filter: { _id: batch._id },
+//         update: {
+//           $set: {
+//             // ✅ ONLY SET HISTORY IF NOT ALREADY SET
+//             ...(
+//               !batch.assignedToDriverHistory && {
+//                 assignedToDriverHistory: batch.driverId,
+//               }
+//             ),
+//             driverId: null,
+//             viewToDriver: false,
+//           },
+//         },
+//       },
+//     }));
+
+//     await DeliveryBatch.bulkWrite(batchBulkOps);
+//   }
+
+//   // ─────────────────────────────────────────────
+//   // RESET ORDERS
+//   // ONLY NON-DELIVERED ORDERS
+//   // NEVER TOUCH DELIVERED HISTORY
+//   // ─────────────────────────────────────────────
+//   const orderResult = await Order.updateMany(
+//     {
+//       "deliveryAssignment.driverId": { $ne: null },
+//       status: { $nin: ["delivered", "cancelled"] },
+//     },
+//     {
+//       $set: {
+//         "deliveryAssignment.driverId": null,
+//       },
+//     }
+//   );
+
+//   // ─────────────────────────────────────────────
+//   // RESPONSE
+//   // ─────────────────────────────────────────────
+//   return res.status(200).json(
+//     new ApiResponse(
+//       200,
+//       {
+//         drivers: {
+//           matchedDrivers: driverResult.matchedCount,
+//           updatedDrivers: driverResult.modifiedCount,
+//         },
+//         batches: {
+//           totalProcessed: activeBatches.length,
+//           historyPreserved: true,
+//         },
+//         orders: {
+//           matchedOrders: orderResult.matchedCount,
+//           updatedOrders: orderResult.modifiedCount,
+//         },
+//       },
+//       "All drivers reset successfully while preserving batch and order history"
+//     )
+//   );
+// });
+
 const resetAllDrivers = asynchandler(async (req, res) => {
+
+  ensureSuperAdmin(req);
+
+  // Reset drivers
+  const driverResult = await Employee.updateMany(
+    { role: "driver" },
+    {
+      $set: {
+        isDriverAvailable: true,
+        upForNextDelivery: false,
+        nextDeliveryDate: null,
+        nextDeliveryNotes: ""
+      }
+    }
+  );
+
+  // Active batches only
+  const activeBatches = await DeliveryBatch.find({
+    status: {
+      $in: ["draft", "finalized", "in_delivery"]
+    }
+  }).select(
+    "_id driverId assignedToDriverHistory"
+  );
+
+  // Preserve history and remove active driver
+  if (activeBatches.length) {
+
+    const batchBulkOps = activeBatches.map(
+      (batch) => ({
+        updateOne: {
+          filter: {
+            _id: batch._id
+          },
+          update: {
+            $set: {
+
+              ...( !batch.assignedToDriverHistory &&
+                  batch.driverId && {
+                assignedToDriverHistory:
+                  batch.driverId
+              }),
+
+              driverId: null,
+              viewToDriver: false,
+
+              // IMPORTANT
+              orders: []
+            }
+          }
+        }
+      })
+    );
+
+    await DeliveryBatch.bulkWrite(
+      batchBulkOps
+    );
+  }
+
+  // Move orders back to unassigned
+  const orderResult = await Order.updateMany(
+    {
+      status: {
+        $nin: [
+          "delivered",
+          "cancelled"
+        ]
+      }
+    },
+    {
+      $set: {
+
+        "deliveryAssignment.driverId":
+          null,
+
+        "deliveryAssignment.batchId":
+          null,
+
+        "deliveryAssignment.deliverySequence":
+          null,
+
+        "deliveryAssignment.assignedAt":
+          null
+
+        // Keep history
+        // assignedToDriverHistory remains
+      }
+    }
+  );
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        drivers: {
+          matchedDrivers:
+            driverResult.matchedCount,
+          updatedDrivers:
+            driverResult.modifiedCount
+        },
+
+        orders: {
+          matchedOrders:
+            orderResult.matchedCount,
+          updatedOrders:
+            orderResult.modifiedCount
+        },
+
+        batches: {
+          processed:
+            activeBatches.length,
+          historyPreserved: true
+        }
+      },
+      "All drivers reset successfully. Orders moved back to unassigned."
+    )
+  );
+});
+
+
+
+
+
+
+const resetAllDrivers2 = asynchandler(async (req, res) => {
 
   ensureSuperAdmin(req);
 
@@ -5075,17 +5299,16 @@ const resetAllDrivers = asynchandler(async (req, res) => {
   );
 
   // ─────────────────────────────────────────────
-  // GET ACTIVE BATCHES ONLY
-  // EXCLUDE COMPLETED
+  // GET ACTIVE BATCHES
   // ─────────────────────────────────────────────
   const activeBatches = await DeliveryBatch.find({
-    driverId: { $ne: null },
-    status: { $in: ["draft", "finalized", "in_delivery"] },
+    status: {
+      $in: ["draft", "finalized", "in_delivery"]
+    }
   }).select("_id driverId assignedToDriverHistory");
 
   // ─────────────────────────────────────────────
-  // BULK UPDATE BATCHES
-  // PRESERVE HISTORY + CLEAR ACTIVE DRIVER
+  // PRESERVE DRIVER HISTORY ON BATCHES
   // ─────────────────────────────────────────────
   if (activeBatches.length) {
 
@@ -5094,10 +5317,10 @@ const resetAllDrivers = asynchandler(async (req, res) => {
         filter: { _id: batch._id },
         update: {
           $set: {
-            // ✅ ONLY SET HISTORY IF NOT ALREADY SET
-            ...(
-              !batch.assignedToDriverHistory && {
-                assignedToDriverHistory: batch.driverId,
+            ...( !batch.assignedToDriverHistory &&
+              batch.driverId && {
+                assignedToDriverHistory:
+                  batch.driverId
               }
             ),
             driverId: null,
@@ -5111,21 +5334,39 @@ const resetAllDrivers = asynchandler(async (req, res) => {
   }
 
   // ─────────────────────────────────────────────
-  // RESET ORDERS
-  // ONLY NON-DELIVERED ORDERS
-  // NEVER TOUCH DELIVERED HISTORY
+  // RESET ALL NON-DELIVERED ORDERS
+  // MAKE THEM UNASSIGNED AGAIN
   // ─────────────────────────────────────────────
   const orderResult = await Order.updateMany(
     {
-      "deliveryAssignment.driverId": { $ne: null },
-      status: { $nin: ["delivered", "cancelled"] },
+      status: {
+        $nin: ["delivered", "cancelled"]
+      }
     },
     {
       $set: {
         "deliveryAssignment.driverId": null,
-      },
+        "deliveryAssignment.batchId": null,
+        "deliveryAssignment.deliverySequence": null,
+        "deliveryAssignment.assignedAt": null
+      }
     }
   );
+
+  // ─────────────────────────────────────────────
+  // DELETE ACTIVE BATCHES
+  // ORDERS ARE NOW UNASSIGNED
+  // ─────────────────────────────────────────────
+  const batchDeleteResult =
+    await DeliveryBatch.deleteMany({
+      status: {
+        $in: [
+          "draft",
+          "finalized",
+          "in_delivery"
+        ]
+      }
+    });
 
   // ─────────────────────────────────────────────
   // RESPONSE
@@ -5135,23 +5376,28 @@ const resetAllDrivers = asynchandler(async (req, res) => {
       200,
       {
         drivers: {
-          matchedDrivers: driverResult.matchedCount,
-          updatedDrivers: driverResult.modifiedCount,
+          matchedDrivers:
+            driverResult.matchedCount,
+          updatedDrivers:
+            driverResult.modifiedCount,
         },
-        batches: {
-          totalProcessed: activeBatches.length,
-          historyPreserved: true,
-        },
+
         orders: {
-          matchedOrders: orderResult.matchedCount,
-          updatedOrders: orderResult.modifiedCount,
+          matchedOrders:
+            orderResult.matchedCount,
+          updatedOrders:
+            orderResult.modifiedCount,
         },
+
+        batches: {
+          deletedBatches:
+            batchDeleteResult.deletedCount
+        }
       },
-      "All drivers reset successfully while preserving batch and order history"
+      "All drivers reset successfully. Orders moved back to unassigned state."
     )
   );
 });
-
 
 
 
@@ -11915,6 +12161,117 @@ console.log(deliveryDate);
 };
 
 
+const resetOrderAssignment = asynchandler(async (req, res) => {
+
+  ensureSuperAdmin(req);
+
+  const { orderId } = req.params;
+
+  if (!orderId) {
+    throw new ApiError(
+      400,
+      "Order ID is required"
+    );
+  }
+
+  const order = await Order.findById(orderId);
+
+  if (!order) {
+    throw new ApiError(
+      404,
+      "Order not found"
+    );
+  }
+
+  // Prevent resetting delivered orders
+  if (
+    order.status === "delivered" ||
+    order.isorderdelivered
+  ) {
+    throw new ApiError(
+      400,
+      "Delivered orders cannot be reset"
+    );
+  }
+
+  const batchId =
+    order?.deliveryAssignment?.batchId;
+
+  // ─────────────────────────────────────────────
+  // REMOVE ORDER FROM BATCH
+  // ─────────────────────────────────────────────
+  if (batchId) {
+
+    const batch =
+      await DeliveryBatch.findByIdAndUpdate(
+        batchId,
+        {
+          $pull: {
+            orders: {
+              orderId: order._id
+            }
+          }
+        },
+        {
+          new: true
+        }
+      );
+
+    // Delete batch if empty
+    if (
+      batch &&
+      batch.orders.length === 0
+    ) {
+      await DeliveryBatch.findByIdAndDelete(
+        batch._id
+      );
+    }
+  }
+
+  // ─────────────────────────────────────────────
+  // COMPLETELY RESET ORDER ASSIGNMENT
+  // ─────────────────────────────────────────────
+  const updatedOrder =
+    await Order.findByIdAndUpdate(
+      orderId,
+      {
+        $set: {
+
+          // Reset status
+          status: "confirmed",
+
+          // Reset delivery state
+          isorderdelivered: false,
+          deliveredAt: null,
+          deliveryProofImage: null,
+
+          // Reset assignment
+          "deliveryAssignment.driverId": null,
+          "deliveryAssignment.assignedToDriverHistory": null,
+          "deliveryAssignment.batchId": null,
+          "deliveryAssignment.deliverySequence": null,
+          "deliveryAssignment.assignedAt": null
+        }
+      },
+      {
+        new: true,
+        runValidators: true
+      }
+    );
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        orderId: updatedOrder._id,
+        status: updatedOrder.status,
+        deliveryAssignment:
+          updatedOrder.deliveryAssignment
+      },
+      "Order assignment reset successfully"
+    )
+  );
+});
 
 
 
@@ -11986,5 +12343,6 @@ export {
         getAllAddresses,
         deleteSingleOrder,
         toggleOrderAcceptance,
-        getDeliveryDateOnly22
+        getDeliveryDateOnly22,
+        resetOrderAssignment
     }

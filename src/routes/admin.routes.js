@@ -69,7 +69,8 @@ import {
     getAllAddresses,
     deleteSingleOrder,
     toggleOrderAcceptance,
-    getDeliveryDateOnly22
+    getDeliveryDateOnly22,
+    resetOrderAssignment
 
      } from "../controllers/admin.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
@@ -285,6 +286,12 @@ router.route("/toggleorderacceptance").post(verifyStaffJWT,toggleOrderAcceptance
 
 
 router.route("/getDeliveryDateOnlyj").get(verifyStaffJWT,getDeliveryDateOnly22)
+
+
+
+router.route("/clearassigneddriverhistory/:orderId").patch(verifyStaffJWT,resetOrderAssignment)
+
+
 
 export default router 
 
