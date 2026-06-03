@@ -2482,14 +2482,14 @@ const ProceedToOrder = asynchandler(async (req, res) => {
         "+1 (661) 863-8001",
 
       Zelle_name:
-        "Parminder Singh",
+        "Amritpal Singh",
 
       // zell_number:
       //   "3176032757",
 
       // ✅ bay_area QR
       zelleQrImage:
-        "https://res.cloudinary.com/ddvloqbxp/image/upload/v1780119676/Screenshot_2026-05-30_at_11.11.07_AM_nulqzl.png"
+        "https://res.cloudinary.com/ddga7jdh2/image/upload/v1780508099/Screenshot_2026-06-03_at_11.04.52_PM_rlulfy.png"
       
 
     };

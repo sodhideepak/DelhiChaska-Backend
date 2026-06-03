@@ -19,12 +19,12 @@ export const SERVICEABLE_CITIES = [
     "campbell",
     "los gatos",
     "milpitas",
-    "livermore",
-    "dublin",
-    "ruby hill",
-    "san ramon",
-    "danville",
-    "pleasanton",
+    // "livermore",
+    // "dublin",
+    // "ruby hill",
+    // "san ramon",
+    // "danville",
+    // "pleasanton",
 
     // SEATTLE
     "seattle",

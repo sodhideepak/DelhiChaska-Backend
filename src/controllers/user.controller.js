@@ -1001,12 +1001,12 @@ const AREA_CITY_MAP = {
         "Campbell",
         "Los Gatos",
         "Milpitas",
-        "Livermore",
-        "Dublin",
-        "Ruby Hill",
-        "San Ramon",
-        "Danville",
-        "Pleasanton"
+        // "Livermore",
+        // "Dublin",
+        // "Ruby Hill",
+        // "San Ramon",
+        // "Danville",
+        // "Pleasanton"
     ], 
 
     seattle: [
