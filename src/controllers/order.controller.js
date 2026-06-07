@@ -2513,7 +2513,7 @@ const ProceedToOrder = asynchandler(async (req, res) => {
 
       // ✅ Seattle QR
       zelleQrImage:
-        "https://res.cloudinary.com/ddvloqbxp/image/upload/v1780119865/Screenshot_2026-05-30_at_11.14.18_AM_lyg9yo.png"
+        "https://res.cloudinary.com/ddvloqbxp/image/upload/v1780854442/Screenshot_2026-06-07_at_11.17.09_PM_nasotr.png"
     };
   }
 
