@@ -2506,7 +2506,7 @@ const ProceedToOrder = asynchandler(async (req, res) => {
         "+1 (661) 863-8001",
 
       Zelle_name:
-        "ParminderPal Singh ",
+        "Delhi Wholesale Bazaar LLC ",
 
       // zell_number:
       //   "+1 (206) 913-9361",
