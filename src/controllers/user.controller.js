@@ -2124,8 +2124,9 @@ const forgotPassword = asynchandler(async (req, res) => {
     { expiresIn: "15m" }
   );
  
+//   https://www.tiffinvala.com/reset-password/
   // ── build reset URL ──
-  const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
+  const resetUrl = `https://www.tiffinvala.com/reset-password/${resetToken}`;
  
   // ── send email ──
   await sendEmail({
