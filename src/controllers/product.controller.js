@@ -274,7 +274,7 @@ const createProduct = asynchandler(async (req, res) => {
         chinese: ["8oz","16oz", "32oz"],
         biryani: ["8oz","16oz", "32oz"],
         breads:[], 
-        deserts:["8oz","16oz", "32oz"],
+        deserts:[],
         snacks:[],
         roti: [], 
         paneer_tikka:["8oz","16oz", "32oz"],
@@ -693,6 +693,8 @@ const updateProduct = asynchandler(async (req, res) => {
         biryani: ["8oz","16oz", "32oz"],
         paneer_tikka:["8oz","16oz", "32oz"],
         chicken_tikka:["8oz","16oz", "32oz"],
+        deserts:[],
+        snacks:[],
         breads:[],
         stuffed_parantha:[],
         plain_parantha:[],
@@ -700,7 +702,7 @@ const updateProduct = asynchandler(async (req, res) => {
     };
     const ALLOWED_FOOD_CLASS = [
         "veg_curry", "paneer", "chicken", "mutton",
-        "veg_other", "veg_dry", "rice", "chinese", "roti","plain_parantha", "biryani","stuffed_parantha", "breads","paneer_tikka","chicken_tikka"
+        "veg_other", "veg_dry", "rice", "chinese", "roti","plain_parantha", "biryani","stuffed_parantha", "breads","paneer_tikka","chicken_tikka","deserts","snacks"
     ];
 
     // ==========================
