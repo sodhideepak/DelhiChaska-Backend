@@ -602,7 +602,7 @@ const registeruser = asynchandler(async (req, res) => {
     }
     const existeduser = await user.findOne(
         {
-            $or: [{ phone_number }, { email }]
+            $or: [ { email }]
         }
     )
 
