@@ -2108,7 +2108,8 @@ const forgotPassword = asynchandler(async (req, res) => {
       new ApiResponse(
         200,
         null,
-        "If an account with that email exists, a reset link has been sent."
+        "account with that email does not exists"
+        // "If an aceen sent."
       )
     );
   }
