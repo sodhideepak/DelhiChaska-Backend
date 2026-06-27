@@ -2473,7 +2473,7 @@ const ProceedToOrder = asynchandler(async (req, res) => {
     area === "bay_area"
   ) {
 
-    paymentDetails = {
+   paymentDetails = {
 
       venmoId:
         "https://venmo.com/u/Delhi-Chaska",
@@ -2482,16 +2482,14 @@ const ProceedToOrder = asynchandler(async (req, res) => {
         "+1 (661) 863-8001",
 
       Zelle_name:
-        "Amritpal Singh",
+        "Delhi Wholesale Bazaar LLC ",
 
       // zell_number:
-      //   "3176032757",
+      //   "+1 (206) 913-9361",
 
-      // ✅ bay_area QR
+      // ✅ Seattle QR
       zelleQrImage:
-        "https://res.cloudinary.com/ddga7jdh2/image/upload/v1780508099/Screenshot_2026-06-03_at_11.04.52_PM_rlulfy.png"
-      
-
+        "https://res.cloudinary.com/ddvloqbxp/image/upload/v1781113537/Screenshot_2026-06-10_at_11.15.26_PM_aazwen.png"
     };
   }
 
