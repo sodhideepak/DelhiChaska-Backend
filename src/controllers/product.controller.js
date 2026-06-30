@@ -377,7 +377,7 @@ const createProduct = asynchandler(async (req, res) => {
 
 // Get all products
 const getAllProducts = asynchandler(async (req, res) => {
-    const { page = 1, limit = 60, category, isAvailable } = req.query;
+    const { page = 1, limit = 200, category, isAvailable } = req.query;
 
     let filter = {};
 
