@@ -443,7 +443,7 @@ const getAllProducts = asynchandler(async (req, res) => {
 const getAllProductsByArea = asynchandler(async (req, res) => {
     const {
         page = 1,
-        limit = 60,
+        limit = 200,
         category,
         isAvailable,
         area
@@ -1917,7 +1917,7 @@ const updateAllProductImages = asynchandler(async (req, res) => {
 const adminGetProductsWithAreaStatus = asynchandler(async (req, res) => {
     ensureSuperAdmin(req);
 
-    const { page = 1, limit = 60, category, isAvailable } = req.query;
+    const { page = 1, limit = 200, category, isAvailable } = req.query;
     const { area } = req.params;
 
     const normalizedArea = area?.toLowerCase().trim();
