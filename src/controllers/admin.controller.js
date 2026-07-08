@@ -2268,7 +2268,8 @@ const AREA_CITY_MAP = {
 "Ruby Hill",
 "San Ramon",
 "Danville",
-"Pleasanton"
+"Pleasanton",
+"palto alto",
 
 ],
 

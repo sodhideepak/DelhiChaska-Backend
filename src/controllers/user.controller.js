@@ -1001,6 +1001,7 @@ const AREA_CITY_MAP = {
         "Campbell",
         "Los Gatos",
         "Milpitas",
+        "palo alto",
         // "Livermore",
         // "Dublin",
         // "Ruby Hill",
