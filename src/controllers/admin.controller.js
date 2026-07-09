@@ -3294,7 +3294,8 @@ const kitchenViewOrdersByArea = asynchandler(async (req, res) => {
       "parantha",
   "paratha",
   "stuffed_parantha",
-  "stuffed_paratha"
+  "stuffed_paratha",
+  "snacks",
   ];
 
   const measurableCategories = [
