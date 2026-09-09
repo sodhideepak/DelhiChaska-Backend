@@ -6,6 +6,7 @@ import { errorHandler } from "./middlewares/error.middleware.js";
 dotenv.config({
     path:"./.env"
 })
+import { stripeWebhook } from "./controllers/payment.controller.js";
 
 const app = express()
 // app.use(cors({
@@ -15,8 +16,6 @@ const app = express()
 
 
 app.set("trust proxy", 1)
-
-
 
 
 const allowedOrigins = [ 
@@ -31,6 +30,11 @@ const allowedOrigins = [
   "https://tiffinvala-admin.vercel.app",
   "https://www.dashboard.tiffinvala.com"
 ];
+
+
+
+
+
 
 app.use(
   cors({
@@ -50,18 +54,32 @@ app.use(
   })
 );
          
+
+
+app.post(
+    "/api/payment/webhook",
+    express.raw({
+        type: "application/json"
+    }),
+    stripeWebhook
+);
+
+
 app.use(express.json({limit:"16kb"}))
 app.use(express.urlencoded({extended:true,limit:"16kb"}))
 app.use(cookieParser())
 app.use(express.static("public"))
 
 
+
+
 import userrouter from "./routes/user.routes.js";
 import adminrouter from"./routes/admin.routes.js";
 import productrouter from "./routes/product.routes.js";
 import orderrouter from "./routes/order.routes.js";
+import paymentrouter from "./routes/payment.routes.js";
 
-
+app.use("/api/payment",paymentrouter)
 
 app.use("/api/v1/users",userrouter)
 app.use("/api/v1/admin",adminrouter)

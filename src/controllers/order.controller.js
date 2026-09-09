@@ -2426,7 +2426,8 @@ const ProceedToOrder = asynchandler(async (req, res) => {
 
       method:
         payment?.method ||
-        "Pay Later",
+        // "Pay Later",
+        "online",
 
       status:
         "pending"

@@ -279,6 +279,15 @@ const orderSchema = new mongoose.Schema(
         ],
 
         default: "pending"
+      },
+      stripeSessionId: {
+      type: String,
+      default: null
+      },
+
+      stripePaymentIntentId: {
+      type: String,
+      default: null
       }
     },
 
