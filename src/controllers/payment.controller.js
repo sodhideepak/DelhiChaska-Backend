@@ -675,6 +675,10 @@ const stripeWebhook = asynchandler(
         // ✅ ACKNOWLEDGE STRIPE
         // ======================================================
 
+    
+        console.log(
+            "🔥🔥🔥 WEBHOOK WAS PROCESSED 🔥🔥🔥"
+        );
         return res.status(200).json({
             received: true
         });
