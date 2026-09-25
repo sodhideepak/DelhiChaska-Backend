@@ -2490,7 +2490,7 @@ const ProceedToOrder = asynchandler(async (req, res) => {
 
       // ✅ Seattle QR
       zelleQrImage:
-        "https://res.cloudinary.com/ddvloqbxp/image/upload/v1781113537/Screenshot_2026-06-10_at_11.15.26_PM_aazwen.png"
+        "https://res.cloudinary.com/gneryowp/image/upload/v1790367497/WhatsApp_Image_2026-09-25_at_11.14.29_PM.jpg"
     };
   }
 
@@ -2512,7 +2512,7 @@ const ProceedToOrder = asynchandler(async (req, res) => {
 
       // ✅ Seattle QR
       zelleQrImage:
-        "https://res.cloudinary.com/ddvloqbxp/image/upload/v1781113537/Screenshot_2026-06-10_at_11.15.26_PM_aazwen.png"
+        "https://res.cloudinary.com/gneryowp/image/upload/v1790367497/WhatsApp_Image_2026-09-25_at_11.14.29_PM.jpg"
     };
   }
 
