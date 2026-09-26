@@ -2485,8 +2485,8 @@ const ProceedToOrder = asynchandler(async (req, res) => {
       Zelle_name:
         "Delhi Wholesale Bazaar LLC ",
 
-      // zell_number:
-      //   "+1 (206) 913-9361",
+      zell_number:
+        "+1 (206) 913-1190",
 
       // ✅ Seattle QR
       zelleQrImage:
@@ -2507,8 +2507,8 @@ const ProceedToOrder = asynchandler(async (req, res) => {
       Zelle_name:
         "Delhi Wholesale Bazaar LLC ",
 
-      // zell_number:
-      //   "+1 (206) 913-9361",
+      zell_number:
+        "+1 (206) 913-1190",
 
       // ✅ Seattle QR
       zelleQrImage:
