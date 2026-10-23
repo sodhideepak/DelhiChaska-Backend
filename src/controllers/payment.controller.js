@@ -19,7 +19,6 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 const createCheckoutSession = asynchandler(async (req, res) => {
 
-    console.log(req);
     const userId = req.user._id;
 
     const { orderId } = req.body;

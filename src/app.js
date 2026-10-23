@@ -79,7 +79,7 @@ import productrouter from "./routes/product.routes.js";
 import orderrouter from "./routes/order.routes.js";
 import paymentrouter from "./routes/payment.routes.js";
 
-app.use("/api/payment",paymentrouter)
+app.use("/api/v1/payment",paymentrouter)
 
 app.use("/api/v1/users",userrouter)
 app.use("/api/v1/admin",adminrouter)
