@@ -2841,6 +2841,7 @@ const userHtml = `
     "
   >
     ❤️ Thank you.
+    This is the auto generated mail if you have any query please contact us on WhatsApp +1 (661) 863-8001 or mail me personally at <a href="mailto:samsandhawalia073@gmail.com">samsandhawalia073@gmail.com</a>
   </p>
 
 `;
