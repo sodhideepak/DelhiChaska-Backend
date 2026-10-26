@@ -25,10 +25,10 @@ router.route("/create-checkout-session").post(verifyJWT,createCheckoutSession)
 
 
 // Stripe Webhook
-// router.post(
-//   "/webhook",
-//   express.raw({ type: "application/json" }),
-//   stripeWebhook
-// );
+router.post(
+  "/webhook",
+  express.raw({ type: "application/json" }),
+  stripeWebhook
+);
 
 export default router;
