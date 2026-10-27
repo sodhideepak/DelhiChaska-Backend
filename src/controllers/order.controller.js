@@ -2648,7 +2648,7 @@ const userHtml = `
   </p>
 
   <p style="font-size:15px; color:#4B5563;">
-    Your order has been placed successfully and is currently being processed.
+    Your order has been received. Payment is pending, and your order will be confirmed once the payment is completed.
   </p>
 
   <div 
@@ -2702,7 +2702,7 @@ const userHtml = `
 
     <p style="color:#78350F; line-height:1.7; margin-bottom:0;">
 
-      After completing the payment, please send the payment screenshot to 
+      You can complete your payment through our website. If you choose to pay using this QR code, please send the payment screenshot to this number for confirmation.
       <strong>WhatsApp: +1 (661) 863-8001</strong>
 
       <br/><br/>
