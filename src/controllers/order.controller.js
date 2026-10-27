@@ -2637,18 +2637,229 @@ const ProceedToOrder = asynchandler(async (req, res) => {
   // ─────────────────────────────────────────────
   // USER EMAIL
   // ─────────────────────────────────────────────
+// const userHtml = `
+
+//   <h2 style="color:#111827; font-size:28px;">
+//     🎉 Thank You For Your Order
+//   </h2>
+
+//   <p style="font-size:16px; color:#374151;">
+//     Hello <strong>${User?.name || "Customer"}</strong> 👋
+//   </p>
+
+//   <p style="font-size:15px; color:#4B5563;">
+//     Your order has been received. Payment is pending, and your order will be confirmed once the payment is completed.
+//   </p>
+
+//   <div 
+//     style="
+//       background:#F9FAFB;
+//       padding:15px;
+//       border-radius:10px;
+//       margin:20px 0;
+//       border:1px solid #E5E7EB;
+//     "
+//   >
+
+//     <p>
+//       <strong>Username:</strong>
+//       ${User?.username || "N/A"}
+//     </p>
+
+//     <p>
+//       <strong>Order ID:</strong>
+//       ${order._id}
+//     </p>
+
+//     <p>
+//       <strong>Total Amount:</strong>
+//       <span style="color:#059669; font-size:18px; font-weight:bold;">
+//         $${totalAmount}
+//       </span>
+//     </p>
+
+//   </div>
+
+//   <div
+//     style="
+//       background:#FEF3C7;
+//       border:1px solid #F59E0B;
+//       padding:18px;
+//       border-radius:12px;
+//       margin:25px 0;
+//     "
+//   >
+
+//     <h3 style="margin-top:0; color:#92400E;">
+//       ⚠️ Important Payment Notice
+//     </h3>
+
+//     <p style="color:#78350F; line-height:1.7; margin-bottom:12px;">
+
+//       Your order will be confirmed only after the payment is completed.
+
+//     </p>
+
+//     <p style="color:#78350F; line-height:1.7; margin-bottom:0;">
+
+//       You can complete your payment through our website. If you choose to pay using this QR code, please send the payment screenshot to this number for confirmation.
+//       <strong>WhatsApp: +1 (661) 863-8001</strong>
+
+//       <br/><br/>
+
+//       Kindly include your:
+//       <br/>
+//       • Username
+//       <br/>
+//       • Full Name
+
+//     </p>
+
+//   </div>
+
+//   <h3 style="color:#111827;">
+//     🛒 Order Summary
+//   </h3>
+
+//   <table 
+//     border="1" 
+//     cellpadding="12"
+//     cellspacing="0"
+//     width="100%"
+//     style="
+//       border-collapse:collapse;
+//       border:1px solid #E5E7EB;
+//       overflow:hidden;
+//     "
+//   >
+
+//     <thead>
+
+//       <tr style="background:#111827; color:white;">
+
+//         <th>Item</th>
+
+//         <th>Size</th>
+
+//         <th>Qty</th>
+
+//         <th>Price</th>
+
+//         <th>Subtotal</th>
+
+//       </tr>
+
+//     </thead>
+
+//     <tbody>
+
+//       ${orderItemsHtml}
+
+//     </tbody>
+
+//   </table>
+
+//   <div 
+//     style="
+//       background:#F3F4F6;
+//       padding:20px;
+//       border-radius:12px;
+//       margin-top:30px;
+//     "
+//   >
+
+//     <h3 style="margin-top:0; color:#111827;">
+//       💳 Payment Instructions
+//     </h3>
+
+//     <p>
+//       <strong>VenmoId:</strong>
+//       ${paymentDetails.venmoId}
+//     </p>
+
+//     <p>
+//       <strong>Venmo Number:</strong>
+//       ${paymentDetails.venmoNumber}
+//     </p>
+
+    
+//     <p>
+
+//       <strong>Zelle Name:</strong>
+//       ${paymentDetails.Zelle_name}
+
+//       <br/><br/>
+
+//       ${paymentDetails?.zell_number ? `
+//           <strong>Zelle Number:</strong>
+//           ${paymentDetails.zell_number}` : ""}
+//     </p>
+
+//     ${
+//       paymentDetails?.zelleQrImage
+//         ? `
+//           <div style="margin-top:20px;">
+
+//             <p>
+//               <strong>Zelle QR Code:</strong>
+//             </p>
+
+//             <img
+//               src="${paymentDetails.zelleQrImage}"
+//               alt="Zelle QR"
+//               style="
+//                 width:220px;
+//                 height:auto;
+//                 border-radius:12px;
+//                 border:1px solid #E5E7EB;
+//               "
+//             />
+
+//           </div>
+//         `
+//         : ""
+//     }
+
+//     <p style="color:#4B5563; line-height:1.6;">
+
+//       Please complete the payment at your earliest convenience.
+
+//       <br/><br/>
+
+//       Your order confirmation email will be sent once the admin confirms your payment and order.
+
+//     </p>
+
+//   </div>
+
+//   <p 
+//     style="
+//       margin-top:30px;
+//       text-align:center;
+//       color:#6B7280;
+//       font-size:14px;
+//     "
+//   >
+//     ❤️ Thank you.
+//     This is the auto generated mail if you have any query please contact us on WhatsApp +1 (661) 863-8001 or mail me personally at <a href="mailto:samsandhawalia073@gmail.com">samsandhawalia073@gmail.com</a>
+//   </p>
+
+// `;
+
 const userHtml = `
 
   <h2 style="color:#111827; font-size:28px;">
-    🎉 Thank You For Your Order
+    Thank You For Your Order!
   </h2>
 
   <p style="font-size:16px; color:#374151;">
-    Hello <strong>${User?.name || "Customer"}</strong> 👋
+    Hello <strong>${User?.name || "Customer"}</strong>
   </p>
 
-  <p style="font-size:15px; color:#4B5563;">
-    Your order has been received. Payment is pending, and your order will be confirmed once the payment is completed.
+  <p style="font-size:15px; color:#4B5563; line-height:1.7;">
+    We have received your order successfully. However, your payment is still pending, 
+    and your order is not yet confirmed. Please complete your payment through our 
+    website's secure checkout to confirm your order.
   </p>
 
   <div 
@@ -2691,34 +2902,19 @@ const userHtml = `
   >
 
     <h3 style="margin-top:0; color:#92400E;">
-      ⚠️ Important Payment Notice
+      Payment Required to Confirm Your Order
     </h3>
 
-    <p style="color:#78350F; line-height:1.7; margin-bottom:12px;">
-
-      Your order will be confirmed only after the payment is completed.
-
-    </p>
-
     <p style="color:#78350F; line-height:1.7; margin-bottom:0;">
-
-      You can complete your payment through our website. If you choose to pay using this QR code, please send the payment screenshot to this number for confirmation.
-      <strong>WhatsApp: +1 (661) 863-8001</strong>
-
-      <br/><br/>
-
-      Kindly include your:
-      <br/>
-      • Username
-      <br/>
-      • Full Name
-
+      Your order has been received, but it will only be confirmed after 
+      your payment is successfully completed. Please visit our website 
+      and complete your payment using our secure checkout.
     </p>
 
   </div>
 
   <h3 style="color:#111827;">
-    🛒 Order Summary
+    Order Summary
   </h3>
 
   <table 
@@ -2734,27 +2930,17 @@ const userHtml = `
   >
 
     <thead>
-
       <tr style="background:#111827; color:white;">
-
         <th>Item</th>
-
         <th>Size</th>
-
         <th>Qty</th>
-
         <th>Price</th>
-
         <th>Subtotal</th>
-
       </tr>
-
     </thead>
 
     <tbody>
-
       ${orderItemsHtml}
-
     </tbody>
 
   </table>
@@ -2769,65 +2955,18 @@ const userHtml = `
   >
 
     <h3 style="margin-top:0; color:#111827;">
-      💳 Payment Instructions
+      Complete Your Payment
     </h3>
 
-    <p>
-      <strong>VenmoId:</strong>
-      ${paymentDetails.venmoId}
+    <p style="color:#4B5563; line-height:1.7;">
+      To confirm your order, please complete your payment through our 
+      website using our secure checkout. Once your payment is successful, 
+      your order can be confirmed.
     </p>
 
-    <p>
-      <strong>Venmo Number:</strong>
-      ${paymentDetails.venmoNumber}
-    </p>
-
-    
-    <p>
-
-      <strong>Zelle Name:</strong>
-      ${paymentDetails.Zelle_name}
-
-      <br/><br/>
-
-      ${paymentDetails?.zell_number ? `
-          <strong>Zelle Number:</strong>
-          ${paymentDetails.zell_number}` : ""}
-    </p>
-
-    ${
-      paymentDetails?.zelleQrImage
-        ? `
-          <div style="margin-top:20px;">
-
-            <p>
-              <strong>Zelle QR Code:</strong>
-            </p>
-
-            <img
-              src="${paymentDetails.zelleQrImage}"
-              alt="Zelle QR"
-              style="
-                width:220px;
-                height:auto;
-                border-radius:12px;
-                border:1px solid #E5E7EB;
-              "
-            />
-
-          </div>
-        `
-        : ""
-    }
-
-    <p style="color:#4B5563; line-height:1.6;">
-
-      Please complete the payment at your earliest convenience.
-
-      <br/><br/>
-
-      Your order confirmation email will be sent once the admin confirms your payment and order.
-
+    <p style="color:#4B5563; line-height:1.7; margin-bottom:0;">
+      If you have already completed your payment, please allow some time 
+      for the payment to be verified.
     </p>
 
   </div>
@@ -2838,13 +2977,23 @@ const userHtml = `
       text-align:center;
       color:#6B7280;
       font-size:14px;
+      line-height:1.7;
     "
   >
-    ❤️ Thank you.
-    This is the auto generated mail if you have any query please contact us on WhatsApp +1 (661) 863-8001 or mail me personally at <a href="mailto:samsandhawalia073@gmail.com">samsandhawalia073@gmail.com</a>
+    Thank you for shopping with us!
+
+    <br/><br/>
+
+    This is an automatically generated email. If you have any questions, 
+    please contact us on WhatsApp at 
+    <strong>+1 (661) 863-8001</strong> or email us at 
+    <a href="mailto:samsandhawalia073@gmail.com">
+      samsandhawalia073@gmail.com
+    </a>.
   </p>
 
 `;
+
   // ─────────────────────────────────────────────
   // SEND EMAILS
   // ─────────────────────────────────────────────
