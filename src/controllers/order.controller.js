@@ -2860,6 +2860,7 @@ const userHtml = `
     We have received your order successfully. However, your payment is still pending, 
     and your order is not yet confirmed. Please complete your payment through our 
     website's secure checkout to confirm your order.
+    Home -> Orders -> Click on Pay Now -> Complete your payment
   </p>
 
   <div 
@@ -3017,7 +3018,7 @@ const userHtml = `
         User.email,
 
       subject:
-        `Your Order is Placed - ${order._id}`,
+        `Your Order is Received - ${order._id}`,
 
       html:
         userHtml
@@ -3054,7 +3055,7 @@ const userHtml = `
         paymentDetails
       },
 
-      "Order placed successfully"
+      "Order received successfully"
     )
   );
 });
