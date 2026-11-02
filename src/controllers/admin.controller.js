@@ -2270,7 +2270,8 @@ const AREA_CITY_MAP = {
 "Danville",
 "Pleasanton",
 "palto alto",
-"fremont"
+"fremont",
+"california"
 
 ],
 
