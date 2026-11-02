@@ -2271,6 +2271,7 @@ const AREA_CITY_MAP = {
 "Pleasanton",
 "palto alto",
 "fremont",
+"Fremont",
 "california"
 
 ],
