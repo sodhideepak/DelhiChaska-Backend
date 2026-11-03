@@ -85,6 +85,13 @@ const createCheckoutSession = asynchandler(async (req, res) => {
         order.totalAmount
     );
 
+    console.log(`order totalAmount: ${totalAmount}, type: ${typeof totalAmount}`
+    );  
+
+
+
+
+    console.log(`order details : ${JSON.stringify(order, null, 2)}`);
     if (
         !Number.isFinite(totalAmount) ||
         totalAmount <= 0
@@ -116,27 +123,94 @@ const createCheckoutSession = asynchandler(async (req, res) => {
     // 🛒 BUILD LINE ITEMS
     // ==========================
 
-    const lineItems = order.items.map((item) => {
+    // const lineItems = order.items.map((item) => {
 
-        return {
-            price_data: {
+    //     return {
+    //         price_data: {
 
-                currency: "usd",
+    //             currency: "usd",
 
-                product_data: {
-                    name: item.name || "Product"
-                },
+    //             product_data: {
+    //                 name: item.name || "Product"
+    //             },
 
-                unit_amount:
-                    Math.round(
-                        Number(item.selectedVariant?.price || 0) * 100
-                    )
-            },
+    //             unit_amount:
+    //                 Math.round(
+    //                     Number(item.selectedVariant?.price || 0) * 100
+    //                 )
+    //         },
 
-            quantity: item.quantity || 1
-        };
+    //         quantity: item.quantity || 1
+    //     };
 
+    // });
+
+
+
+    // ==========================
+// 🛒 BUILD LINE ITEMS
+// ==========================
+
+const lineItems = order.items.map((item) => {
+    const quantity = item.quantity || 1;
+
+    // Prefer subtotal / quantity so add-ons or selections are included
+    const unitPrice = item.subtotal
+        ? Number(item.subtotal) / quantity
+        : Number(item.selectedVariant?.price || 0);
+
+    return {
+        price_data: {
+            currency: "usd",
+            product_data: { name: item.name || "Product" },
+            unit_amount: Math.round(unitPrice * 100)
+        },
+        quantity
+    };
+});
+
+// ==========================
+// 🚚 DELIVERY FEE
+// ==========================
+
+const deliveryFeeCents = Math.round(Number(order.deliveryFee || 0) * 100);
+
+if (deliveryFeeCents > 0) {
+    lineItems.push({
+        price_data: {
+            currency: "usd",
+            product_data: { name: "Delivery Fee" },
+            unit_amount: deliveryFeeCents
+        },
+        quantity: 1
     });
+}
+
+// ==========================
+// ✅ VERIFY TOTAL MATCHES
+// ==========================
+
+const lineItemsTotal = lineItems.reduce(
+    (sum, li) => sum + li.price_data.unit_amount * li.quantity,
+    0
+);
+
+const useLineItems =
+    lineItems.every((li) => li.price_data.unit_amount > 0) &&
+    lineItemsTotal === amountInCents;
+
+const finalLineItems = useLineItems
+    ? lineItems
+    : [
+        {
+            price_data: {
+                currency: "usd",
+                product_data: { name: `Order #${order._id}` },
+                unit_amount: amountInCents
+            },
+            quantity: 1
+        }
+    ];
 
 
     // ==========================
