@@ -2046,6 +2046,1022 @@ const getNextDeliveryDate2 = asynchandler(async (req, res) => {
 
 
 
+// const ProceedToOrder = asynchandler(async (req, res) => {
+
+//   // ─────────────────────────────────────────────
+//   // AUTH CHECK
+//   // ─────────────────────────────────────────────
+//   const userId = req.user?._id;
+
+//   if (!userId) {
+
+//     throw new ApiError(
+//       401,
+//       "Unauthorized"
+//     );
+//   }
+
+//   const { addressId, payment } = req.body;
+
+//   // ─────────────────────────────────────────────
+//   // VALIDATE ADDRESS
+//   // ─────────────────────────────────────────────
+//   if (!addressId) {
+
+//     throw new ApiError(
+//       400,
+//       "Please select a delivery address"
+//     );
+//   }
+
+//   const address = await Address.findOne({
+
+//     _id: addressId,
+
+//     user: userId
+
+//   });
+
+//   if (!address) {
+
+//     throw new ApiError(
+
+//       404,
+
+//       "Address not found or does not belong to you"
+//     );
+//   }
+
+//   // ─────────────────────────────────────────────
+//   // FETCH USER
+//   // ─────────────────────────────────────────────
+//   const User = await user.findById(userId)
+
+//     .select(
+//       "name email phone_number full_name username"
+//     );
+
+//   // ─────────────────────────────────────────────
+//   // FETCH CART
+//   // ─────────────────────────────────────────────
+//   const cart = await Cart.findOne({
+
+//     user: userId
+
+//   })
+
+//     .populate(
+//       "items.productId",
+//       "name category variants isAvailable"
+//     )
+
+//     .populate(
+//       "items.comboId",
+//       "name price size isActive rules"
+//     )
+
+//     .lean();
+
+//   // EMPTY CART
+//   if (
+//     !cart ||
+//     !cart.items ||
+//     cart.items.length === 0
+//   ) {
+
+//     throw new ApiError(
+//       400,
+//       "Cart is empty"
+//     );
+//   }
+
+//   // ─────────────────────────────────────────────
+//   // BUILD ORDER ITEMS
+//   // ─────────────────────────────────────────────
+//   let totalAmount = 0;
+
+//   const orderItems = [];
+
+//   // ─────────────────────────────────────────────
+//   // LOOP CART ITEMS
+//   // ─────────────────────────────────────────────
+//   for (const item of cart.items) {
+
+//     // =====================================================
+//     // PRODUCT
+//     // =====================================================
+//     if (item.type === "product") {
+
+//       const product =
+//         item.productId;
+
+//       // SKIP INVALID PRODUCT
+//       if (
+//         !product ||
+//         !product.isAvailable
+//       ) continue;
+
+//       const price =
+
+//         item.selectedVariant?.price || 0;
+
+//       const size =
+
+//         item.selectedVariant?.size || "";
+
+//       const subtotal =
+
+//         item.subtotal ||
+
+//         (
+//           price *
+//           item.quantity
+//         );
+
+//       totalAmount += subtotal;
+
+//       // =====================================================
+//       // PUSH PRODUCT
+//       // =====================================================
+//       orderItems.push({
+
+//         productId:
+//           product._id,
+
+//         name:
+//           item.name ||
+//           product.name,
+
+//         category:
+//           product.category || "",
+
+//         quantity:
+//           item.quantity,
+
+//         selectedVariant: {
+
+//           size,
+
+//           price
+//         },
+
+//         subtotal,
+
+//         type:
+//           "product"
+//       });
+//     }
+
+//     // =====================================================
+//     // COMBO
+//     // =====================================================
+//     else if (item.type === "combo") {
+
+//       const combo =
+//         item.comboId;
+
+//       // SKIP INVALID COMBO
+//       if (
+//         !combo ||
+//         !combo.isActive
+//       ) continue;
+
+//       const price =
+
+//         item.selectedVariant?.price ||
+
+//         combo.price ||
+
+//         0;
+
+//       const size =
+
+//         item.selectedVariant?.size ||
+
+//         combo.size ||
+
+//         "";
+
+//       const subtotal =
+
+//         item.subtotal ||
+
+//         (
+//           price *
+//           item.quantity
+//         );
+
+//       totalAmount += subtotal;
+
+//       // =====================================================
+//       // BUILD SELECTIONS WITH PRODUCT DETAILS
+//       // =====================================================
+//       const formattedSelections = [];
+
+//       for (const sel of item.selections || []) {
+
+//         const productIds =
+
+//           sel.products.map(
+//             p => p.productId
+//           );
+
+//         const products =
+//           await Product.find({
+
+//             _id: {
+//               $in: productIds
+//             }
+
+//           }).select(
+
+//             "name category variants"
+//           );
+
+//         const productMap = {};
+
+//         products.forEach(p => {
+
+//           productMap[
+//             p._id.toString()
+//           ] = p;
+//         });
+
+//         const formattedProducts =
+
+//           sel.products.map(p => {
+
+//             const prod =
+
+//               productMap[
+//                 p.productId.toString()
+//               ];
+
+//             return {
+
+//               productId:
+//                 p.productId,
+
+//               name:
+//                 prod?.name || "",
+
+//               category:
+//                 prod?.category || "",
+
+//               quantity:
+//                 p.quantity
+//             };
+//           });
+
+//         formattedSelections.push({
+
+//           ruleId:
+//             sel.ruleId,
+
+//           products:
+//             formattedProducts
+//         });
+//       }
+
+//       // =====================================================
+//       // PUSH COMBO
+//       // =====================================================
+//       orderItems.push({
+
+//         comboId:
+//           combo._id,
+
+//         name:
+//           item.name ||
+//           combo.name,
+
+//         quantity:
+//           item.quantity,
+
+//         selectedVariant: {
+
+//           size,
+
+//           price
+//         },
+
+//         subtotal,
+
+//         type:
+//           "combo",
+
+//         selections:
+//           formattedSelections
+//       });
+//     }
+//   }
+
+//   // ─────────────────────────────────────────────
+//   // NO VALID ITEMS
+//   // ─────────────────────────────────────────────
+//   if (orderItems.length === 0) {
+
+//     throw new ApiError(
+
+//       400,
+
+//       "No valid items found in cart"
+//     );
+//   }
+
+//   // ─────────────────────────────────────────────
+//   // DELIVERY DETAILS
+//   // ─────────────────────────────────────────────
+//   const deliveryDetails = {
+
+//     addressId:
+//       address._id,
+
+//     addressLine1:
+//       address.addressLine1,
+
+//     addressLine2:
+//       address.addressLine2 || "",
+
+//     city:
+//       address.city,
+
+//     state:
+//       address.state,
+
+//     zipCode:
+//       address.zipCode,
+
+//     country:
+//       address.country,
+
+//     area:
+//       address.area || "bay_area",
+
+//     location:
+//       address.location || {},
+
+//     phone:
+//       User?.phone_number || ""
+//   };
+
+//   // ─────────────────────────────────────────────
+//   // CREATE ORDER
+//   // ─────────────────────────────────────────────
+//   const order = await Order.create({
+
+//     userId,
+
+//     items:
+//       orderItems,
+
+//     totalAmount,
+
+//     status:
+//       "pending",
+
+//     deliveryDetails,
+
+//     payment: {
+
+//       method:
+//         payment?.method ||
+//         // "Pay Later",
+//         "online",
+
+//       status:
+//         "pending"
+//     }
+//   });
+
+//   // ─────────────────────────────────────────────
+//   // PAYMENT DETAILS
+//   // ─────────────────────────────────────────────
+//   let paymentDetails = {};
+
+//   let area = "bay_area";
+
+//   const city =
+//     address.city?.trim()?.toLowerCase();
+
+//   if (
+//     [
+//       "seattle",
+//       "bellevue",
+//       "redmond",
+//       "kirkland",
+//       "bothell",
+//       "lynnwood",
+//       "everett",
+//       "mill creek",
+//       "woodinville",
+//       "sammamish",
+//       "issaquah",
+//       "newcastle",
+//       "renton",
+//       "kent",
+//       "kenmore",
+//       "lake forest park",
+//       "maple valley",
+//       "auburn",
+//     ].includes(city)
+//   ) {
+
+//     area = "seattle";
+//   }
+
+//   if (
+//     area === "bay_area"
+//   ) {
+
+//    paymentDetails = {
+
+//       venmoId:
+//         "https://venmo.com/u/Delhi-Chaska",
+
+//       venmoNumber:
+//         "+1 (661) 863-8001",
+
+//       Zelle_name:
+//         "Delhi Wholesale Bazaar LLC ",
+
+//       zell_number:
+//         "+1 (206) 913-1190",
+
+//       // ✅ Seattle QR
+//       zelleQrImage:
+//         "https://res.cloudinary.com/gneryowp/image/upload/v1790367497/WhatsApp_Image_2026-09-25_at_11.14.29_PM.jpg"
+//     };
+//   }
+
+//   else {
+
+//     paymentDetails = {
+
+//       venmoId:
+//         "https://venmo.com/u/Delhi-Chaska",
+
+//       venmoNumber:
+//         "+1 (661) 863-8001",
+
+//       Zelle_name:
+//         "Delhi Wholesale Bazaar LLC ",
+
+//       zell_number:
+//         "+1 (206) 913-1190",
+
+//       // ✅ Seattle QR
+//       zelleQrImage:
+//         "https://res.cloudinary.com/gneryowp/image/upload/v1790367497/WhatsApp_Image_2026-09-25_at_11.14.29_PM.jpg"
+//     };
+//   }
+
+//   // ─────────────────────────────────────────────
+//   // ORDER HTML
+//   // ─────────────────────────────────────────────
+//   const orderItemsHtml = orderItems.map(item => {
+
+//     return `
+
+//       <tr>
+
+//         <td>${item.name}</td>
+
+//         <td>${item.selectedVariant?.size || "-"}</td>
+
+//         <td>${item.quantity}</td>
+
+//         <td>$${item.selectedVariant?.price || 0}</td>
+
+//         <td>$${item.subtotal || 0}</td>
+
+//       </tr>
+//     `;
+//   }).join("");
+
+//   // ─────────────────────────────────────────────
+//   // ADMIN EMAIL
+//   // ─────────────────────────────────────────────
+//   const adminHtml = `
+
+//     <h2>New Order Received</h2>
+
+//     <p>
+//       <strong>Order ID:</strong>
+//       ${order._id}
+//     </p>
+
+//     <h3>User Details</h3>
+
+//     <p>
+//       Name:
+//       ${User?.full_name || ""}
+
+//       <br/>
+
+//       Username:
+//       ${User?.username || ""}
+
+//       <br/>
+
+//       Email:
+//       ${User?.email || ""}
+
+//       <br/>
+
+//       Phone:
+//       ${User?.phone_number || ""}
+//     </p>
+
+//     <br/>
+//       <strong>Area:</strong>
+
+//       ${area}
+//       <br/>
+
+    
+//     <h3>Delivery Address</h3>
+
+//     <p>
+//       ${deliveryDetails.addressLine1}
+
+//       ${deliveryDetails.addressLine2}
+
+//       <br/>
+
+//       ${deliveryDetails.city},
+
+//       ${deliveryDetails.state}
+      
+
+//       <br/>
+
+//       ${deliveryDetails.zipCode},
+
+//       ${deliveryDetails.country}
+//     </p>
+
+//     <h3>Items</h3>
+
+//     <table border="1" cellpadding="10">
+
+//       <thead>
+
+//         <tr>
+
+//           <th>Item</th>
+
+//           <th>Size</th>
+
+//           <th>Qty</th>
+
+//           <th>Price</th>
+
+//           <th>Subtotal</th>
+
+//         </tr>
+
+//       </thead>
+
+//       <tbody>
+
+//         ${orderItemsHtml}
+
+//       </tbody>
+
+//     </table>
+
+//     <h3>Total: $${totalAmount}</h3>
+//   `;
+
+//   // ─────────────────────────────────────────────
+//   // USER EMAIL
+//   // ─────────────────────────────────────────────
+// // const userHtml = `
+
+// //   <h2 style="color:#111827; font-size:28px;">
+// //     🎉 Thank You For Your Order
+// //   </h2>
+
+// //   <p style="font-size:16px; color:#374151;">
+// //     Hello <strong>${User?.name || "Customer"}</strong> 👋
+// //   </p>
+
+// //   <p style="font-size:15px; color:#4B5563;">
+// //     Your order has been received. Payment is pending, and your order will be confirmed once the payment is completed.
+// //   </p>
+
+// //   <div 
+// //     style="
+// //       background:#F9FAFB;
+// //       padding:15px;
+// //       border-radius:10px;
+// //       margin:20px 0;
+// //       border:1px solid #E5E7EB;
+// //     "
+// //   >
+
+// //     <p>
+// //       <strong>Username:</strong>
+// //       ${User?.username || "N/A"}
+// //     </p>
+
+// //     <p>
+// //       <strong>Order ID:</strong>
+// //       ${order._id}
+// //     </p>
+
+// //     <p>
+// //       <strong>Total Amount:</strong>
+// //       <span style="color:#059669; font-size:18px; font-weight:bold;">
+// //         $${totalAmount}
+// //       </span>
+// //     </p>
+
+// //   </div>
+
+// //   <div
+// //     style="
+// //       background:#FEF3C7;
+// //       border:1px solid #F59E0B;
+// //       padding:18px;
+// //       border-radius:12px;
+// //       margin:25px 0;
+// //     "
+// //   >
+
+// //     <h3 style="margin-top:0; color:#92400E;">
+// //       ⚠️ Important Payment Notice
+// //     </h3>
+
+// //     <p style="color:#78350F; line-height:1.7; margin-bottom:12px;">
+
+// //       Your order will be confirmed only after the payment is completed.
+
+// //     </p>
+
+// //     <p style="color:#78350F; line-height:1.7; margin-bottom:0;">
+
+// //       You can complete your payment through our website. If you choose to pay using this QR code, please send the payment screenshot to this number for confirmation.
+// //       <strong>WhatsApp: +1 (661) 863-8001</strong>
+
+// //       <br/><br/>
+
+// //       Kindly include your:
+// //       <br/>
+// //       • Username
+// //       <br/>
+// //       • Full Name
+
+// //     </p>
+
+// //   </div>
+
+// //   <h3 style="color:#111827;">
+// //     🛒 Order Summary
+// //   </h3>
+
+// //   <table 
+// //     border="1" 
+// //     cellpadding="12"
+// //     cellspacing="0"
+// //     width="100%"
+// //     style="
+// //       border-collapse:collapse;
+// //       border:1px solid #E5E7EB;
+// //       overflow:hidden;
+// //     "
+// //   >
+
+// //     <thead>
+
+// //       <tr style="background:#111827; color:white;">
+
+// //         <th>Item</th>
+
+// //         <th>Size</th>
+
+// //         <th>Qty</th>
+
+// //         <th>Price</th>
+
+// //         <th>Subtotal</th>
+
+// //       </tr>
+
+// //     </thead>
+
+// //     <tbody>
+
+// //       ${orderItemsHtml}
+
+// //     </tbody>
+
+// //   </table>
+
+// //   <div 
+// //     style="
+// //       background:#F3F4F6;
+// //       padding:20px;
+// //       border-radius:12px;
+// //       margin-top:30px;
+// //     "
+// //   >
+
+// //     <h3 style="margin-top:0; color:#111827;">
+// //       💳 Payment Instructions
+// //     </h3>
+
+// //     <p>
+// //       <strong>VenmoId:</strong>
+// //       ${paymentDetails.venmoId}
+// //     </p>
+
+// //     <p>
+// //       <strong>Venmo Number:</strong>
+// //       ${paymentDetails.venmoNumber}
+// //     </p>
+
+    
+// //     <p>
+
+// //       <strong>Zelle Name:</strong>
+// //       ${paymentDetails.Zelle_name}
+
+// //       <br/><br/>
+
+// //       ${paymentDetails?.zell_number ? `
+// //           <strong>Zelle Number:</strong>
+// //           ${paymentDetails.zell_number}` : ""}
+// //     </p>
+
+// //     ${
+// //       paymentDetails?.zelleQrImage
+// //         ? `
+// //           <div style="margin-top:20px;">
+
+// //             <p>
+// //               <strong>Zelle QR Code:</strong>
+// //             </p>
+
+// //             <img
+// //               src="${paymentDetails.zelleQrImage}"
+// //               alt="Zelle QR"
+// //               style="
+// //                 width:220px;
+// //                 height:auto;
+// //                 border-radius:12px;
+// //                 border:1px solid #E5E7EB;
+// //               "
+// //             />
+
+// //           </div>
+// //         `
+// //         : ""
+// //     }
+
+// //     <p style="color:#4B5563; line-height:1.6;">
+
+// //       Please complete the payment at your earliest convenience.
+
+// //       <br/><br/>
+
+// //       Your order confirmation email will be sent once the admin confirms your payment and order.
+
+// //     </p>
+
+// //   </div>
+
+// //   <p 
+// //     style="
+// //       margin-top:30px;
+// //       text-align:center;
+// //       color:#6B7280;
+// //       font-size:14px;
+// //     "
+// //   >
+// //     ❤️ Thank you.
+// //     This is the auto generated mail if you have any query please contact us on WhatsApp +1 (661) 863-8001 or mail me personally at <a href="mailto:samsandhawalia073@gmail.com">samsandhawalia073@gmail.com</a>
+// //   </p>
+
+// // `;
+
+// const userHtml = `
+
+//   <h2 style="color:#111827; font-size:28px;">
+//     Thank You For Your Order!
+//   </h2>
+
+//   <p style="font-size:16px; color:#374151;">
+//     Hello <strong>${User?.name || "Customer"}</strong>
+//   </p>
+
+//   <p style="font-size:15px; color:#4B5563; line-height:1.7;">
+//     We have received your order successfully. However, your payment is still pending, 
+//     and your order is not yet confirmed. Please complete your payment through our 
+//     website's secure checkout to confirm your order.
+//     Home -> Orders -> Click on Pay Now -> Complete your payment
+//   </p>
+
+//   <div 
+//     style="
+//       background:#F9FAFB;
+//       padding:15px;
+//       border-radius:10px;
+//       margin:20px 0;
+//       border:1px solid #E5E7EB;
+//     "
+//   >
+
+//     <p>
+//       <strong>Username:</strong>
+//       ${User?.username || "N/A"}
+//     </p>
+
+//     <p>
+//       <strong>Order ID:</strong>
+//       ${order._id}
+//     </p>
+
+//     <p>
+//       <strong>Total Amount:</strong>
+//       <span style="color:#059669; font-size:18px; font-weight:bold;">
+//         $${totalAmount}
+//       </span>
+//     </p>
+
+//   </div>
+
+//   <div
+//     style="
+//       background:#FEF3C7;
+//       border:1px solid #F59E0B;
+//       padding:18px;
+//       border-radius:12px;
+//       margin:25px 0;
+//     "
+//   >
+
+//     <h3 style="margin-top:0; color:#92400E;">
+//       Payment Required to Confirm Your Order
+//     </h3>
+
+//     <p style="color:#78350F; line-height:1.7; margin-bottom:0;">
+//       Your order has been received, but it will only be confirmed after 
+//       your payment is successfully completed. Please visit our website 
+//       and complete your payment using our secure checkout.
+//     </p>
+
+//   </div>
+
+//   <h3 style="color:#111827;">
+//     Order Summary
+//   </h3>
+
+//   <table 
+//     border="1" 
+//     cellpadding="12"
+//     cellspacing="0"
+//     width="100%"
+//     style="
+//       border-collapse:collapse;
+//       border:1px solid #E5E7EB;
+//       overflow:hidden;
+//     "
+//   >
+
+//     <thead>
+//       <tr style="background:#111827; color:white;">
+//         <th>Item</th>
+//         <th>Size</th>
+//         <th>Qty</th>
+//         <th>Price</th>
+//         <th>Subtotal</th>
+//       </tr>
+//     </thead>
+
+//     <tbody>
+//       ${orderItemsHtml}
+//     </tbody>
+
+//   </table>
+
+//   <div 
+//     style="
+//       background:#F3F4F6;
+//       padding:20px;
+//       border-radius:12px;
+//       margin-top:30px;
+//     "
+//   >
+
+//     <h3 style="margin-top:0; color:#111827;">
+//       Complete Your Payment
+//     </h3>
+
+//     <p style="color:#4B5563; line-height:1.7;">
+//       To confirm your order, please complete your payment through our 
+//       website using our secure checkout. Once your payment is successful, 
+//       your order can be confirmed.
+//     </p>
+
+//     <p style="color:#4B5563; line-height:1.7; margin-bottom:0;">
+//       If you have already completed your payment, please allow some time 
+//       for the payment to be verified.
+//     </p>
+
+//   </div>
+
+//   <p 
+//     style="
+//       margin-top:30px;
+//       text-align:center;
+//       color:#6B7280;
+//       font-size:14px;
+//       line-height:1.7;
+//     "
+//   >
+//     Thank you for shopping with us!
+
+//     <br/><br/>
+
+//     This is an automatically generated email. If you have any questions, 
+//     please contact us on WhatsApp at 
+//     <strong>+1 (661) 863-8001</strong> or email us at 
+//     <a href="mailto:samsandhawalia073@gmail.com">
+//       samsandhawalia073@gmail.com
+//     </a>.
+//   </p>
+
+// `;
+
+//   // ─────────────────────────────────────────────
+//   // SEND EMAILS
+//   // ─────────────────────────────────────────────
+//   await sendEmail({
+
+//     to:
+//       adminEmails,
+
+//     subject:
+//       `New Order Received - ${order._id}`,
+
+//     html:
+//       adminHtml
+//   });
+
+//   if (User?.email) {
+
+//     await sendEmail({
+
+//       to:
+//         User.email,
+
+//       subject:
+//         `Your Order is Received - ${order._id}`,
+
+//       html:
+//         userHtml
+//     });
+//   }
+
+//   // ─────────────────────────────────────────────
+//   // CLEAR CART
+//   // ─────────────────────────────────────────────
+//   await Cart.findOneAndUpdate(
+
+//     { user: userId },
+
+//     {
+//       $set: {
+//         items: []
+//       }
+//     }
+//   );
+
+//   // ─────────────────────────────────────────────
+//   // RESPONSE
+//   // ─────────────────────────────────────────────
+//   return res.status(201).json(
+
+//     new ApiResponse(
+
+//       201,
+
+//       {
+
+//         order,
+
+//         paymentDetails
+//       },
+
+//       "Order received successfully"
+//     )
+//   );
+// });
+
+
+
 const ProceedToOrder = asynchandler(async (req, res) => {
 
   // ─────────────────────────────────────────────
@@ -2369,6 +3385,11 @@ const ProceedToOrder = asynchandler(async (req, res) => {
     );
   }
 
+  // Fixed delivery fee (all order amounts are in USD)
+  const deliveryFee = 1.50;
+  const itemsSubtotal = totalAmount;
+  totalAmount = Number((itemsSubtotal + deliveryFee).toFixed(2));
+
   // ─────────────────────────────────────────────
   // DELIVERY DETAILS
   // ─────────────────────────────────────────────
@@ -2415,6 +3436,8 @@ const ProceedToOrder = asynchandler(async (req, res) => {
     items:
       orderItems,
 
+    itemsSubtotal,
+    deliveryFee,
     totalAmount,
 
     status:
@@ -2631,7 +3654,9 @@ const ProceedToOrder = asynchandler(async (req, res) => {
 
     </table>
 
-    <h3>Total: $${totalAmount}</h3>
+    <p>Items Subtotal: $${itemsSubtotal.toFixed(2)}</p>
+    <p>Delivery Fee: $${deliveryFee.toFixed(2)}</p>
+    <h3>Total: $${totalAmount.toFixed(2)}</h3>
   `;
 
   // ─────────────────────────────────────────────
@@ -2884,9 +3909,19 @@ const userHtml = `
     </p>
 
     <p>
+      <strong>Items Subtotal:</strong>
+      $${itemsSubtotal.toFixed(2)}
+    </p>
+
+    <p>
+      <strong>Delivery Fee:</strong>
+      $${deliveryFee.toFixed(2)}
+    </p>
+
+    <p>
       <strong>Total Amount:</strong>
       <span style="color:#059669; font-size:18px; font-weight:bold;">
-        $${totalAmount}
+        $${totalAmount.toFixed(2)}
       </span>
     </p>
 
@@ -2945,6 +3980,12 @@ const userHtml = `
     </tbody>
 
   </table>
+
+  <div style="text-align:right; margin-top:15px; color:#374151;">
+    <p><strong>Items Subtotal:</strong> $${itemsSubtotal.toFixed(2)}</p>
+    <p><strong>Delivery Fee:</strong> $${deliveryFee.toFixed(2)}</p>
+    <h3 style="color:#059669;">Total: $${totalAmount.toFixed(2)}</h3>
+  </div>
 
   <div 
     style="
@@ -3059,7 +4100,6 @@ const userHtml = `
     )
   );
 });
-
 
 const viewMyOrders = asynchandler(async (req, res) => {
 

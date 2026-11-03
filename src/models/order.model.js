@@ -149,6 +149,10 @@ const orderSchema = new mongoose.Schema(
       required: true,
       min: 0
     },
+    deliveryFee: {
+    type: Number,
+    default: 1.50
+    },
 
     // ───────────────────────────────────────────
     // ORDER STATUS
