@@ -1002,6 +1002,8 @@ const AREA_CITY_MAP = {
         "Los Gatos",
         "Milpitas",
         "palo alto",
+        "Palo Alto",
+        "Atherton"
         // "Livermore",
         // "Dublin",
         // "Ruby Hill",

@@ -2273,7 +2273,9 @@ const AREA_CITY_MAP = {
 "Palto Alto",
 "fremont",
 "Fremont",
-"california"
+"california",
+"California",
+"Atherton"
 
 ],
 
